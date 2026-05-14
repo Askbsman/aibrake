@@ -12,7 +12,13 @@ const VERSION = `${NAME}@0.1.0`;
 export const sameToolRetryLoopDetector: DetectorDefinition = {
   name: NAME,
   version: VERSION,
-  baseConfidence: 0.65,
+  // Calibrated to 0.70 in Stage 0.1.2 RC. At baseConfidence 0.65 the detector
+  // landed just below the 0.70 confidence threshold for the warn band in the
+  // score range 25-49, which produced `decision: allow` for the very pattern
+  // it was meant to surface (e.g. 8 paid same-tool calls with unchanged results
+  // and no confidence improvement). Bumping to 0.70 aligns the philosophy
+  // "warn when suspicious" with what the detector actually emits.
+  baseConfidence: 0.7,
   recommendedFields: [
     "history.same_action_count",
     "history.confidence_delta",
@@ -55,7 +61,7 @@ export const sameToolRetryLoopDetector: DetectorDefinition = {
       pattern: NAME,
       detectorVersion: VERSION,
       scoreContribution: score,
-      confidence: 0.65,
+      confidence: 0.7,
       matchedRules: matched,
       suggestedActions: [
         {

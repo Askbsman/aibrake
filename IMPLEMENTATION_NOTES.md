@@ -155,3 +155,25 @@ if confidence < 0.50 and no deterministic_decision → uncertain
 ## 10. x402 payment stub
 
 **Decision:** `PaymentGuard` interface + `MockPaymentGuard` (always-allow) + `X402PaymentGuardStub` (throws `not_implemented`). The Fastify route does not gate `/v1/check` on payment in v0.1 — payment guard is wired but inactive, controlled by env flag `SPENDING_GUARD_REQUIRE_PAYMENT=false` (default).
+
+---
+
+## 11. Detector `baseConfidence` deviations from v0.1.1 spec table
+
+The v0.1.1 patch § 7 specifies a base-confidence table per detector. The implementation matches it except for the two cases below. Both deviations are intentional and recorded here so future audits do not flag spec drift.
+
+| Detector | v0.1.1 spec | Code | Why |
+| --- | :---: | :---: | --- |
+| `objective_drift_rules_only` | 0.60 | 0.70 | Detector is deterministic when a policy rule matches (`action_not_in_allowed_list` or `explicit_blocked_action`). 0.60 risked dragging confidence under the 0.50 uncertain threshold when only `next_action.type` was present. The `recommendedFields` list was also reduced to `["next_action.type"]` since the rule fires deterministically once the policy is declared. No behavior change at score ≥ 50; behavior nudges from `uncertain` to `warn` at score 25–49. |
+| `same_tool_retry_loop` | 0.65 | 0.70 | Calibrated in Stage 0.1.2 RC. At 0.65 the detector emitted `decision: allow` with reason text recommending "consider switching tool, model, or approach before spending again" — internally contradictory. 0.70 puts the detector at the warn-band threshold for score 25–49 so the surfaced pattern matches the surfaced advice. |
+
+All other detector base confidences match the spec table:
+
+| Detector | Both spec and code |
+| --- | :---: |
+| `task_budget_breach` | 0.98 |
+| `stale_context_retry_storm` | 0.90 |
+| `model_escalation_without_evidence` | 0.75 |
+| `explicit_blocked_action` (sub-case of `objective_drift`) | n/a — handled via `deterministicDecision: "block"` rather than confidence |
+
+If a future patch re-pins these values to match the spec table exactly, both Demo 02 (audit) and the `objective_drift` warn-case test will need new thresholds to keep their current decisions.

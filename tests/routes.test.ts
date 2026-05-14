@@ -53,7 +53,7 @@ describe("HTTP routes", () => {
     expect(Array.isArray(body.error.details)).toBe(true);
   });
 
-  it("POST /v1/check-deep falls through to runCheck and marks deep_check_used", async () => {
+  it("POST /v1/check-deep falls through to runCheck and honestly marks deep_check_used=false + deep_check_stub=true", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/v1/check-deep",
@@ -61,7 +61,10 @@ describe("HTTP routes", () => {
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.deep_check_used).toBe(true);
+    // No real deep check runs in Stage 0.1; only the rules-only result is
+    // returned, so deep_check_used must be false. deep_check_stub flags that
+    // the endpoint exists and the stub fallback fired.
+    expect(body.deep_check_used).toBe(false);
     expect(body.deep_check_stub).toBe(true);
   });
 });

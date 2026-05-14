@@ -22,9 +22,13 @@ export async function registerCheckDeepRoute(app: FastifyInstance): Promise<void
       };
     }
     const result = runCheck(parsed.data);
+    // Honesty contract: no real LLM/semantic deep check ran in Stage 0.1.
+    // We return the same rules-only result and clearly mark `deep_check_used:
+    // false` plus `deep_check_stub: true` so operators cannot mistake this
+    // for the v0.2 behavior.
     return {
       ...result,
-      deep_check_used: true,
+      deep_check_used: false,
       deep_check_stub: true,
     };
   });
