@@ -1,8 +1,9 @@
 # Agent Spend Guard — x402 Marketplace Listing Draft
 
-**Status:** draft listing copy for `agentic.market` (and other x402 marketplaces). Not yet published.
+**Status:** draft listing copy for `agentic.market` (and other x402 marketplaces). Not yet published — listing is held until first partner reports back from hosted beta.
 **Category:** Infra
-**Implementation:** Spending Guard Stage 0.2-minimal RC (tag `spending-guard-v0.2.0-rc`).
+**Implementation:** Stage 0.5.1-beta (tag `spending-guard-v0.5.1-beta`).
+**Listing posture:** *content first, paid endpoint later.* The listing markets the rules-only beta. The actual paid `POST /x402/v1/check` endpoint is held until 1+ partner has completed a 7-day shadow integration and reported usefulness. We don't list a paid endpoint that doesn't exist.
 
 ---
 
@@ -11,7 +12,19 @@
 > **Agent Spend Guard**
 > Loop detection and model stop-loss for paid AI agents.
 
-**One-paragraph description:**
+**Lead (use this verbatim on the marketplace card):**
+
+> Prompt preflight is not enough. Agents fail in loops.
+>
+> Agent Spend Guard detects repeated failures, stale context, same-tool loops, and premium-model burn across the agent run.
+
+**Explicit positioning vs the closest competitor:**
+
+> **PQS checks the prompt. Agent Spend Guard checks the session loop.**
+
+Do NOT claim "first preflight." There are existing services in this category — see § "Why this differs" below.
+
+**One-paragraph description (use on the longer listing page):**
 
 > Agent Spend Guard is a pre-flight risk check for paid AI agent actions. It detects wasteful retry loops, stale-context failures, same-tool loops, objective drift, and premium-model burn before the next expensive step. Unlike prompt-quality preflight tools, Agent Spend Guard uses action history, objective state, evidence signals, and model policy to decide whether the next paid action is real progress — or another costly retry.
 
@@ -191,7 +204,7 @@ Recommended pairing: **subtitle** = *"Loop detection and model stop-loss for pai
 | Detector — task budget | `task_budget_breach@0.1.0` |
 | Detector — objective drift | `objective_drift@0.1.0` |
 | Fingerprint format | `fp_v1_*` / `input_v1_*` |
-| Repository tag | `spending-guard-v0.2.0-rc` |
+| Repository tag | `spending-guard-v0.5.1-beta` |
 
 Operators can pin these in production. Every `/v1/check` response carries `detector_version` and `policy_version` so silent behavior drift is detectable.
 

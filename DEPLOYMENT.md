@@ -66,9 +66,92 @@ docker run -p 8080:8080 \
 
 Mount a host volume to `/app/logs` if you want JSONL decision logs to survive container restart.
 
-### Render / Fly / Railway
+### Render
 
-Push to a git remote and connect the host to it. Set environment variables from `.env.example`. Set start command to `node dist/server.js`. Build command is `npm install && npm run build`.
+```text
+Service type:    Web Service
+Region:          any
+Branch:          main
+Build command:   npm install && npm run build
+Start command:   node dist/server.js
+Health check path: /health
+Environment:
+  PORT=8080
+  AGENT_SPEND_GUARD_AUTH_MODE=required
+  AGENT_SPEND_GUARD_API_KEYS=asg_v1_partner_a_<random>,asg_v1_partner_b_<random>
+  AGENT_SPEND_GUARD_LOG_SINK=jsonl
+  AGENT_SPEND_GUARD_LOG_PATH=/var/data/decisions.jsonl
+Disk:
+  Mount path:    /var/data
+  Size:          1 GB (enough for ~2M decision log lines)
+Custom domain:   api.<yourdomain> (auto-TLS via Render)
+```
+
+### Fly.io
+
+```bash
+fly launch --no-deploy --copy-config --name agent-spend-guard --region fra
+# edit fly.toml: set internal_port = 8080, [[services.http_checks]] path = "/health"
+fly secrets set \
+  AGENT_SPEND_GUARD_AUTH_MODE=required \
+  AGENT_SPEND_GUARD_API_KEYS=asg_v1_partner_a_<random> \
+  AGENT_SPEND_GUARD_LOG_SINK=jsonl \
+  AGENT_SPEND_GUARD_LOG_PATH=/data/decisions.jsonl
+fly volumes create asg_data --size 1 --region fra
+# add [[mounts]] source = "asg_data", destination = "/data" to fly.toml
+fly deploy
+```
+
+### Railway
+
+```text
+New Service → from GitHub repo
+Build: nixpacks (auto-detected Node)
+Start: node dist/server.js
+Variables:
+  PORT=8080
+  AGENT_SPEND_GUARD_AUTH_MODE=required
+  AGENT_SPEND_GUARD_API_KEYS=<csv>
+  AGENT_SPEND_GUARD_LOG_SINK=jsonl
+  AGENT_SPEND_GUARD_LOG_PATH=/app/logs/decisions.jsonl
+Volume: /app/logs (1 GB)
+Domain: railway-generated or attach custom
+```
+
+### Bare VPS (Hetzner / DO droplet) — TLS via Caddy
+
+```bash
+# On the VPS:
+git clone <repo> /opt/spending-guard
+cd /opt/spending-guard && npm install && npm run build
+# /etc/systemd/system/agent-spend-guard.service:
+#   ExecStart=/usr/bin/node /opt/spending-guard/dist/server.js
+#   Environment=PORT=8080 AGENT_SPEND_GUARD_AUTH_MODE=required ...
+sudo systemctl enable --now agent-spend-guard
+
+# Caddyfile (free TLS, auto-renew):
+api.yourdomain.com {
+    reverse_proxy localhost:8080
+}
+sudo systemctl reload caddy
+```
+
+### Smoke test (any host)
+
+```bash
+HOST=https://api.yourdomain.com   # replace
+curl -s "$HOST/health" | jq
+# {"ok": true, "service": "agent-spend-guard", "version": "0.5.1-beta", "mode": "hosted-beta"}
+
+curl -s -H "Authorization: Bearer asg_v1_demo" "$HOST/v1/meta" | jq .detector_policy.supported_fields.same_tool_retry_threshold
+# {
+#   "type": "number",
+#   "default": 6,
+#   "min": 2,
+#   "recommended_range": [3, 10],
+#   ...
+# }
+```
 
 ---
 
@@ -209,7 +292,70 @@ python -m pytest -m integration
 
 ---
 
-## 11. What is intentionally missing
+## 11. Monitoring
+
+Minimum viable monitoring for a hosted beta. Three external services + one CLI.
+
+### `/health` uptime probe
+
+`GET /health` is unauthenticated, returns 200 with `{ ok, service, version, mode }`. Wire it up:
+
+| Tool | Free tier | What to configure |
+| --- | --- | --- |
+| **UptimeRobot** | yes (50 monitors) | 5-min HTTP(S) check on `/health`; alert via email or Slack on 3 consecutive failures |
+| **Better Uptime** | yes (10 monitors) | Same, with on-call rotation if needed |
+| **Healthchecks.io** | yes | Inverse — your server pings them periodically; alerts on missed pings |
+
+Don't roll your own. The whole monitoring concern for a 0.5.x beta is "is the box up?"; off-the-shelf is fine.
+
+### Decision log size watch
+
+The JSONL sink at `AGENT_SPEND_GUARD_LOG_PATH` grows unbounded. Set up `logrotate` or equivalent:
+
+```text
+/var/data/decisions.jsonl {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+```
+
+A million decisions ≈ 200-400 MB; rotation per day is plenty.
+
+### Quick agg from the maintainer side
+
+```bash
+npm run logs:summary
+# Total events, decisions histogram, top patterns, top recommended_policies,
+# top objectives by warn/require_confirmation count.
+```
+
+This is intentionally a CLI, not a dashboard. Run it on the host (or `scp` the log down) once a day during the 7-day partner validation window.
+
+### Rate-limit visibility
+
+`AGENT_SPEND_GUARD_RATE_LIMIT_PER_KEY_PER_MIN` defaults to 600. If a partner is getting 429s, raise the value in env and redeploy — there's no runtime API yet. Watch the JSONL log for spike patterns; rate-limit hits don't currently get a dedicated event_type (worth adding in 0.6 if a partner asks).
+
+### Error budget
+
+For the hosted beta, a sane informal budget:
+
+```text
+99.0% monthly uptime         (no SLA, just an internal target)
+< 30s p99 cold start         (Render free tier needs scale-to-zero awareness)
+< 50ms p50 /v1/check latency (validated by self-trial: 4-8 ms steady-state)
+< 5% false-positive rate     (partners flag in BETA_FEEDBACK_TEMPLATE)
+```
+
+If any of these fail consistently, that's a real signal to act on — separate from feature work.
+
+---
+
+## 12. What is intentionally missing
 
 - TLS termination
 - Multi-tenant onboarding UI
@@ -224,7 +370,7 @@ All of these are valid v0.4+ work once a real beta surfaces the need. Until then
 
 ---
 
-## 12. Going live checklist
+## 13. Going live checklist
 
 ```
 [ ] AGENT_SPEND_GUARD_AUTH_MODE=required

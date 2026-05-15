@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent Spend Guard — Loop detection and model stop-loss for paid AI agents</title>
+<meta name="description" content="PQS checks the prompt. Agent Spend Guard checks the loop. Detect stale retries, same-tool loops, and premium model burn before the next expensive agent step." />
+<meta property="og:title" content="Agent Spend Guard" />
+<meta property="og:description" content="Loop detection and model stop-loss for paid AI agents." />
+<meta property="og:type" content="website" />
+<style>
+  :root {
+    --bg: #0b0d10;
+    --fg: #e7e9ee;
+    --muted: #98a0ad;
+    --accent: #6ee7b7;
+    --accent-dim: #1f4339;
+    --border: #1c1f26;
+    --card: #13161b;
+    --warn: #f59e0b;
+    --block: #ef4444;
+    --allow: #6ee7b7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    padding: 14px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    color: #d6dbe4;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .container { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+  /* Top nav */
+  nav.top {
+    border-bottom: 1px solid var(--border);
+    padding: 18px 0;
+    background: rgba(11, 13, 16, 0.85);
+    backdrop-filter: blur(8px);
+    position: sticky; top: 0; z-index: 10;
+  }
+  nav.top .container { display: flex; align-items: center; justify-content: space-between; }
+  nav.top .brand { font-weight: 700; letter-spacing: -0.01em; }
+  nav.top .brand .dot { color: var(--accent); }
+  nav.top .links a { margin-left: 22px; color: var(--muted); font-size: 0.95em; }
+  nav.top .links a:hover { color: var(--fg); text-decoration: none; }
+
+  /* Hero */
+  header.hero { padding: 96px 0 64px; }
+  header.hero h1 {
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    line-height: 1.08;
+    margin: 0 0 16px;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  header.hero .tagline {
+    font-size: 1.25rem;
+    color: var(--muted);
+    margin: 0 0 12px;
+    max-width: 680px;
+  }
+  header.hero .tagline strong { color: var(--accent); font-weight: 600; }
+  header.hero .sub {
+    font-size: 1.05rem;
+    color: var(--muted);
+    margin: 0 0 32px;
+    max-width: 720px;
+  }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    display: inline-block;
+    padding: 12px 22px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.97rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.08s ease;
+  }
+  .btn:hover { transform: translateY(-1px); text-decoration: none; }
+  .btn-primary {
+    background: var(--accent);
+    color: #0a0c10;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--fg);
+    border-color: var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Status pill */
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--accent-dim);
+    background: rgba(110, 231, 183, 0.05);
+    color: var(--accent);
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    margin-bottom: 20px;
+  }
+  .status .dot {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* Section */
+  section { padding: 56px 0; border-top: 1px solid var(--border); }
+  section h2 {
+    font-size: 1.6rem;
+    letter-spacing: -0.01em;
+    margin: 0 0 24px;
+    font-weight: 700;
+  }
+  section h2 .num {
+    display: inline-block;
+    width: 32px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  section p { color: #c2c8d3; max-width: 760px; }
+  section .lead { color: var(--fg); font-size: 1.08rem; }
+
+  /* Pattern grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin-top: 24px;
+  }
+  .pat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .pat .name {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--accent);
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .pat .desc { color: var(--muted); font-size: 0.95em; margin: 0; }
+
+  /* Flow */
+  .flow {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-top: 16px;
+    overflow-x: auto;
+  }
+  .flow pre { background: transparent; border: none; padding: 0; }
+
+  /* Demo table */
+  table.demo {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  table.demo th, table.demo td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.95rem;
+  }
+  table.demo th { color: var(--muted); font-weight: 500; background: rgba(255,255,255,0.02); }
+  table.demo tr:last-child td { border-bottom: none; }
+  .pill {
+    display: inline-block;
+    padding: 2px 9px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border-radius: 999px;
+    font-family: ui-monospace, monospace;
+  }
+  .pill.allow { background: rgba(110,231,183,0.15); color: var(--allow); }
+  .pill.warn { background: rgba(245,158,11,0.15); color: var(--warn); }
+  .pill.confirm { background: rgba(245,158,11,0.22); color: var(--warn); }
+  .pill.block { background: rgba(239,68,68,0.15); color: var(--block); }
+
+  /* Pricing */
+  .price-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px;
+    margin-top: 20px;
+  }
+  .price-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 22px;
+  }
+  .price-card h3 { margin: 0 0 6px; font-size: 1.02rem; }
+  .price-card .price {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 8px 0;
+  }
+  .price-card ul { margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 0.93rem; }
+  .price-card .note { font-size: 0.78rem; color: var(--muted); margin-top: 8px; font-style: italic; }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 0 60px;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--accent); }
+
+  /* Form */
+  form.access {
+    display: flex; gap: 8px; max-width: 480px; margin-top: 20px;
+  }
+  form.access input[type="email"] {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-size: 0.97rem;
+  }
+  form.access input[type="email"]:focus { outline: none; border-color: var(--accent); }
+
+  /* Mobile */
+  @media (max-width: 640px) {
+    header.hero { padding: 48px 0 36px; }
+    section { padding: 36px 0; }
+    nav.top .links a { margin-left: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="container">
+    <div class="brand">agent spend guard<span class="dot">.</span></div>
+    <div class="links">
+      <a href="#what-it-catches">Patterns</a>
+      <a href="#how-it-works">How</a>
+      <a href="#demo">Demo</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://github.com/your-org/spending-guard" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <div class="status"><span class="dot"></span>v0.5.1-beta — hosted beta, invite-only</div>
+    <h1>Loop detection and model stop-loss for paid AI agents.</h1>
+    <p class="tagline"><strong>PQS checks the prompt. Agent Spend Guard checks the loop.</strong></p>
+    <p class="sub">Detect stale retries, same-tool loops, and premium-model burn <em>before</em> the next expensive agent step. Provider-agnostic. Stateless core. One HTTP POST per check, ~5 ms median.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#beta">Get beta access</a>
+      <a class="btn btn-secondary" href="https://github.com/your-org/spending-guard/blob/main/PARTNER_ONBOARDING.md" target="_blank" rel="noopener">View docs</a>
+      <a class="btn btn-secondary" href="#demo">Run demo</a>
+    </div>
+  </div>
+</header>
+
+<section id="problem">
+  <div class="container">
+    <h2><span class="num">01</span>Problem</h2>
+    <p class="lead">AI agents burn money when they retry the same failed task without new evidence.</p>
+    <p>The 7th paid retry on the same <code>TS2307</code> error rarely produces a different answer. The 4th opus call after a sonnet got stuck rarely teaches the model something it didn't already see. Most operators discover this in the monthly invoice — not before the call fires. Agent Spend Guard makes that decision <em>before</em> you pay.</p>
+  </div>
+</section>
+
+<section id="what-it-catches">
+  <div class="container">
+    <h2><span class="num">02</span>What it catches</h2>
+    <p>Five deterministic detectors. No LLM-on-the-side. No prompt content read. Pattern matches return in milliseconds with versioned <code>policy@</code> and <code>detector@</code> stamps.</p>
+    <div class="grid">
+      <div class="pat">
+        <div class="name">stale_context_retry_storm</div>
+        <p class="desc">Same failure fingerprint, growing retry count, no new files / tests / logs / diff between attempts. The canonical "7th guess" case.</p>
+      </div>
+      <div class="pat">
+        <div class="name">same_tool_retry_loop</div>
+        <p class="desc">Same tool, same input, no diagnostic step between calls. Per-objective threshold (default 6, tunable via <code>detector_policy</code>).</p>
+      </div>
+      <div class="pat">
+        <div class="name">model_escalation_without_evidence</div>
+        <p class="desc">Premium model burn — opus / GPT-5 / claude-4 — invoked on the same failure with no new evidence. Returns structured <code>model_route</code> if <code>secondaryModel</code> declared.</p>
+      </div>
+      <div class="pat">
+        <div class="name">objective_drift</div>
+        <p class="desc">Next action falls outside <code>objective.allowed_actions</code> or hits <code>objective.blocked_actions</code>. Deterministic block.</p>
+      </div>
+      <div class="pat">
+        <div class="name">task_budget_breach</div>
+        <p class="desc">Hard budget exceeded. The one detector that <em>does</em> block deterministically — your call whether to wire it as enforcing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works">
+  <div class="container">
+    <h2><span class="num">03</span>How it works</h2>
+    <p>Stateless Core. Stateful adapter on the agent side tracks retry history per objective. One POST, one decision.</p>
+    <div class="flow">
+<pre>Agent runtime
+    │
+    ▼  AgentActionTelemetry
+CodingAgentAdapter
+    │
+    ▼  POST /v1/check  (Bearer asg_v1_…)
+Agent Spend Guard
+    │
+    ▼  decision + recommended_policy + suggested_action (+ model_route)
+SDK helper
+    │
+    ▼  guard.checkOrConfirm / checkOrDowngrade / checkShadow
+Agent decides</pre>
+    </div>
+    <p style="margin-top: 18px;">The SDK contract has four helpers. <code>checkShadow</code> never blocks — it logs the decision and returns it. Recommended for the first 7 days of integration.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="container">
+    <h2><span class="num">04</span>Demo stories</h2>
+    <p>Live numbers from the self-trial against this very repo's Stage 0.5 build. Three identical-looking POSTs differing only in evidence annotation.</p>
+    <table class="demo">
+      <thead><tr><th>Scenario</th><th>Decision</th><th>Pattern</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Cold start, no prior history</td>
+          <td><span class="pill allow">allow</span></td>
+          <td>none</td>
+          <td>First action on a new objective. Nothing to catch.</td>
+        </tr>
+        <tr>
+          <td>Healthy debug — read failing file, edited source, retrying</td>
+          <td><span class="pill allow">allow</span></td>
+          <td>none</td>
+          <td>Same failure fingerprint, but evidence annotated on the current attempt (<code>filesRead</code>, <code>gitDiffChanged</code>, <code>contextSourceConfirmed</code>).</td>
+        </tr>
+        <tr>
+          <td>7th blind retry — same error, no evidence between attempts</td>
+          <td><span class="pill confirm">require_confirmation</span></td>
+          <td>stale_context_retry_storm</td>
+          <td>16 rules matched. <code>suggested_action: context_refresh</code>. <code>recommended_policy: ask_human</code>.</td>
+        </tr>
+        <tr>
+          <td>Premium-model burn after sonnet got stuck</td>
+          <td><span class="pill warn">warn</span></td>
+          <td>model_escalation_without_evidence</td>
+          <td>Returns <code>model_route.to = secondaryModel</code> for SDK's <code>checkOrDowngrade</code> to auto-route.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top: 18px; font-size: 0.92rem; color: var(--muted);">Same hosted beta server. Reproduce live: <code>npx tsx scripts/self-trial-guard.ts</code> against <code>localhost:8080</code> with <code>Bearer asg_v1_demo</code>.</p>
+  </div>
+</section>
+
+<section id="integrations">
+  <div class="container">
+    <h2><span class="num">05</span>Integrations</h2>
+    <div class="grid">
+      <div class="pat">
+        <div class="name">TypeScript SDK</div>
+        <p class="desc">npm <code>spending-guard</code>. Four helpers (<code>check</code>, <code>checkShadow</code>, <code>checkOrConfirm</code>, <code>checkOrDowngrade</code>). Structured error <code>details.kind</code>. Fail-open by default.</p>
+      </div>
+      <div class="pat">
+        <div class="name">Python SDK</div>
+        <p class="desc">PyPI candidate <code>agent-spend-guard</code>. Stdlib-only (no <code>requests</code> dep). Same four helpers. <code>err.kind</code> / <code>err.retryable</code> on every error.</p>
+      </div>
+      <div class="pat">
+        <div class="name">CodingAgentAdapter</div>
+        <p class="desc">Universal evidence model. Drop into Claude Code, Codex, Cursor, or any custom runtime. Computes <code>failure_fingerprint</code>, <code>same_failure_count</code>, evidence window for you.</p>
+      </div>
+      <div class="pat">
+        <div class="name">x402-ready</div>
+        <p class="desc">Payment abstraction stubbed. Listing-ready for agentic.market when the hosted beta has data. No paid <code>/v1/check</code> yet — discipline-blocked on real partner usage.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="container">
+    <h2><span class="num">06</span>Pricing</h2>
+    <p>The honest version: <strong>everything below is anchor candidate, not committed</strong>. Real pricing waits for 7 days of partner logs.</p>
+    <div class="price-row">
+      <div class="price-card">
+        <h3>Closed beta</h3>
+        <div class="price">Free</div>
+        <ul>
+          <li>Invite-only, 3–5 partners</li>
+          <li>All five detectors</li>
+          <li>JSONL decision log</li>
+          <li>Direct line to the maintainer</li>
+        </ul>
+        <p class="note">What you give back: a 7-day usefulness review.</p>
+      </div>
+      <div class="price-card">
+        <h3>x402 rules check</h3>
+        <div class="price">$0.001–$0.005</div>
+        <ul>
+          <li>Per <code>/v1/check</code> call</li>
+          <li>USDC via x402 facilitator</li>
+          <li>No account, no API key</li>
+        </ul>
+        <p class="note">Anchor only — pending beta data.</p>
+      </div>
+      <div class="price-card">
+        <h3>Deep audit</h3>
+        <div class="price">$0.02–$0.10</div>
+        <ul>
+          <li>Per <code>/v1/check-deep</code> call</li>
+          <li>LLM-based semantic judgment</li>
+          <li>Currently stubbed</li>
+        </ul>
+        <p class="note">Not built. Listed for transparency.</p>
+      </div>
+      <div class="price-card">
+        <h3>Team hosted</h3>
+        <div class="price">$29–$99/mo</div>
+        <ul>
+          <li>Dedicated keys</li>
+          <li>SLAs, log retention</li>
+          <li>Per-objective dashboards (later)</li>
+        </ul>
+        <p class="note">Not before there's signed-on partner volume.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="beta">
+  <div class="container">
+    <h2><span class="num">07</span>Get beta access</h2>
+    <p>Closed beta — first 3–5 partners. The fit is paid coding agents, scraper / search agents, premium-model wrappers, or anyone routing $&gt;0.05 per agent action.</p>
+    <form class="access" action="mailto:beta@agentspendguard.example?subject=Agent%20Spend%20Guard%20beta%20access" method="post">
+      <input type="email" name="email" placeholder="you@company.com" required />
+      <button class="btn btn-primary" type="submit">Request invite</button>
+    </form>
+    <p style="margin-top: 12px; font-size: 0.88rem; color: var(--muted);">Or read the contract first: <a href="https://github.com/your-org/spending-guard/blob/main/PARTNER_ONBOARDING.md">PARTNER_ONBOARDING.md</a> · <a href="https://github.com/your-org/spending-guard/blob/main/SECURITY.md">SECURITY.md</a> · <a href="https://github.com/your-org/spending-guard/blob/main/CHANGELOG.md">CHANGELOG.md</a></p>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div>
+      <div style="margin-bottom: 6px;"><strong>Agent Spend Guard</strong> · v0.5.1-beta</div>
+      <div>Loop detection and model stop-loss for paid AI agents.</div>
+    </div>
+    <div>
+      <a href="https://github.com/your-org/spending-guard">GitHub</a> ·
+      <a href="https://github.com/your-org/spending-guard/blob/main/CHANGELOG.md">Changelog</a> ·
+      <a href="https://github.com/your-org/spending-guard/blob/main/SECURITY.md">Security</a> ·
+      <a href="mailto:hello@agentspendguard.example">Contact</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
