@@ -6,6 +6,42 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.1-beta — Adapter evidence-window calibration
+
+**Tag:** `spending-guard-v0.5.1-beta`
+**Base:** `spending-guard-v0.5.0-beta`
+**Goal:** fix one calibration finding from the self-trial (`SELF_TRIAL_CLAUDE_CODE_REPORT.md` § 4.1, E2). No new features, no new detectors, no new adapters.
+
+### Fixed
+
+- **`CodingAgentAdapter.buildCheckInput` now includes the current attempt's own evidence annotations in the "since last attempt" window.** Pre-0.5.1 the window was strictly *between* prior same-failure events, which produced a false-positive `warn` on the most common partner integration pattern — read failing file, edit source, retry. The agent annotated rich evidence on the new attempt itself, but the adapter treated that evidence as belonging to the new attempt's boundary rather than the gap, so `new_evidence_since_last_attempt` came out `false`.
+
+  The fix in `src/adapters/openclaw/adapter.ts` folds the current attempt's `filesRead`, `testsRun`, `logsRead`, `gitDiffChanged`, `toolResultsChanged`, and `contextSourceConfirmed` into the count. Window semantics become `(lastSameFailure, now]` — inclusive on the new-side boundary, exclusive of the prior failure event itself.
+
+### Verification
+
+- **Self-trial E2 flipped from `warn` → `allow`.** Re-running `npx tsx scripts/self-trial-guard.ts` against the live `:8080` 0.5.1-beta server: same 10 scenarios, same harness, no change to scenario definitions. Summary went from `allow=6 warn=1 req_confirm=2 block=1` (0.5.0) to `allow=7 warn=0 req_confirm=2 block=1` (0.5.1). The two real catches (E1 Docker poll storm, E10 hypothetical opus escalation) and the deterministic block (E7) all preserved.
+- **TS suite: 172 / 172** (was 162; +10 new in `tests/stage-05-1-adapter-evidence-window.test.ts`). The new tests cover each evidence signal in isolation (filesRead / testsRun / logsRead / gitDiffChanged / toolResultsChanged / contextSourceConfirmed), the no-evidence regression case, the end-to-end E2 reproduction, and the cold-start `null` semantics (preserved).
+- **TS typecheck:** clean.
+- **Python suite: 35 / 35** on Python 3.14.5 (no change — fix is TS-only).
+- **Audit + harness:** unchanged scope.
+
+### Not changed (deliberately)
+
+- No detector logic touched. The fix is local to the adapter — the same Core check that ran on 0.5.0 runs on 0.5.1. The difference is the adapter populates `new_evidence_since_last_attempt` more accurately.
+- No new detectors, no new adapters, no SDK changes (the SDKs' contract with Core is unchanged).
+- The "false-negative" cases from the self-trial (E3, E4, E8 — redundant work without failure signal) **remain not flagged**, per the report's recommendation to wait for real-partner production logs before introducing a `wasteful_repeated_work` detector.
+- Pre-0.5.1 callers that relied on the strictly-between-attempts semantics see only one observable behavior change: `new_evidence_since_last_attempt` becomes `true` more often when the current attempt is annotated. This is the intended direction — it makes the universal evidence model match the obvious partner mental model. No deprecation needed; no payload-shape change.
+
+### Behaviour delta — one-line summary
+
+```
+Before: `new_evidence_since_last_attempt` = evidence annotated on events BETWEEN same-failure attempts.
+After : `new_evidence_since_last_attempt` = evidence annotated BETWEEN attempts OR on the current attempt.
+```
+
+---
+
 ## 0.5.0-beta — Partner-Ready Hardening
 
 **Tag:** `spending-guard-v0.5.0-beta`

@@ -78,25 +78,55 @@ export class OpenClawAdapter {
 
     const lastSameFailure = sameFailureEvents.at(-1);
 
-    const filesReadSince = lastSameFailure
+    // Stage 0.5.1 — adapter evidence-window fix (self-trial Finding 1).
+    //
+    // The window for "evidence since the last same-failure attempt" is
+    // inclusive on the new-side boundary: it covers (lastSameFailure, now]
+    // i.e. everything BETWEEN the prior same-failure event and the action
+    // currently under check, PLUS evidence annotated on the current attempt
+    // itself.
+    //
+    // Pre-0.5.1 the window was strictly between-attempts. That excluded the
+    // most common coding-agent pattern: "I just read the failing file and
+    // edited the source, now I'm retrying" — the read+edit are annotated on
+    // the new attempt, not on a separate event between attempts. The
+    // self-trial's E2 caught this as a false positive `warn` on a textbook
+    // healthy debug. See SELF_TRIAL_CLAUDE_CODE_REPORT.md § 4.1.
+    const filesReadBetween = lastSameFailure
       ? countSince(past, lastSameFailure, (e) => e.telemetry.filesRead?.length ?? 0)
       : 0;
-    const testsRunSince = lastSameFailure
+    const testsRunBetween = lastSameFailure
       ? countSince(past, lastSameFailure, (e) => e.telemetry.testsRun?.length ?? 0)
       : 0;
-    const logsReadSince = lastSameFailure
+    const logsReadBetween = lastSameFailure
       ? countSince(past, lastSameFailure, (e) => e.telemetry.logsRead?.length ?? 0)
       : 0;
-    const gitDiffChangedSince = lastSameFailure
+    const gitDiffChangedBetween = lastSameFailure
       ? sliceSince(past, lastSameFailure).some(
           (e) => e.telemetry.gitDiffChanged === true
         )
       : false;
-    const toolResultsChangedSince = lastSameFailure
+    const toolResultsChangedBetween = lastSameFailure
       ? sliceSince(past, lastSameFailure).some(
           (e) => e.telemetry.toolResultsChanged === true
         )
       : false;
+
+    // Fold the current attempt's own annotations into the window.
+    const filesReadCurrent = nextAction.filesRead?.length ?? 0;
+    const testsRunCurrent = nextAction.testsRun?.length ?? 0;
+    const logsReadCurrent = nextAction.logsRead?.length ?? 0;
+    const gitDiffChangedCurrent = nextAction.gitDiffChanged === true;
+    const toolResultsChangedCurrent = nextAction.toolResultsChanged === true;
+    const contextSourceConfirmedCurrent =
+      nextAction.contextSourceConfirmed === true;
+
+    const filesReadSince = filesReadBetween + filesReadCurrent;
+    const testsRunSince = testsRunBetween + testsRunCurrent;
+    const logsReadSince = logsReadBetween + logsReadCurrent;
+    const gitDiffChangedSince = gitDiffChangedBetween || gitDiffChangedCurrent;
+    const toolResultsChangedSince =
+      toolResultsChangedBetween || toolResultsChangedCurrent;
 
     const newEvidence =
       lastSameFailure === undefined
@@ -105,7 +135,11 @@ export class OpenClawAdapter {
           testsRunSince > 0 ||
           logsReadSince > 0 ||
           gitDiffChangedSince ||
-          toolResultsChangedSince;
+          toolResultsChangedSince ||
+          // contextSourceConfirmed on the current attempt is a positive
+          // signal too: the operator has explicitly told us the action is
+          // grounded in confirmed context.
+          contextSourceConfirmedCurrent;
 
     // Scan past events from newest to oldest; the most recent one that
     // actually gathered any evidence is the "last_new_evidence_at_attempt"

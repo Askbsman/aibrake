@@ -3,7 +3,7 @@
 > **Trial:** Self-trial of Agent Spend Guard v0.5.0-beta — Claude Code as the partner
 > **Mode:** shadow only (`/v1/check` POSTs; never enforced)
 > **Server:** http://localhost:8080 — `Bearer asg_v1_demo` — `0.5.0-beta`
-> **Started:** 2026-05-15T17:51:18.895Z
+> **Started:** 2026-05-15T18:11:01.845Z
 > **Adapter:** `CodingAgentAdapter` (re-export of `OpenClawAdapter`)
 > **Source of scenarios:** real retries observed during the Stage 0.4.2 / 0.5 build in this very session, encoded as telemetry the guard could see.
 
@@ -52,7 +52,7 @@ Each event below is a single `/v1/check` call with:
 | confidence | 0.90 |
 | recommended_policy | `ask_human` |
 | detector_version | `stale_context_retry_storm@0.1.0` |
-| response_ms | 80 |
+| response_ms | 84 |
 
 **Reason:** Attempt #1 on the same tool_error: 6 prior repeats with no new files, tests, logs, or state changes since attempt #2. Another paid retry is unlikely to produce a different result without a context refresh.
 
@@ -96,20 +96,20 @@ Each event below is a single `/v1/check` call with:
 
 | field | value |
 | --- | --- |
-| decision | `warn` |
-| pattern | `model_escalation_without_evidence` |
-| risk_score | 25 |
-| risk_level | `moderate` |
-| confidence | 0.75 |
-| recommended_policy | `downgrade` |
-| detector_version | `model_escalation_without_evidence@0.2.0` |
-| response_ms | 8 |
+| decision | `allow` |
+| pattern | `none` |
+| risk_score | 0 |
+| risk_level | `low` |
+| confidence | 1.00 |
+| recommended_policy | `continue` |
+| detector_version | `none@0.1.0` |
+| response_ms | 9 |
 
-**Reason:** Next action escalates to anthropic/claude-sonnet-4.5 ($0.05) and no new evidence has been gathered between attempts. Escalating without new input rarely produces a different answer — try the cheaper model with refreshed context first.
+**Reason:** No risk patterns matched.
 
-**Suggested action:** `downgrade_model` — Escalating to a more expensive model on the same failure without new evidence rarely produces a different answer. Try a cheaper model with refreshed context first.
+**Suggested action:** `continue` — No risk patterns matched.
 
-**Matched rules:** `expensive_next_action`, `no_new_evidence`
+**Matched rules:** (none)
 
 **My assessment:**
 - Agreed with the warning: **n/a**
@@ -202,7 +202,7 @@ Each event below is a single `/v1/check` call with:
 | confidence | 1.00 |
 | recommended_policy | `continue` |
 | detector_version | `none@0.1.0` |
-| response_ms | 5 |
+| response_ms | 6 |
 
 **Reason:** No risk patterns matched.
 
@@ -344,7 +344,7 @@ Each event below is a single `/v1/check` call with:
 | confidence | 0.70 |
 | recommended_policy | `stop_action` |
 | detector_version | `objective_drift@0.1.0` |
-| response_ms | 6 |
+| response_ms | 5 |
 
 **Reason:** Next action "refactor_unrelated_module" is explicitly listed in objective.blocked_actions. This is a hard policy violation, not a recommendation.
 
@@ -491,7 +491,7 @@ Each event below is a single `/v1/check` call with:
 | confidence | 0.90 |
 | recommended_policy | `ask_human` |
 | detector_version | `stale_context_retry_storm@0.1.0` |
-| response_ms | 5 |
+| response_ms | 6 |
 
 **Reason:** Attempt #1 on the same tool_error: 2 prior repeats with no evidence gathered in any attempt. Another paid retry is unlikely to produce a different result without a context refresh.
 
@@ -508,9 +508,9 @@ Each event below is a single `/v1/check` call with:
 ## Run summary
 
 - **Events:** 10
-- **allow:** 6
-- **warn:** 1
+- **allow:** 7
+- **warn:** 0
 - **require_confirmation:** 2
 - **block:** 1
-- **avg latency:** 13ms
+- **avg latency:** 14ms
 

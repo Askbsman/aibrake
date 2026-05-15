@@ -610,3 +610,47 @@ py -m pytest                       # 35 passed in ~25s
 ```
 
 **Why the bug existed:** the Stage 0.5 narrow-catch was correct for the *real* code path (`_invoke` wraps `URLError`/`TimeoutError`/`OSError` into `SpendingGuardTransportError` before they escape) but the mock-based tests in `test_06` / `test_06b` patch `_invoke` itself to raise the raw exception. Both tests pre-dated Stage 0.5 — the original 0.4.1 `check_shadow` caught the raw transport classes directly, which is why these tests existed in that shape. When 0.5 added the `SpendingGuardTransportError` discriminator, the narrow-catch was tightened too far. The fix restores the historical (correct) behavior alongside the new typed class.
+
+---
+
+## 19. Stage 0.5.1 — Adapter evidence-window calibration
+
+**Refers to:** `SELF_TRIAL_CLAUDE_CODE_REPORT.md` § 4.1 (Finding 1, E2).
+
+**Problem:** `CodingAgentAdapter.buildCheckInput` computed `new_evidence_since_last_attempt` strictly over events BETWEEN prior same-failure events. The current attempt's own annotations (`filesRead`, `testsRun`, `logsRead`, `gitDiffChanged`, `toolResultsChanged`, `contextSourceConfirmed`) were never counted. For the most common partner pattern — read failing file, edit, retry — the read-and-edit live on the new attempt, not on a separate event between attempts. Result: false-positive `warn` (`model_escalation_without_evidence`) on textbook healthy debugging.
+
+**Fix:** in `src/adapters/openclaw/adapter.ts:79–135`, split each "since" computation into a `*Between` (events strictly after `lastSameFailure`) and a `*Current` (the action's own annotations), then combine. `new_evidence_since_last_attempt` becomes the OR of all six. `evidence_signals.*_since_last_attempt` counts add the current attempt to the between count. `context_source_confirmed` was already in the signals bag; it now also participates in `newEvidence`.
+
+**Window semantics:**
+
+```
+Before: evidence ∈ (lastSameFailure, now)   — exclusive on both sides
+After : evidence ∈ (lastSameFailure, now]   — inclusive of the current attempt
+```
+
+**Why this direction is correct:** the question Core asks is "did the agent learn anything since it last hit this same failure?". The agent's answer lives in the annotations on the action it's *about to take*. Treating those annotations as the closing boundary of the window matches the obvious operator mental model.
+
+**Behaviour delta — observable to detectors:**
+
+- `stale_context_retry_storm`: `no_files_read_since_last_attempt`, `no_tests_run_since_last_attempt`, `no_logs_read_since_last_attempt`, `git_diff_unchanged`, `no_new_evidence_since_last_attempt` — all stop matching when the current attempt declares the relevant signal.
+- `model_escalation_without_evidence`: `no_new_evidence` stops matching when the current attempt declares any evidence signal (or `contextSourceConfirmed`).
+- `stale_context_retry_storm`'s stuck-branch and soft-branch split (0.3.1) is unchanged. The fix only changes how `newEvidence` is populated; the detectors' decision logic is byte-for-byte identical.
+
+**No backward-compatibility hazard.** The change moves `new_evidence_since_last_attempt` from `false` to `true` in cases where the agent annotated evidence on the new attempt. Detectors gate on `false` to fire — moving more cases out of `false` only reduces detector aggressiveness, never increases it. No previously-allowed call becomes a warn.
+
+**Regression coverage:** 10 tests in `tests/stage-05-1-adapter-evidence-window.test.ts`. R1–R6 isolate each evidence signal; R7 pins the no-evidence regression case (must still go false); R8 is the end-to-end E2 reproduction (must flip to `allow`); R9 pins the historical between-attempts path (must still work); R10 pins cold-start semantics (`null`, not `true`, when there's no prior history).
+
+**Self-trial re-run on `:8080` 0.5.1-beta:**
+
+```
+Before (0.5.0): allow=6 warn=1 req_confirm=2 block=1
+After  (0.5.1): allow=7 warn=0 req_confirm=2 block=1
+```
+
+Same 10 scenarios, same harness, no scenario edits. E1 / E10 / E7 strong catches preserved; only E2 flipped.
+
+**Out of scope (per task spec and prior 0.5 discipline):**
+
+- No new detectors. No `wasteful_repeated_work` for the E3 / E8 redundant-work cases — wait for real-partner data.
+- No new adapter. No new SDK contract. No new endpoints.
+- The Python SDK was not affected — the adapter is TS-only. Python `0.5.1b0` is a version-coherence bump; no behaviour change.
