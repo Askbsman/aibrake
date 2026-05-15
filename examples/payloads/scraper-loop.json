@@ -1,0 +1,30 @@
+{
+  "actor": { "type": "agent", "runtime": "openclaw", "id": "scraper_agent" },
+  "objective": {
+    "id": "obj_market_research",
+    "goal": "Pull pricing data from competitor landing page",
+    "budget": { "amount": 20, "currency": "USD", "hard_limit": false }
+  },
+  "next_action": {
+    "type": "paid_scrape_call",
+    "provider": "anchor",
+    "model": "browser-v1",
+    "estimated_cost": { "amount": 0.50, "currency": "USD" },
+    "reason": "scrape pricing page at competitor.example.com/pricing"
+  },
+  "history": {
+    "attempt_number": 8,
+    "same_action_count": 7,
+    "paid_attempts_on_same_failure": 0,
+    "failure_signal_present": false,
+    "evidence_kind": "web",
+    "new_evidence_since_last_attempt": false,
+    "evidence_signals": {
+      "urls_read": [],
+      "tool_results_changed_since_last_attempt": false
+    },
+    "confidence_delta": 0
+  },
+  "spend": { "spent_on_objective": { "amount": 3.50, "currency": "USD" } },
+  "telemetry_quality": { "completeness": "high" }
+}

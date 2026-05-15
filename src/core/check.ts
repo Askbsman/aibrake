@@ -29,6 +29,11 @@ const UNCERTAIN_CONFIDENCE_THRESHOLD = 0.5;
 
 export interface RunCheckOptions {
   emitLog?: boolean;
+  // Stage 0.3: hosted-beta context — these flow into the log payload but
+  // never into the response body. Callers from inside Core (tests, in-process
+  // SDK) leave them undefined.
+  requestId?: string;
+  apiKeyHash?: string | null;
 }
 
 export function runCheck(
@@ -125,8 +130,13 @@ export function runCheck(
 
   if (emitLog) {
     log({
-      event_type: "spending_guard.check.completed",
+      // Stage 0.3: event_type uses the product brand namespace.
+      event_type: "agent_spend_guard.check.completed",
+      ...(options.requestId !== undefined ? { request_id: options.requestId } : {}),
       input_hash: inputHash(input),
+      ...(options.apiKeyHash !== undefined
+        ? { api_key_hash: options.apiKeyHash }
+        : {}),
       objective_id: input.objective?.id ?? null,
       actor_runtime: input.actor.runtime ?? null,
       decision: output.decision,
@@ -136,6 +146,7 @@ export function runCheck(
       confidence: output.confidence,
       detector_version: output.detector_version,
       policy_version: output.policy_version,
+      matched_rules_count: output.matched_rules.length,
       matched_rules: output.matched_rules,
       timestamp: new Date().toISOString(),
     });

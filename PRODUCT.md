@@ -1,10 +1,11 @@
-# Spending Guard — Product
+# Agent Spend Guard — Product
 
-> **Status:** Stage 0.1.1 Release Candidate
-> **Verdict:** ACCEPT WITH KNOWN RISKS
+> **Status:** Stage 0.3 Hosted Beta Candidate
+> **Tag:** `spending-guard-v0.3.0-beta`
 > **Primary detector:** `stale_context_retry_storm`
 > **Primary demo:** The $40 TypeScript Retry Storm
-> **Next step:** partner validation (see [`PARTNER_VALIDATION_SCRIPT.md`](./PARTNER_VALIDATION_SCRIPT.md))
+> **Brand vs. package:** npm package is `spending-guard`; product brand is **Agent Spend Guard** (see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
+> **Next step:** hosted beta — see [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md)
 
 ## Positioning
 

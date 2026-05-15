@@ -18,7 +18,8 @@ describe("decision logging", () => {
   it("emits a structured event for every /v1/check call", () => {
     runCheck(withCodingFailure(7));
     expect(captured.length).toBe(1);
-    expect(captured[0]?.event_type).toBe("spending_guard.check.completed");
+    // Stage 0.3: event_type is namespaced under the product brand.
+    expect(captured[0]?.event_type).toBe("agent_spend_guard.check.completed");
   });
 
   it("event includes detector_version and policy_version", () => {

@@ -1,13 +1,16 @@
 import type { FastifyInstance } from "fastify";
+import type { EnvConfig } from "../config/env.js";
 
-const SERVICE_VERSION = "0.1.0";
-
-export async function registerHealthRoute(app: FastifyInstance): Promise<void> {
+export async function registerHealthRoute(
+  app: FastifyInstance,
+  config: EnvConfig
+): Promise<void> {
   app.get("/health", async () => {
     return {
       ok: true,
-      service: "spending-guard",
-      version: SERVICE_VERSION,
+      service: config.serviceName,
+      version: config.serviceVersion,
+      mode: "hosted-beta",
     };
   });
 }

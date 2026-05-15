@@ -1,0 +1,40 @@
+{
+  "actor": { "type": "agent", "runtime": "openclaw", "id": "premium_agent" },
+  "objective": {
+    "id": "obj_deploy_fix",
+    "goal": "Fix failing deployment",
+    "budget": { "amount": 30, "currency": "USD", "hard_limit": false },
+    "model_policy": {
+      "primaryModel": { "provider": "anthropic", "model": "claude-4.7", "role": "primary", "tier": "premium" },
+      "secondaryModel": { "provider": "anthropic", "model": "claude-sonnet", "role": "secondary", "tier": "standard" },
+      "auditModel": { "provider": "anthropic", "model": "claude-sonnet", "role": "audit", "tier": "standard" }
+    }
+  },
+  "next_action": {
+    "type": "paid_llm_call",
+    "provider": "anthropic",
+    "model": "claude-4.7",
+    "model_role": "primary",
+    "model_tier": "premium",
+    "estimated_cost": { "amount": 0.05, "currency": "USD" },
+    "reason": "retry deployment fix"
+  },
+  "history": {
+    "attempt_number": 3,
+    "same_action_count": 2,
+    "paid_attempts_on_same_failure": 2,
+    "failure_signal_present": true,
+    "failure_signal_type": "build_error",
+    "failure_fingerprint": "fp_v1_failure_deploy",
+    "same_failure_count": 2,
+    "new_evidence_since_last_attempt": false,
+    "evidence_kind": "code",
+    "evidence_signals": {
+      "files_read_since_last_attempt": 0,
+      "tests_run_since_last_attempt": 0,
+      "git_diff_changed_since_last_attempt": false
+    }
+  },
+  "spend": { "spent_on_objective": { "amount": 0.10, "currency": "USD" } },
+  "telemetry_quality": { "completeness": "high" }
+}

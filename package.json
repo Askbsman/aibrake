@@ -1,6 +1,6 @@
 {
   "name": "spending-guard",
-  "version": "0.1.0",
+  "version": "0.3.0-beta",
   "description": "Provider-agnostic pre-flight judgment middleware for expensive AI agent actions.",
   "type": "module",
   "main": "dist/index.js",
@@ -25,7 +25,8 @@
     "start": "node dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "logs:summary": "tsx src/cli/logs-summary.ts"
   },
   "dependencies": {
     "fastify": "^4.28.1",

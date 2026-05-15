@@ -234,3 +234,100 @@ SuggestedAction += { model_route? }
 - If decision logs from shadow-mode integrations show that `model_escalation_without_evidence` is too coarse (e.g., conflates legitimate model upgrades with stuck loops).
 
 Until any of those signals arrive from a real integration, 0.2-minimal is the correct shipped surface.
+
+---
+
+## 13. Brand vs package identity (Stage 0.3)
+
+The product is consumer-facing branded as **Agent Spend Guard**. The npm package and repository identifier remain `spending-guard` so existing imports, tag history, and prior commits do not break. The two namings are deliberately kept distinct and pinned here so future work does not silently rename everything for "consistency".
+
+| Surface | Value | Why |
+| --- | --- | --- |
+| npm package name | `spending-guard` | preserves `import { ... } from "spending-guard"` for harness and partners |
+| Repository | `sbbuilder` (local) → `spending-guard` (when published) | tag history `spending-guard-v0.1.1-rc` … intact |
+| Product brand (README, listing, marketing, partner-facing copy) | **Agent Spend Guard** | what partners see |
+| `GET /health` `service` field | `"agent-spend-guard"` (kebab-case) | matches the brand they recognize |
+| `GET /v1/meta` `name` field | `"Agent Spend Guard"` (title case) | display string |
+| Log event `event_type` prefix | `agent_spend_guard.*` (underscore-case) | structured-log convention |
+| Env variable prefix | `AGENT_SPEND_GUARD_*` (uppercase) | shell convention |
+| Tag name | `spending-guard-v0.3.0-beta` | preserves history; do not rename the tag chain |
+| Docker image name | `agent-spend-guard` | what hosting platforms display |
+| SDK fingerprint prefixes | `fp_v1_*`, `input_v1_*`, `key_v1_*` | unchanged from 0.1 fingerprint contract |
+
+Do **not** rename the package, the imports, or the existing tag chain. If a future stage decides to publish to npm under a new name, do it via a meta-package alias — never break import paths.
+
+---
+
+## 14. Stage 0.3 hosted-beta scope (with 4 reviewer modifications)
+
+**Refers to:** `STAGE_0_3_HOSTED_BETA_SPEC` (full text) and the architectural review that approved "full spec with 4 modifications" before any code was written.
+
+**What ships in Stage 0.3:** API key authentication, rate limiting, JSONL log sink, `/v1/meta`, logs-summary CLI, deployment artifacts, partner-facing docs, hosted-mode SDK examples. No new detectors, no dashboard, no database.
+
+**Four modifications applied to the original spec:**
+
+1. **Single `Authorization: Bearer <key>` header.** The original spec accepted both `Authorization: Bearer` and a custom `X-Agent-Spend-Guard-Key` header. Dropping the custom header avoids "which one do I use?" integration friction; `Authorization: Bearer` is universal across SDKs (OpenAI, Anthropic, fetch, axios, native curl).
+2. **Default `PORT=8080`, not `3000`.** Port 3000 is the default for nearly every modern dev framework (Next.js, CRA, Rails, Express templates). Local conflict was already observed in this codebase (AIVID dev server vs. sbbuilder server). 8080 is UNIX-friendly and avoids the clash for partner laptops.
+3. **Rate limit per API key.** The spec did not include this; it is an operational safety requirement that a hosted beta cannot ship without. Sliding-window limit, configurable via `AGENT_SPEND_GUARD_RATE_LIMIT_PER_KEY_PER_MIN` (default 600 = 10 req/sec/key). On breach: HTTP 429 with `Retry-After` header. In-process Map only; no Redis or distributed counter in Stage 0.3.
+4. **Brand-vs-package identity matrix** (§ 13 above) made explicit so partners and contributors do not see drift between log strings, API output, env vars, and package metadata.
+
+**Not in scope (deferred to 0.4):**
+
+- TLS termination (assume the host platform provides it — Render / Fly / Vercel default behavior).
+- Multi-tenant key management UI (manual `AGENT_SPEND_GUARD_API_KEYS=k1,k2,k3` env update is the partner-onboarding flow for 0.3).
+- Distributed rate-limit (in-process is fine for single-instance hosted beta; if we scale horizontally we need Redis-backed limit, but we are not scaling horizontally in 0.3).
+- Decision-log shipping to S3/BigQuery (operator can mount a volume to `./logs/` and ship the JSONL themselves; we provide the file, not the pipeline).
+- Real LLM judgment for `/v1/check-deep` (stub remains; `deep_check_used: false` is the honest contract from 0.1.2).
+
+**Auth contract details (settling the spec):**
+
+- `AGENT_SPEND_GUARD_AUTH_MODE=optional` (default) — requests without a key go through; requests with a key are validated and logged with a `key_v1_*` hash.
+- `AGENT_SPEND_GUARD_AUTH_MODE=required` — requests without a key receive 401 with `{ error: { code: "UNAUTHORIZED" } }`.
+- API key format is recommended (`asg_v1_<24+ base32 chars>`) in `DEPLOYMENT.md` but **not enforced** — middleware accepts any non-empty string in `AGENT_SPEND_GUARD_API_KEYS`. Operators with their own conventions are not rejected.
+- Auth middleware is mounted only on `/v1/check` and `/v1/check-deep`. `GET /health` and `GET /v1/meta` are always public — partners need them for liveness checks and discovery without provisioning.
+
+**Rate limit contract details:**
+
+- Per-key sliding window of 60 seconds.
+- Default `600` = 10 req/sec/key. Burst-tolerant within the window.
+- Anonymous traffic (when `authMode=optional`) groups under one synthetic `anon` bucket — protects against a misbehaving local dev client from saturating the server.
+- 429 response includes `Retry-After: <seconds>` header.
+- On `authMode=required` the middleware never sees anonymous traffic (auth fails first), so the anon bucket only triggers when `authMode=optional` and a partner forgot to set a key.
+
+**Logging contract details:**
+
+- Existing `setLoggerSink` API (0.1.x) is preserved.
+- New `JsonlSink` implementation accepts `{ filePath, onError? }`. Auto-creates parent directory once; subsequent write failures emit a single stderr warning per minute (de-duped) and swallow the error so API responses never fail because the disk is full.
+- Log payload **never** contains the raw API key, raw prompts, raw file content, or any prompt/response text. Only:
+  - `request_id` (uuid)
+  - `input_hash` (`input_v1_*` — already redacted by `inputHash()`)
+  - `api_key_hash` (`key_v1_*` — sha256-16 of the bearer key, never the key itself)
+  - `decision`, `recommended_policy`, `pattern`, `risk_score`, `confidence`
+  - `detector_version`, `policy_version`
+  - `matched_rules_count` (the count, not the list — keeps each line small)
+  - `timestamp` (ISO)
+
+**`/v1/meta` response shape:**
+
+```json
+{
+  "name": "Agent Spend Guard",
+  "version": "0.3.0-beta",
+  "description": "Loop detection and model stop-loss for paid AI agents.",
+  "positioning": "PQS checks the prompt. Agent Spend Guard checks the loop.",
+  "endpoints": { "check": "/v1/check", "check_deep": "/v1/check-deep" },
+  "supported_patterns": [
+    "stale_context_retry_storm",
+    "same_tool_retry_loop",
+    "model_escalation_without_evidence",
+    "objective_drift",
+    "task_budget_breach"
+  ],
+  "modes": ["check", "shadow", "confirm", "downgrade"],
+  "policy_version": "policy@0.1.0"
+}
+```
+
+Note: `"modes"` includes `check` (raw helper) — partners reading `/v1/meta` should see the full SDK surface, not just opinionated wrappers.
+
+---

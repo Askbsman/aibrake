@@ -1,13 +1,17 @@
-# Spending Guard
+# Agent Spend Guard
 
-> **Stop paying for useless agent loops.**
+> **Loop detection and model stop-loss for paid AI agents.**
+>
+> **PQS checks the prompt. Agent Spend Guard checks the loop.**
 
-> **Status:** Stage 0.1.1 Release Candidate
-> **Verdict:** ACCEPT WITH KNOWN RISKS — see [`STAGE_0_1_1_AUDIT_REPORT.md`](./STAGE_0_1_1_AUDIT_REPORT.md)
-> **Primary detector:** `stale_context_retry_storm`
-> **Primary demo:** [The $40 TypeScript Retry Storm](./EXAMPLES.md#1-the-40-typescript-retry-storm)
-> **Tests:** 96 unit + 14 audit scenarios — all passing
-> **Next step:** partner validation, not new features — see [`PARTNER_VALIDATION_SCRIPT.md`](./PARTNER_VALIDATION_SCRIPT.md)
+> **Status:** Stage 0.3 Hosted Beta Candidate
+> **Base:** `spending-guard-v0.2.0-rc` (audit-frozen point)
+> **Tag:** `spending-guard-v0.3.0-beta`
+> **Primary value:** loop detection + structured `primary → secondary` model stop-loss for paid AI agents
+> **Mode:** shadow-first
+> **Tests:** 123 unit + 14 audit scenarios + 36 harness actions — all passing
+> **Next step:** hosted beta with first users — see [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md) and [`DEPLOYMENT.md`](./DEPLOYMENT.md)
+> **npm package name:** `spending-guard` (historical; product brand is "Agent Spend Guard" — see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
 
 Spending Guard is a provider-agnostic, x402-ready pre-flight judgment middleware for expensive AI agent actions. It checks paid LLM calls, tool retries, model escalations and objective drift **before** execution and tells the operator whether to allow, warn, ask for confirmation, downgrade, delay or block.
 

@@ -23,8 +23,10 @@ describe("HTTP routes", () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.ok).toBe(true);
-    expect(body.service).toBe("spending-guard");
-    expect(body.version).toBe("0.1.0");
+    // Stage 0.3: branded as "agent-spend-guard" via env config default.
+    expect(body.service).toBe("agent-spend-guard");
+    expect(body.version).toBe("0.3.0-beta");
+    expect(body.mode).toBe("hosted-beta");
   });
 
   it("POST /v1/check returns 200 with structured result", async () => {
