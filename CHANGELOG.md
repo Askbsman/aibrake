@@ -6,6 +6,63 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.4.1-beta — Python SDK fail-open scope hotfix
+
+**Tag:** `spending-guard-v0.4.1-beta`
+**Goal:** fix one real bug found via code review during the simulated Partner C revisit after Stage 0.4 (`validation-log/partner-C-revisit-after-04.md`, Finding 1). One file changed, one test updated, one regression test added. No new features, no new detectors.
+
+### Fixed
+
+- **Python SDK: `check_shadow()` no longer swallows programmer errors.** The previous broad `except Exception` clause silently converted malformed-payload bugs (e.g., a `TypeError` from `json.dumps()` when the payload contained an unserializable value) into a synthetic `decision: allow, pattern: guard_unavailable` response. That made the operator believe their agent was protected by the guard when in fact the request had never reached the server. **Severity: high** — silent error hiding in a guardrail SDK is the #1 reason partners rip middleware out.
+
+  The catch is now narrowed to transport-class exceptions only:
+
+  ```python
+  except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as err:
+      return _synthesize_failure_open(err)
+  ```
+
+  Errors that now propagate (correctly):
+  - `TypeError`, `ValueError` — payload construction / programmer error
+  - `json.JSONDecodeError` — guard returned malformed JSON (contract bug)
+  - `SpendingGuardClientError` — SDK-internal config error
+
+  Errors that still convert to synthetic `allow` (correct — these mean "guard unavailable"):
+  - `urllib.error.URLError` — DNS failure, host unreachable
+  - `urllib.error.HTTPError` — 4xx / 5xx response
+  - `TimeoutError` — request timed out
+  - `OSError` — socket reset, connection refused
+
+### Changed
+
+- `python/tests/test_client.py` `test_06` switched from `RuntimeError` mock (which now correctly propagates under the new contract) to `urllib.error.URLError`. New companion `test_06b` covers `TimeoutError`.
+- Bumped `package.json` version, env `serviceVersion`, `python/pyproject.toml` version, `python/agent_spend_guard/__init__.py __version__`, and `/health` route test assertions to `0.4.1-beta` / `0.4.1b0`.
+
+### Tests
+
+- Added `test_17_check_shadow_propagates_programmer_errors_on_unserialisable_payload` — payload with a lambda (not JSON-serializable) must raise `TypeError`, not return synthetic allow.
+- Added `test_18_check_propagates_programmer_errors_too` — same contract for `check()`; confirms no regression on the helper that never had the bug.
+- TS unit tests: **137 / 137** still passing (no TS code changes in this stage).
+- Python unit tests: **18** (was 16 + 2 new) — pinned by `python/tests/test_client.py`; live `python -m pytest` run still awaits a real Python user. The bundled `python/Dockerfile.test` remains the verification path on hosts without Python.
+
+### Not changed (deliberately)
+
+- Partner C's Finding 2 (`test_14`'s `mocker.stopall()` weirdness). Cosmetic test-code quality; not a partner-facing SDK behavior bug. Defer until a real partner asks.
+- No async Python.
+- No PyPI publish.
+- No Claude Code / LangChain adapter packages.
+- No configurable thresholds beyond what 0.4 shipped.
+
+### Verification
+
+- TS typecheck: clean.
+- TS unit tests: 137 / 137.
+- Audit scenarios: 14 / 14.
+- Harness: 36 / 36 actions against `:8080`.
+- `/health`: returns `version: "0.4.1-beta"`.
+
+---
+
 ## 0.4.0-beta — Real Integration Layer
 
 **Tag:** `spending-guard-v0.4.0-beta`

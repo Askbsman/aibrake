@@ -11,6 +11,7 @@ marked @pytest.mark.integration.
 
 from __future__ import annotations
 
+import urllib.error
 from typing import Any, Dict
 
 import pytest
@@ -83,18 +84,33 @@ def test_05_check_returns_block_result_without_raising(
 # ── check_shadow() ───────────────────────────────────────────────────────
 
 
-def test_06_check_shadow_never_raises_on_transport_error(mocker) -> None:
+def test_06_check_shadow_swallows_transport_error(mocker) -> None:
+    # Stage 0.4.1: check_shadow now catches ONLY transport-class exceptions,
+    # not bare RuntimeError. Use a real urllib transport exception to verify
+    # the synthesis path still fires for actual network failures.
     g = AgentSpendGuard(base_url="http://x", failure_mode="throw")
-    # Even with failure_mode=throw, check_shadow swallows transport errors.
     mocker.patch.object(
         AgentSpendGuard,
         "_invoke",
-        side_effect=RuntimeError("network down"),
+        side_effect=urllib.error.URLError("network down"),
     )
     result = g.check_shadow(SAMPLE_PAYLOAD)
     assert result["decision"] == "allow"
     assert result["pattern"] == "guard_unavailable"
     assert result["error"]["code"] == "GUARD_UNAVAILABLE"
+
+
+def test_06b_check_shadow_swallows_timeout_error(mocker) -> None:
+    # Same contract for the other transport-class exceptions.
+    g = AgentSpendGuard(base_url="http://x", failure_mode="open")
+    mocker.patch.object(
+        AgentSpendGuard,
+        "_invoke",
+        side_effect=TimeoutError("timed out"),
+    )
+    result = g.check_shadow(SAMPLE_PAYLOAD)
+    assert result["decision"] == "allow"
+    assert result["pattern"] == "guard_unavailable"
 
 
 # ── check_or_confirm() ───────────────────────────────────────────────────
@@ -262,3 +278,47 @@ def test_16_failure_mode_throw_propagates() -> None:
     )
     with pytest.raises(Exception):
         g.check(SAMPLE_PAYLOAD)
+
+
+# ── Stage 0.4.1 regression: check_shadow must NOT swallow programmer errors ──
+
+
+def test_17_check_shadow_propagates_programmer_errors_on_unserialisable_payload() -> None:
+    """Stage 0.4.1 fix (Partner C revisit, Finding 1).
+
+    A payload containing an unserializable value (lambda, set, etc.) raises
+    TypeError inside json.dumps() — BEFORE any network call. Prior to 0.4.1,
+    check_shadow's broad `except Exception` silently converted this to a
+    synthetic `decision: allow, pattern: guard_unavailable` response, making
+    the operator believe their agent was protected when in fact it was
+    running without the guardrail. The fix narrows the catch to transport-
+    class exceptions only; programmer errors must propagate.
+    """
+    g = AgentSpendGuard(base_url="http://localhost:1", failure_mode="open", timeout_ms=100)
+
+    # A function is not JSON-serializable; json.dumps() raises TypeError.
+    # The error happens BEFORE any network attempt, so it has nothing to do
+    # with the "guard unavailable" failure path.
+    bad_payload: Dict[str, Any] = {
+        "actor": {"type": "agent"},
+        "next_action": {
+            "type": "paid_llm_call",
+            "estimated_cost": {"amount": 0.05, "currency": "USD"},
+            "callback": lambda: None,  # intentional integration bug
+        },
+    }
+
+    with pytest.raises(TypeError):
+        g.check_shadow(bad_payload)
+
+
+def test_18_check_propagates_programmer_errors_too() -> None:
+    """check() never swallowed programmer errors in the first place — verify
+    the regression-test surface covers both helpers explicitly."""
+    g = AgentSpendGuard(base_url="http://localhost:1", failure_mode="open", timeout_ms=100)
+    bad_payload: Dict[str, Any] = {
+        "actor": {"type": "agent"},
+        "next_action": {"type": "x", "estimated_cost": {"amount": 0, "currency": "USD"}, "bad": {1, 2, 3}},
+    }
+    with pytest.raises(TypeError):
+        g.check(bad_payload)

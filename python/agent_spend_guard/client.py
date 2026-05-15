@@ -74,14 +74,38 @@ class AgentSpendGuard:
         return self._invoke(payload)
 
     def check_shadow(self, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """Same as check() but never raises on transport errors either —
-        always returns a structured result (synthetic on outage)."""
+        """Same as check() but converts transport-level failures into a
+        synthetic `allow` result — your agent stays online when the guard
+        cannot be reached.
+
+        Stage 0.4.1 fix: this method catches ONLY transport / network /
+        service-availability errors. Programmer errors (malformed payload,
+        JSON serialization failures, type errors) propagate normally —
+        silently converting them into `decision: allow` would mask
+        integration bugs and let agents run without the guardrail their
+        operator thinks they have.
+
+        Raised by this method:
+          - TypeError / ValueError    — bad payload, programmer error
+          - json.JSONDecodeError      — guard returned non-JSON
+          - SpendingGuardClientError  — SDK-internal configuration error
+
+        Caught and converted to synthetic allow:
+          - urllib.error.URLError     — host unreachable, DNS failure
+          - urllib.error.HTTPError    — 4xx/5xx (only when failure_mode="throw"
+                                        causes _invoke to re-raise; otherwise
+                                        _handle_failure already wraps)
+          - TimeoutError              — request timed out
+          - OSError                   — socket reset, connection refused, etc.
+        """
         try:
             return self._invoke(payload)
-        except SpendingGuardClientError:
-            # Programmer-error path: bad payload, etc. Re-raise.
-            raise
-        except Exception as err:  # noqa: BLE001 — intentional broad catch
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            TimeoutError,
+            OSError,
+        ) as err:
             return _synthesize_failure_open(err)
 
     def check_or_confirm(

@@ -4,12 +4,12 @@
 >
 > **PQS checks the prompt. Agent Spend Guard checks the loop.**
 
-> **Status:** Stage 0.4 Real Integration Layer (Hosted Beta + Python SDK)
-> **Base:** `spending-guard-v0.3.1-beta`
-> **Tag:** `spending-guard-v0.4.0-beta`
-> **Primary value:** loop detection + structured `primary → secondary` model stop-loss for paid AI agents — now with Python SDK, `CodingAgentAdapter` alias, and per-request detector thresholds
+> **Status:** Stage 0.4.1 Python SDK fail-open scope hotfix
+> **Base:** `spending-guard-v0.4.0-beta`
+> **Tag:** `spending-guard-v0.4.1-beta`
+> **Primary value:** loop detection + structured `primary → secondary` model stop-loss for paid AI agents — TypeScript + Python SDKs
 > **Mode:** shadow-first
-> **Tests:** 137 TS unit + 14 audit + 36 harness actions; 16 Python unit (run via pytest or Docker)
+> **Tests:** 137 TS unit + 14 audit + 36 harness actions; 18 Python unit (run via pytest or Docker)
 > **SDKs:** TypeScript (`spending-guard`) + Python (`python/agent_spend_guard`)
 > **Next step:** hosted beta with first users — see [`INTEGRATION_GUIDE.md`](./INTEGRATION_GUIDE.md), [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md), [`PYTHON_SDK.md`](./PYTHON_SDK.md), [`CODING_AGENT_ADAPTER.md`](./CODING_AGENT_ADAPTER.md), [`DEPLOYMENT.md`](./DEPLOYMENT.md)
 > **npm package name:** `spending-guard` (historical; product brand is "Agent Spend Guard" — see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))

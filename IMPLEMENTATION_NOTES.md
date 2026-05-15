@@ -400,3 +400,52 @@ Do **not** rename the package, the imports, or the existing tag chain. If a futu
 Note: `"modes"` includes `check` (raw helper) — partners reading `/v1/meta` should see the full SDK surface, not just opinionated wrappers.
 
 ---
+
+## 16. Stage 0.4.1 — Python SDK fail-open scope (hotfix)
+
+**Refers to:** `STAGE_0_4_1_PYTHON_SDK_FAIL_OPEN_HOTFIX_SPEC` and `validation-log/partner-C-revisit-after-04.md` Finding 1.
+
+**The bug:** Stage 0.4 shipped `python/agent_spend_guard/client.py` with a broad catch in `check_shadow()`:
+
+```python
+try:
+    return self._invoke(payload)
+except SpendingGuardClientError:
+    raise
+except Exception as err:
+    return _synthesize_failure_open(err)
+```
+
+`json.dumps()` runs BEFORE the try inside `_invoke`. If the operator's payload contains an unserializable value (lambda, set, circular reference, etc.), `json.dumps` raises `TypeError`. The broad catch saw that as a transport failure and returned a synthetic `decision: allow, pattern: guard_unavailable` response. The operator believed their agent was protected; in reality the request never left their process.
+
+**The fix:** narrow the catch to transport-class exceptions only.
+
+```python
+except (
+    urllib.error.URLError,
+    urllib.error.HTTPError,
+    TimeoutError,
+    OSError,
+) as err:
+    return _synthesize_failure_open(err)
+```
+
+**Contract — what propagates vs what is synthesized:**
+
+| Exception class | Caught (synthesizes `allow`) | Propagates (operator sees the bug) |
+| --- | :---: | :---: |
+| `urllib.error.URLError` | ✅ |  |
+| `urllib.error.HTTPError` | ✅ |  |
+| `TimeoutError` | ✅ |  |
+| `OSError` (socket reset, conn refused, broader transport class) | ✅ |  |
+| `TypeError` (unserializable payload) |  | ✅ |
+| `ValueError` |  | ✅ |
+| `json.JSONDecodeError` (server returned malformed JSON) |  | ✅ |
+| `SpendingGuardClientError` (SDK config error) |  | ✅ |
+| Any other exception |  | ✅ |
+
+**Why this is hotfix material, not feature work:** silent error hiding in a guardrail SDK is the #1 reason operators rip middleware out. A guard that converts programmer bugs into "ok proceed" is worse than no guard at all, because it gives false confidence. This fix is exactly the same class as the 0.3.1 cold-start false-positive — a baseline bug found in simulated validation, fixed before any real partner sees it.
+
+**What was not fixed in 0.4.1:** Partner C's Finding 2 (`test_14_failure_mode_open_returns_synthetic_allow` has a pointless `mocker.stopall()` call that shadows the first `g` variable). That is a test-code quality issue, not a partner-facing SDK behavior bug. Deferred until a real partner reports something tied to it. Scope discipline: one fix per hotfix.
+
+**Verification awaited:** the maintainer's Windows host still has no Python installed and Docker daemon is not running. The Python SDK still cannot be `python -m pytest`-ed locally. The fix was authored against the test code; the first real `pytest` run against this code will be the first real Python partner. This is unchanged from 0.4 — the constraint was acknowledged in 0.4 CHANGELOG and persists into 0.4.1.

@@ -44,7 +44,7 @@ describe("Stage 0.3 — /v1/meta and /health", () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.name).toBe("Agent Spend Guard");
-    expect(body.version).toBe("0.4.0-beta");
+    expect(body.version).toBe("0.4.1-beta");
     expect(body.policy_version).toBe("policy@0.1.0");
     expect(body.modes).toEqual(["check", "shadow", "confirm", "downgrade"]);
     expect(body.supported_patterns).toContain("stale_context_retry_storm");
