@@ -52,6 +52,15 @@ const modelPolicySchema = z
   })
   .strict();
 
+const detectorPolicySchema = z
+  .object({
+    same_tool_retry_threshold: z.number().int().positive().optional(),
+    premium_retry_without_evidence_threshold: z.number().int().positive().optional(),
+    expensive_action_usd_threshold: z.number().finite().nonnegative().optional(),
+    require_confirmation_after_repeats: z.number().int().positive().optional(),
+  })
+  .strict();
+
 const objectiveSchema = z
   .object({
     id: z.string().optional(),
@@ -62,6 +71,7 @@ const objectiveSchema = z
     allowed_actions: z.array(z.string()).optional(),
     blocked_actions: z.array(z.string()).optional(),
     model_policy: modelPolicySchema.optional(),
+    detector_policy: detectorPolicySchema.optional(),
   })
   .strict();
 

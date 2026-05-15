@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-spend-guard"
+version = "0.4.0b0"
+description = "Loop detection and model stop-loss for paid AI agents — Python client."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "UNLICENSED" }
+authors = [{ name = "Agent Spend Guard maintainers" }]
+keywords = ["ai-agents", "spending-guard", "preflight", "loop-detection", "x402"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+# Stage 0.4: zero runtime dependencies. urllib + json + typing only — same
+# discipline as the TS SDK (only zod as a runtime peer). Add `requests` or
+# `httpx` only when a partner explicitly asks for async support.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-mock>=3.11",
+]
+
+[project.urls]
+"Source" = "https://github.com/your-org/spending-guard"
+"Issues" = "https://github.com/your-org/spending-guard/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agent_spend_guard*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --strict-markers"
+markers = [
+    "integration: requires a running Agent Spend Guard server (skipped by default in CI without env)",
+]

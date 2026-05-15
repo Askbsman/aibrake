@@ -6,6 +6,62 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.4.0-beta — Real Integration Layer
+
+**Tag:** `spending-guard-v0.4.0-beta`
+**Goal:** lower the cost of integrating Agent Spend Guard for a real partner. The 0.3.1 calibration fixed the friction in the Core; 0.4 fixes the friction in *getting to* the Core. No new detectors, no dashboard, no DB.
+
+Built per the architectural review of `STAGE_0_4_REAL_INTEGRATION_LAYER_SPEC` with four reviewer modifications applied before any code was written (documented in IMPLEMENTATION_NOTES § 15):
+
+  1. **One `CodingAgentAdapter`, not two** (single Claude Code + Codex adapter; runtime differences live in translator examples, not adapter code).
+  2. **Per-request `objective.detector_policy`, not server-side state** (keeps Core stateless; no key-management UI in 0.4).
+  3. **Two example files, not four** (one TS, one Python; comments cover the runtime variations).
+  4. **Python SDK as thin HTTP client, not feature-parity SDK** (urllib + json + typing only; no async; no typed response objects; explicit "we are not the source of truth, the server is" framing).
+
+### Added
+
+- **Per-request detector thresholds** (`objective.detector_policy`). Operators can tune `same_tool_retry_threshold` (default 6), `premium_retry_without_evidence_threshold` (default 3), `expensive_action_usd_threshold` (reserved), and `require_confirmation_after_repeats` (default 5). All optional; absent fields fall back to detector defaults. Read by `same_tool_retry_loop`, `model_escalation_without_evidence`, and `stale_context_retry_storm`. Never server-state; each request carries its own policy. Adapter `ObjectiveDescriptor.detectorPolicy` forwards the value into `input.objective.detector_policy` unchanged.
+- **`CodingAgentAdapter`** — friendly alias for the existing `OpenClawAdapter`. Same class. Partners running Claude Code / Codex / Cursor / custom wrappers `import { CodingAgentAdapter } from "spending-guard"`. Existing 0.1.x imports of `OpenClawAdapter` keep working unchanged.
+- **`examples/coding-agent-integration.ts`** — single runnable TS example covering the translator pattern for Claude Code and Codex lifecycle events. Demonstrates the "carry failure context onto planned model calls" pattern explicitly. Live retry-storm trajectory against `:8080`: allow → warn → warn → require_confirmation.
+- **Python SDK at `python/agent_spend_guard/`** — package `agent-spend-guard` (PyPI name reserved; not yet published). Thin urllib-based HTTP client with the same four helpers as the TS SDK: `check`, `check_shadow`, `check_or_confirm`, `check_or_downgrade`. Three failure modes (`open` / `closed` / `throw`). `hash_api_key()` exposed for partners who want to correlate their own logs without keeping raw keys. 16 unit tests (mocked) + 4 integration tests (live server). Zero runtime dependencies; stdlib only.
+- **`python/Dockerfile.test`** — verify the Python SDK without installing Python on the host. `docker build -f python/Dockerfile.test -t asg-python-test python/ && docker run --rm asg-python-test`.
+- **`python/examples/shadow.py` + `python/examples/downgrade.py`** — partner-ready runnable starter code.
+- **Three new docs at the repo root:**
+  - **`INTEGRATION_GUIDE.md`** — meta-document explaining the three integration layers (your runtime → adapter → SDK → /v1/check), the three integration modes (shadow / confirm / downgrade), the minimum useful payload, and the recommended 14-day promotion path.
+  - **`PYTHON_SDK.md`** — Python-specific quickstart, the four helpers, cold-start convention, per-request policy overrides, honesty contract ("not a feature-parity SDK").
+  - **`CODING_AGENT_ADAPTER.md`** — the translator pattern, the critical "carry failure context onto planned model calls" rule, and runtime-specific hints for Claude Code / Codex / Cursor / custom wrappers.
+
+### Changed
+
+- Bumped `package.json` `version` and env `serviceVersion` to `0.4.0-beta`. `/health` now reports `version: "0.4.0-beta"`.
+- `same_tool_retry_loop.same_action_count_critical` rule now scales with the operator's chosen base threshold (`threshold + 4`) instead of the hard-coded 10.
+- `OpenClawAdapter.ObjectiveDescriptor` adds optional `detectorPolicy` field — forwarded into the universal input as `objective.detector_policy`.
+- README banner refreshed; PARTNER_ONBOARDING.md unchanged (the "Pick your path" tiles from 0.3.1 still apply); IMPLEMENTATION_NOTES.md adds § 15 documenting the Stage 0.4 scope + four reviewer modifications.
+
+### Tests
+
+- Added `tests/detector-policy.test.ts` with 8 tests covering per-request threshold overrides for all three affected detectors and the per-request (not server-state) invariant.
+- Added 16 Python unit tests + 4 integration tests in `python/tests/`. Maintainer verification:
+  - With Python installed: `cd python && pip install -e ".[dev]" && python -m pytest`
+  - Without Python installed: `docker build -f python/Dockerfile.test -t asg-python-test python/ && docker run --rm asg-python-test`
+- TS total: **137** passing (was 129; +8 new in `tests/detector-policy.test.ts`). Audit 14 / 14. Harness 36 / 36.
+
+### Not changed (deliberately)
+
+- No new detectors.
+- No new evidence-model fields.
+- No async Python.
+- No type stubs (.pyi) — too premature, surface still drifting.
+- No PyPI publish.
+- No dashboard, no DB, no full x402 integration, no Sober Builder / Family Mode / Builder Mode.
+- `validation-log/` is still gitignored.
+
+### Known constraint
+
+The maintainer's development host (Windows) does not have Python on PATH. The Python SDK was written, tested in isolation (mocked), but the live unit test suite has not been executed locally. Verification options: (a) install Python locally, then `cd python && pip install -e ".[dev]" && python -m pytest`; (b) build the bundled Docker image and run the test container. Reference: PYTHON_SDK.md § Verification.
+
+---
+
 ## 0.3.1-beta — Pre-Partner Calibration
 
 **Tag:** `spending-guard-v0.3.1-beta`

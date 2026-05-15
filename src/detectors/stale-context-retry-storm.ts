@@ -39,9 +39,13 @@ export const staleContextRetryStormDetector: DetectorDefinition = {
     const newEvidence = h.new_evidence_since_last_attempt;
     const confidenceDelta = h.confidence_delta ?? 0;
 
-    // Minimum-attempts threshold: don't call something a "retry storm" until
-    // we have at least 3 same-failure repeats or 3 paid attempts.
-    if (sameFailure < 3 && paidAttempts < 3) return null;
+    // Stage 0.4: per-request override via objective.detector_policy.
+    // Same semantics as before, but operators with very high-cost workflows
+    // can tune the minimum-attempts threshold down. Default 3.
+    const minRepeats =
+      input.objective?.detector_policy
+        ?.premium_retry_without_evidence_threshold ?? 3;
+    if (sameFailure < minRepeats && paidAttempts < minRepeats) return null;
 
     const matched: string[] = ["failure_signal_present"];
     let score = 10;

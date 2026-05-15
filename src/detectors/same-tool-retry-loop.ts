@@ -29,7 +29,11 @@ export const sameToolRetryLoopDetector: DetectorDefinition = {
     const h = input.history;
     if (!h) return null;
     const sameAction = h.same_action_count ?? 0;
-    if (sameAction < 6) return null;
+    // Stage 0.4: operators can override the threshold per-request via
+    // objective.detector_policy.same_tool_retry_threshold. Default 6 unchanged.
+    const threshold =
+      input.objective?.detector_policy?.same_tool_retry_threshold ?? 6;
+    if (sameAction < threshold) return null;
 
     const matched: string[] = ["same_action_count_high"];
     let score = 10;
@@ -52,7 +56,8 @@ export const sameToolRetryLoopDetector: DetectorDefinition = {
       score += 10;
     }
 
-    if (sameAction >= 10) {
+    // Critical threshold scales with the operator's chosen base threshold.
+    if (sameAction >= threshold + 4) {
       matched.push("same_action_count_critical");
       score += 10;
     }

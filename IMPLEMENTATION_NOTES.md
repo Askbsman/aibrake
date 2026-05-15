@@ -168,6 +168,74 @@ The v0.1.1 patch § 7 specifies a base-confidence table per detector. The implem
 | `same_tool_retry_loop` | 0.65 | 0.70 | Calibrated in Stage 0.1.2 RC. At 0.65 the detector emitted `decision: allow` with reason text recommending "consider switching tool, model, or approach before spending again" — internally contradictory. 0.70 puts the detector at the warn-band threshold for score 25–49 so the surfaced pattern matches the surfaced advice. |
 | `model_escalation_without_evidence` recommendedFields | 5 fields (incl. `objective.model_policy`) | 4 fields (dropped `objective.model_policy`) | Calibrated in Stage 0.3.1 — same class of fix as `same_tool_retry_loop` calibration. With 5 fields, operators who did not declare model_policy hit 4/5 coverage → conf 0.60 → at score 25 (warn band threshold is conf ≥ 0.70) → decision allow, but suggested_action: downgrade_model. Partner B flagged this dissonance in simulated validation. Dropping model_policy from recommendedFields yields ~1.0 coverage for both shapes (with/without policy), confidence 0.75, decision warn. Operators who declare model_policy still get the structured `model_route.to` in `suggested_action` — that is the real reward, not a confidence bonus. |
 
+---
+
+## 15. Stage 0.4 Real Integration Layer
+
+**Refers to:** `STAGE_0_4_REAL_INTEGRATION_LAYER_SPEC` and the architectural review that approved "Variant A — 0.4 with 4 modifications" before any code was written.
+
+**What ships in Stage 0.4:** per-request `objective.detector_policy` for threshold tuning, `CodingAgentAdapter` alias, one TS integration example, Python SDK as thin HTTP client with 16 unit + 4 integration tests + a Dockerfile for verification on hosts without Python, three integration guides (INTEGRATION_GUIDE.md, PYTHON_SDK.md, CODING_AGENT_ADAPTER.md). No new detectors. No dashboard. No DB. No full x402 publishing.
+
+**Four reviewer modifications applied to the original spec:**
+
+1. **One `CodingAgentAdapter`, not two per-runtime adapters.** The original spec proposed `adapters/claude-code/` and `adapters/codex/`. With the universal evidence model (Stage 0.2-minimal), the adapter logic is the same for both — only the lifecycle-event translator differs. We ship one adapter (re-exporting `OpenClawAdapter`) and two reference translator functions inside a single example. This avoids 90% duplicated adapter code.
+2. **Per-request `objective.detector_policy`, not server-side state.** The spec was ambiguous about where thresholds live. Server-side would require a key-management UI, migrations, multi-tenant config storage — all explicit non-goals. Per-request keeps Core stateless and lets each operator (or each objective) tune independently. The whole policy travels in the request payload, never persisted server-side.
+3. **Two example files, not four.** The spec proposed `python-langchain-shadow.py` + `python-scraper-loop.py` + `claude-code-wrapper.ts` + `codex-build-loop.ts`. The Python pair is the same shape with different payloads; the TS pair the same. We ship one TS coding-agent example (with comments covering both Claude Code and Codex translation patterns) and two Python examples (shadow + downgrade) that demonstrate the SDK helpers — the underlying payloads cover LangChain / scraper / generic Python use cases via comments.
+4. **Python SDK as thin HTTP client, not feature-parity SDK.** The spec asked for a Python SDK but did not bound the scope. Without explicit bounds, every TS SDK feature would require a Python port forever. We commit explicitly in `PYTHON_SDK.md` § 9 ("Honesty contract") to the four integration helpers + failure modes + uncertain policy. No async, no typed response objects, no decision logging, no retry/backoff. Operators who need more either build it themselves or escalate to the maintainer. Drift risk minimized.
+
+**Why Stage 0.4 is sequenced this way (after 0.3.1):**
+
+The simulated 3-partner validation (`validation-log/TALLY.md`) surfaced three concrete blockers:
+- Partner B: "I'll integrate, but I want a Claude Code adapter" → `CodingAgentAdapter` alias + translator example
+- Partner C: "Soft NO until Python SDK exists" → Python SDK
+- Partner A (after 0.3.1 calibration): would want threshold tuning for $0.50/scrape workflows → `detector_policy`
+
+These are direct responses to findings, not new feature work. The Core is unchanged. The product surface is unchanged. What changed is who can integrate in under 30 minutes.
+
+**Constraint acknowledged:** the maintainer's development host (Windows) does not have Python installed. The Python SDK was authored in isolation with mocked-fetcher unit tests and a bundled Dockerfile for live verification. The first real Python partner will be the first end-to-end execution of `python -m pytest` against this code. Mitigation: the SDK is intentionally trivial (urllib + json), the tests cover all four helpers + failure modes, and any partner reporting an issue gets a 24-hour turnaround because the surface is small. Once a real Python partner gives feedback, we will know whether the surface is right.
+
+**`detector_policy` contract:**
+
+```ts
+type DetectorPolicy = {
+  same_tool_retry_threshold?: number;                  // default 6
+  premium_retry_without_evidence_threshold?: number;   // default 3
+  expensive_action_usd_threshold?: number;             // reserved (0.4 does NOT
+                                                       // use cost-only heuristic in
+                                                       // model_escalation; see § 14)
+  require_confirmation_after_repeats?: number;         // default 5
+}
+```
+
+All fields optional. Lives under `objective.detector_policy`. Read by `same_tool_retry_loop` (uses `same_tool_retry_threshold`), `model_escalation_without_evidence` (uses `premium_retry_without_evidence_threshold`), `stale_context_retry_storm` (uses `premium_retry_without_evidence_threshold` for its min-repeats threshold). `same_action_count_critical` rule scales with the chosen threshold (`threshold + 4`).
+
+**`expensive_action_usd_threshold` is reserved-but-unused** in 0.4 because the 0.3.1 calibration removed the cost-only heuristic from `looksExpensive()`. The field exists in the schema so future versions can opt operators back into a cost-only heuristic per their own policy without breaking the API contract. Currently unused.
+
+**Coding-agent adapter export shape:**
+
+```ts
+// All of these point at the same class.
+import { OpenClawAdapter }     from "spending-guard";  // 0.1.x callers
+import { CodingAgentAdapter }  from "spending-guard";  // 0.4 callers
+import { HermesAdapter }       from "spending-guard/adapters/hermes";  // 0.1.x alias
+```
+
+Same imports. Same behavior. Same in-memory history tracking. Same `buildCheckInput()` semantics. Naming is for partner-facing clarity, not for behavior.
+
+**Python SDK surface:**
+
+```python
+from agent_spend_guard import AgentSpendGuard, SpendingGuardBlockedError
+
+guard = AgentSpendGuard(base_url, api_key, failure_mode="open", timeout_ms=1000)
+guard.check(payload)              # → dict; never raises on guard decision
+guard.check_shadow(payload)       # → dict; never raises on transport error either
+guard.check_or_confirm(payload, on_warn=...)   # → dict; raises SpendingGuardBlockedError on block
+guard.check_or_downgrade(payload, downgrade_to=...)  # → (action, result)
+```
+
+Same surface as TS SDK. Same semantics. Same failure-mode contract.
+
 All other detector base confidences match the spec table:
 
 | Detector | Both spec and code |

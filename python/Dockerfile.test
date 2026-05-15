@@ -1,0 +1,26 @@
+# Verify the Python SDK without installing Python on the host.
+#
+# Build:
+#   docker build -f python/Dockerfile.test -t agent-spend-guard-python-test python/
+#
+# Run unit tests:
+#   docker run --rm agent-spend-guard-python-test
+#
+# Run unit + integration tests against a host server on :8080:
+#   docker run --rm \
+#     -e AGENT_SPEND_GUARD_URL=http://host.docker.internal:8080 \
+#     -e AGENT_SPEND_GUARD_API_KEY=asg_v1_demo \
+#     agent-spend-guard-python-test python -m pytest -v
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY pyproject.toml ./
+COPY agent_spend_guard ./agent_spend_guard
+COPY tests ./tests
+
+RUN pip install --no-cache-dir -e ".[dev]"
+
+# Default: run unit tests only (skip @pytest.mark.integration unless env URL set).
+CMD ["python", "-m", "pytest", "-v", "-m", "not integration"]

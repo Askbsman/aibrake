@@ -99,7 +99,11 @@ export const modelEscalationWithoutEvidenceDetector: DetectorDefinition = {
     const matched: string[] = ["expensive_next_action"];
     let score = 10;
 
-    if ((h.same_failure_count ?? 0) >= 3) {
+    // Stage 0.4: per-request override via objective.detector_policy. Default 3.
+    const premiumRetryThreshold =
+      input.objective?.detector_policy
+        ?.premium_retry_without_evidence_threshold ?? 3;
+    if ((h.same_failure_count ?? 0) >= premiumRetryThreshold) {
       matched.push("same_failure_repeated");
       score += 10;
     }

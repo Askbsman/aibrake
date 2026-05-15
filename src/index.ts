@@ -7,6 +7,7 @@ export {
 export type {
   Actor,
   DetectorDefinition,
+  DetectorPolicy,
   DetectorResult,
   EvidenceKind,
   EvidenceSignalValue,
@@ -79,7 +80,7 @@ export {
   type SpendingGuardClientOptions,
 } from "./sdk/index.js";
 
-// Adapter (OpenClaw / Hermes-style)
+// Adapter (OpenClaw / Hermes-style, aliased as CodingAgentAdapter in 0.4)
 export {
   OpenClawAdapter,
   actionFp,
@@ -89,6 +90,9 @@ export {
   type ObjectiveDescriptor,
   type SpendDescriptor,
 } from "./adapters/openclaw/index.js";
+// Stage 0.4: friendly alias for partners running Claude Code / Codex / Cursor /
+// custom coding-agent wrappers. Same class as OpenClawAdapter.
+export { CodingAgentAdapter } from "./adapters/coding-agent/index.js";
 
 // Payments
 export {

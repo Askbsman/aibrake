@@ -86,6 +86,29 @@ export interface ModelRoute {
   reason?: string;
 }
 
+// Stage 0.4: per-request detector policy overrides. All optional; absent fields
+// fall back to the detector's hard-coded defaults. Lives under `objective` so
+// it travels per-objective (not per-key, not per-server) — keeps Core stateless.
+//
+// Operators set these in their wrapper based on their own cost sensitivity:
+//   - $0.50/scrape  → lower same_tool_retry_threshold (e.g. 3)
+//   - $0.02/LLM     → keep default 6
+//   - Premium-model wrappers → tune premium_retry_without_evidence_threshold
+export interface DetectorPolicy {
+  // Triggers same_tool_retry_loop matched rules. Default 6.
+  same_tool_retry_threshold?: number;
+  // Triggers same_failure_repeated in model_escalation. Default 3.
+  premium_retry_without_evidence_threshold?: number;
+  // Min cost (USD) at which a non-policy-declared next_action counts as
+  // "expensive" for model_escalation regex fallback. Currently the regex is
+  // the only fallback; this field is reserved for future use when we let
+  // operators opt back in to a cost-only heuristic per their own policy.
+  expensive_action_usd_threshold?: number;
+  // Bumps stale_context_retry_storm from warn into require_confirmation
+  // territory. Default 5.
+  require_confirmation_after_repeats?: number;
+}
+
 export type EvidenceSignalValue =
   | string
   | number
@@ -125,6 +148,8 @@ export interface Objective {
   blocked_actions?: string[];
   // Stage 0.2-minimal: optional model-routing policy.
   model_policy?: ModelPolicy;
+  // Stage 0.4: optional per-request detector threshold overrides.
+  detector_policy?: DetectorPolicy;
 }
 
 export interface NextAction {

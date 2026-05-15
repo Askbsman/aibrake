@@ -1,4 +1,5 @@
 import type {
+  DetectorPolicy,
   FailureSignalType,
   ModelPolicy,
   ModelRole,
@@ -52,6 +53,9 @@ export interface ObjectiveDescriptor {
   // Stage 0.2-minimal: optional model-routing policy that the adapter forwards
   // unchanged into `input.objective.model_policy` for the Core check.
   modelPolicy?: ModelPolicy;
+  // Stage 0.4: per-request detector threshold overrides. Forwarded into
+  // `input.objective.detector_policy` unchanged.
+  detectorPolicy?: DetectorPolicy;
 }
 
 export interface SpendDescriptor {

@@ -223,6 +223,9 @@ export class OpenClawAdapter {
         ...(options.objective.modelPolicy !== undefined
           ? { model_policy: options.objective.modelPolicy }
           : {}),
+        ...(options.objective.detectorPolicy !== undefined
+          ? { detector_policy: options.objective.detectorPolicy }
+          : {}),
       };
     }
 
