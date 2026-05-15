@@ -189,6 +189,24 @@ npm run build
 
 Stage 0.3 → 0.4 may include schema additions; all schema fields remain optional and backward-compatible. There is no migration step. The Dockerfile is pinned to the major Node version (20).
 
+**Python SDK smoke check (Stage 0.5).** If you ship a Python wrapper alongside the hosted service, validate the SDK on the deploy host:
+
+```bash
+cd python
+pip install -e ".[dev]"
+python -m pytest
+# Quick check without test deps:
+python -c "from agent_spend_guard import AgentSpendGuard; print('ok')"
+```
+
+The integration suite (`test_integration.py`) is opt-in — it skips automatically unless you set `AGENT_SPEND_GUARD_URL` to a reachable server and the `integration` marker fires:
+
+```bash
+AGENT_SPEND_GUARD_URL=http://localhost:8080 \
+AGENT_SPEND_GUARD_API_KEY=asg_v1_demo \
+python -m pytest -m integration
+```
+
 ---
 
 ## 11. What is intentionally missing

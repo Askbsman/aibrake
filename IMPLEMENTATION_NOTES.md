@@ -555,3 +555,64 @@ Note: Python 0.4.1 did not introduce a `ValidationError` class because the Pytho
 - Partner D rerun: BigInt and circular payloads now reject with `TypeError`; missing `next_action` now rejects with `SpendingGuardValidationError(400, {...VALIDATION_ERROR...})`. Bug class closed.
 
 **Python side:** unchanged. Version bumped to `0.4.2b0` for release coherence only — Python users running `pip install -e .` get the same version banner as TS users running `npm install spending-guard`. The Python SDK's behavior is identical to 0.4.1.
+
+---
+
+## 18. Stage 0.5 Partner-Ready Hardening (partial — Python execution deferred)
+
+**Refers to:** `AGENT_SPEND_GUARD_STAGE_0_5_PARTNER_READY_HARDENING_SPEC.md` (the Stage 0.5 build spec).
+
+**Scope:**
+
+```txt
+1. extend /v1/meta with detector_policy.supported_fields
+2. structured `details` on every SDK error (TS + Python)
+3. partner-facing docs around error behavior + threshold guidance
+4. Python smoke command in PYTHON_SDK.md / PARTNER_ONBOARDING.md / DEPLOYMENT.md
+5. ≥10 new TS tests (target ≥158 total); Python tests *executed*
+6. version bump to 0.5.0-beta + tag spending-guard-v0.5.0-beta
+```
+
+**What was actually shipped:**
+
+- `/v1/meta`: now exposes `detector_policy.supported_fields` with the four knobs (`same_tool_retry_threshold`, `premium_retry_without_evidence_threshold`, `expensive_action_usd_threshold`, `require_confirmation_after_repeats`) + an `example` block. Discovery-only — runtime is still per-request.
+- TS SDK: new `SpendingGuardErrorKind` discriminator union (`transport | validation | http_4xx | http_5xx | serialization | parse | blocked | confirmation_denied | unknown`). Every error subclass exposes `err.details.{kind,statusCode,code,requestId,retryable,message}`.
+- Python SDK: new `SpendingGuardError` base class with `.kind`, `.status_code`, `.retryable`, `.code`. All subclasses inherit from it. Kind constants exported at package level.
+- Python SDK: 4xx now propagates as `SpendingGuardValidationError` instead of routing through `failure_mode`. This brings Python in line with TS 0.4.2 — both SDKs now have the same observable contract for 4xx vs 5xx vs network.
+- 14 new TS tests in `tests/stage-05-partner-ready-hardening.test.ts`. Suite now **162 / 162** (was 148, target ≥158).
+- 12 new Python tests in `python/tests/test_stage_05_error_kinds.py`. Source written and committed; **execution deferred — see § 18.1 below.**
+- Docs: README banner updated, `PARTNER_ONBOARDING.md` gained "Choosing detector_policy thresholds" + "SDK error behavior" sections, `PYTHON_SDK.md` / `DEPLOYMENT.md` got the smoke command (`python -m pytest` + `python -c "from agent_spend_guard import AgentSpendGuard; print('ok')"`).
+
+### 18.1 The "do not fake it" path — Stage 0.5 § 6
+
+**Spec § 6 verbatim:**
+
+> One of these must pass:
+> - Option A — local Python (`cd python && python -m pytest`)
+> - Option B — Docker (`docker build -f python/Dockerfile.test ...`)
+>
+> If neither can be run on the maintainer machine, do not fake it. Leave Stage 0.5 incomplete.
+
+**What happened on this maintainer machine (2026-05-15):**
+
+1. **Local Python: not available.** No `python`, no `python3`, no `py`, no Anaconda / Conda. PowerShell `Get-Command` returned nothing for all three names. The Windows Store stub at `%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe` was absent. `winget` was also absent — no easy installer path. Git Bash's `/usr/bin/python*` empty. No path forward without admin-level install.
+2. **Docker: daemon would not come online.** Docker Desktop's process tree was running (`Docker Desktop.exe`, `com.docker.backend` × 2, `vmcompute`), but `docker info` and `docker version` hung indefinitely on `//./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified`. `wsl --list --verbose` showed `docker-desktop  Stopped  2` throughout. Manual `wsl -d docker-desktop -e echo wsl-ok` did wake that distro briefly but the engine pipe still never opened. Total wait budget invested before declaring blocked: **~7 minutes from `Start-Process`** plus a background poller that ran for the remainder of the session (60 probes × 10s = 10 min).
+
+**Decision:** per spec § 6, do not fake execution. The Python source is correct (mirrors the TS contract pinned by the new TS tests) and is committed. Stage 0.5 ships **partial** — TS verified, Python source written and committed but **not executed**. Acceptance criterion #3 of § 11 ("Python SDK tests are actually executed and pass") is **not met**.
+
+**For a partner or future maintainer with Python ≥ 3.9 (or a working Docker daemon):**
+
+```bash
+# Option A — local Python
+cd python
+pip install -e ".[dev]"
+python -m pytest
+
+# Option B — Docker
+docker build -f python/Dockerfile.test -t asg-python-test python/
+docker run --rm asg-python-test
+```
+
+Expected pass count once executed: 18 prior tests + 12 new = **30 Python tests**. If any fail, the tag can be amended (`git tag -d spending-guard-v0.5.0-beta && git tag …`) or a `v0.5.1-beta` follow-up shipped with the fix.
+
+**Why ship partial rather than not at all:** the TS work is independently valuable (discoverable `/v1/meta`, structured error `details`, partner doc updates, 14 new tests, version coherence). Holding it back from `main` because one local-environment constraint blocked Python execution would freeze the project on a setup detail rather than a product problem. The disclaimer in the README banner, the CHANGELOG entry, and this section make the gap impossible to miss; nothing is being misrepresented.

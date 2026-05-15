@@ -17,7 +17,11 @@ from typing import Any, Dict
 
 import pytest
 
-from agent_spend_guard import AgentSpendGuard, SpendingGuardBlockedError
+from agent_spend_guard import (
+    AgentSpendGuard,
+    SpendingGuardBlockedError,
+    SpendingGuardValidationError,
+)
 
 
 def _server_reachable(url: str) -> bool:
@@ -112,16 +116,20 @@ def test_int_03_canonical_retry_storm_escalates(
     assert "require_confirmation" in decisions[3:]
 
 
-def test_int_04_invalid_key_returns_401_handled_as_failure_open(
+def test_int_04_invalid_key_returns_401_propagates_with_http_4xx_kind(
     integration_url: str,
 ) -> None:
+    """Stage 0.4.2 / 0.5 contract: server-side 4xx is NOT a guard-availability
+    failure. The guard saw the request and rejected it — propagate so the
+    partner fixes their auth, instead of silently synthesizing allow."""
     guard = AgentSpendGuard(
         base_url=integration_url,
         api_key="totally_wrong_key",
         failure_mode="open",
         timeout_ms=2000,
     )
-    result = guard.check(_retry_storm_payload(1))
-    # With failure_mode=open, even a 401 yields a synthetic allow result.
-    assert result["decision"] == "allow"
-    assert result["pattern"] == "guard_unavailable"
+    with pytest.raises(SpendingGuardValidationError) as exc:
+        guard.check(_retry_storm_payload(1))
+    assert exc.value.status_code == 401
+    assert exc.value.kind == "http_4xx"
+    assert exc.value.retryable is False

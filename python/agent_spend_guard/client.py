@@ -16,6 +16,9 @@ no httpx, no aiohttp. Add async only when a real partner asks for it.
 Type hints use plain `Dict[str, Any]` and `Any` because the upstream
 `/v1/check` response is rapidly evolving and we do not want Python-side
 TypedDicts to drift from the TS source of truth.
+
+Stage 0.5: errors carry structured `kind`, `status_code`, `retryable`
+attributes — branch on `err.kind` rather than `isinstance`.
 """
 
 from __future__ import annotations
@@ -30,6 +33,8 @@ from .errors import (
     SpendingGuardBlockedError,
     SpendingGuardClientError,
     SpendingGuardConfirmationDeniedError,
+    SpendingGuardTransportError,
+    SpendingGuardValidationError,
 )
 
 FailureMode = Literal["open", "closed", "throw"]
@@ -78,34 +83,25 @@ class AgentSpendGuard:
         synthetic `allow` result — your agent stays online when the guard
         cannot be reached.
 
-        Stage 0.4.1 fix: this method catches ONLY transport / network /
-        service-availability errors. Programmer errors (malformed payload,
-        JSON serialization failures, type errors) propagate normally —
-        silently converting them into `decision: allow` would mask
-        integration bugs and let agents run without the guardrail their
+        Stage 0.4.1 / 0.5: this method catches ONLY transport-class errors
+        (network outages, 5xx). Programmer errors (malformed payload, JSON
+        serialization failures, type errors) and server-side 4xx propagate
+        normally — silently converting them into `decision: allow` would
+        mask integration bugs and let agents run without the guardrail their
         operator thinks they have.
 
         Raised by this method:
-          - TypeError / ValueError    — bad payload, programmer error
-          - json.JSONDecodeError      — guard returned non-JSON
-          - SpendingGuardClientError  — SDK-internal configuration error
+          - TypeError / ValueError              — bad payload, programmer error
+          - json.JSONDecodeError                — guard returned non-JSON
+          - SpendingGuardValidationError        — server-side 4xx (e.g. 400/401)
+          - SpendingGuardClientError            — SDK-internal configuration error
 
         Caught and converted to synthetic allow:
-          - urllib.error.URLError     — host unreachable, DNS failure
-          - urllib.error.HTTPError    — 4xx/5xx (only when failure_mode="throw"
-                                        causes _invoke to re-raise; otherwise
-                                        _handle_failure already wraps)
-          - TimeoutError              — request timed out
-          - OSError                   — socket reset, connection refused, etc.
+          - SpendingGuardTransportError         — network/DNS/5xx (Stage 0.5)
         """
         try:
             return self._invoke(payload)
-        except (
-            urllib.error.URLError,
-            urllib.error.HTTPError,
-            TimeoutError,
-            OSError,
-        ) as err:
+        except SpendingGuardTransportError as err:
             return _synthesize_failure_open(err)
 
     def check_or_confirm(
@@ -204,6 +200,8 @@ class AgentSpendGuard:
     # ── Internals ─────────────────────────────────────────────────────
 
     def _invoke(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        # json.dumps may raise TypeError on non-serializable values — let it
+        # propagate; that's a programmer bug, not a transport failure.
         body = json.dumps(payload).encode("utf-8")
         headers = {
             "content-type": "application/json",
@@ -222,13 +220,31 @@ class AgentSpendGuard:
                 raw = resp.read()
                 return json.loads(raw)
         except urllib.error.HTTPError as err:
-            return self._handle_failure(err)
+            # 4xx = server saw it and rejected → propagate as ValidationError.
+            # 5xx = server-side outage → route via failure_mode.
+            status = getattr(err, "code", 0) or 0
+            if 400 <= status < 500:
+                parsed_body: Any
+                try:
+                    parsed_body = json.loads(err.read().decode("utf-8"))
+                except Exception:  # noqa: BLE001 — body may not be JSON
+                    parsed_body = None
+                raise SpendingGuardValidationError(status, parsed_body) from err
+            transport = SpendingGuardTransportError(
+                f"Spending Guard server error {status}", status_code=status, cause=err
+            )
+            return self._handle_failure(transport)
         except urllib.error.URLError as err:
-            return self._handle_failure(err)
-        except (TimeoutError, OSError) as err:
-            return self._handle_failure(err)
+            transport = SpendingGuardTransportError(str(err.reason), cause=err)
+            return self._handle_failure(transport)
+        except TimeoutError as err:
+            transport = SpendingGuardTransportError("request timed out", cause=err)
+            return self._handle_failure(transport)
+        except OSError as err:
+            transport = SpendingGuardTransportError(str(err), cause=err)
+            return self._handle_failure(transport)
 
-    def _handle_failure(self, err: Exception) -> Dict[str, Any]:
+    def _handle_failure(self, err: SpendingGuardTransportError) -> Dict[str, Any]:
         if self._failure_mode == "throw":
             raise err
         if self._on_failure_open is not None:

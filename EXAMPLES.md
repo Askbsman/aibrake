@@ -158,3 +158,76 @@ If Spending Guard is unreachable, `guard.check()` returns:
 ```
 
 The operator's agent keeps working. The failure is logged through both the result error field and the `onFailureOpen` callback.
+
+---
+
+## 7. Branching on structured error kinds (Stage 0.5)
+
+Every SDK error now carries a `details` block (TS) or structured attributes (Python) so you can branch on a discriminator instead of importing every subclass.
+
+**TypeScript:**
+
+```ts
+import { SpendingGuard, SpendingGuardBlockedError } from "spending-guard/sdk";
+
+const guard = new SpendingGuard({
+  baseUrl: "https://spending-guard.example.com",
+  apiKey: process.env.ASG_KEY,
+  failureMode: "throw",  // propagate so we can branch
+});
+
+try {
+  await guard.check(input);
+} catch (err) {
+  const d = (err as { details?: { kind?: string; statusCode?: number; retryable?: boolean } }).details;
+  switch (d?.kind) {
+    case "transport":
+    case "http_5xx":
+      metrics.incr("guard.transient");        // retry candidate
+      break;
+    case "validation":
+      logger.error({ status: d.statusCode }, "bad payload — fix integration");
+      throw err;                              // surface to dev
+    case "http_4xx":
+      if (d.statusCode === 401) rotateApiKey();
+      else throw err;
+      break;
+    case "blocked":
+      const { result } = err as SpendingGuardBlockedError;
+      pageOperator(result);
+      break;
+    case "confirmation_denied":
+      logger.warn("operator denied confirmation");
+      break;
+    default:
+      throw err;
+  }
+}
+```
+
+**Python:**
+
+```py
+from agent_spend_guard import AgentSpendGuard, SpendingGuardError
+
+guard = AgentSpendGuard(base_url="...", api_key="...", failure_mode="throw")
+
+try:
+    guard.check(payload)
+except SpendingGuardError as err:
+    if err.kind in ("transport", "http_5xx"):
+        metrics.incr("guard.transient")          # retry candidate
+    elif err.kind == "validation":
+        log.error("bad payload (HTTP %s) — fix integration", err.status_code)
+        raise
+    elif err.kind == "http_4xx" and err.status_code == 401:
+        rotate_api_key()
+    elif err.kind == "blocked":
+        page_operator(err.result)                # err.result is the structured response
+    elif err.kind == "confirmation_denied":
+        log.warning("operator denied confirmation")
+    else:
+        raise
+```
+
+`err.details?.retryable` (TS) / `err.retryable` (Python) is a hint for retry loops: it is `true` for transport, 5xx, and 429 (rate limit) — `false` for everything else.

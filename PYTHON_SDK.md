@@ -25,6 +25,14 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
+Quick package self-check (no test deps needed):
+
+```bash
+python -c "from agent_spend_guard import AgentSpendGuard; print('ok')"
+```
+
+Expected output: `ok`. If you get an import error, your `pip install -e .` did not complete.
+
 If you cannot install Python locally:
 
 ```bash
@@ -205,13 +213,50 @@ These overrides are per-request and never server-side state. Each call may carry
 
 ```python
 from agent_spend_guard import (
+    SpendingGuardError,                   # base class — has .kind / .status_code / .retryable
+    SpendingGuardTransportError,          # transport / 5xx — fail-open eligible
+    SpendingGuardValidationError,         # server-side 4xx — payload / auth problem
     SpendingGuardBlockedError,            # decision == "block"
     SpendingGuardConfirmationDeniedError, # on_warn returned False
-    SpendingGuardClientError,             # base class + programmer errors
+    SpendingGuardClientError,             # alias of SpendingGuardError (back-compat)
 )
 ```
 
-`.result` on the exception is the full structured response — useful for logging.
+**Stage 0.5 — structured discriminator on every error.** Every error inherits from `SpendingGuardError` and exposes:
+
+```python
+err.kind          # "transport" | "validation" | "http_4xx" | "http_5xx" |
+                  # "blocked" | "confirmation_denied" | ...
+err.status_code   # HTTP status when applicable; None for network errors
+err.retryable     # True for transport / 5xx / 429; False for the rest
+err.code          # server-supplied code (e.g. "VALIDATION_ERROR") if present
+```
+
+Write one `except SpendingGuardError as err:` handler and branch on `err.kind`:
+
+```python
+from agent_spend_guard import AgentSpendGuard, SpendingGuardError
+
+try:
+    guard.check(payload)
+except SpendingGuardError as err:
+    if err.kind in ("transport", "http_5xx"):
+        ...  # retry — guard was unreachable / temporarily down
+    elif err.kind == "validation":
+        ...  # HTTP 400 — fix payload
+    elif err.kind == "http_4xx" and err.status_code == 401:
+        ...  # bad / missing API key
+    elif err.kind == "blocked":
+        ...  # err.result is the structured decision
+    elif err.kind == "confirmation_denied":
+        ...  # operator's on_warn callback returned False
+    else:
+        raise
+```
+
+`.result` on blocked / confirmation-denied errors is the full structured response — useful for logging.
+
+Kind constants are also exported as package-level names (`KIND_TRANSPORT`, `KIND_VALIDATION`, `KIND_HTTP_4XX`, `KIND_HTTP_5XX`, `KIND_BLOCKED`, `KIND_CONFIRMATION_DENIED`, etc.) if you prefer typed constants over string literals.
 
 ---
 

@@ -175,6 +175,103 @@ If anything is leaking, stop and tell the maintainer immediately.
 
 ---
 
+## Choosing detector_policy thresholds
+
+`detector_policy` is a per-request knob set you ship in `objective.detector_policy`. `/v1/meta` returns the schema and an example block so you can paste it without grepping the source. Quick guidance:
+
+For **scraper / search agents** (each call costs $0.10+):
+
+```json
+"detector_policy": {
+  "same_tool_retry_threshold": 3,
+  "expensive_action_usd_threshold": 0.10
+}
+```
+
+Lower `same_tool_retry_threshold` because expensive actions don't deserve the default 6 retries before warn.
+
+For **coding agents** (each call costs ~$0.01–0.05):
+
+```json
+"detector_policy": { "same_tool_retry_threshold": 6 }
+```
+
+Default is usually fine. Use `failure_fingerprint` and `evidence_signals.{files_read_since_last_attempt,tests_run_since_last_attempt,git_diff_changed_since_last_attempt}` so the stale-context detector has the universal evidence model populated.
+
+For **premium-model routing** (you want primary → secondary downgrade):
+
+```json
+"detector_policy": { "premium_retry_without_evidence_threshold": 2 },
+"model_policy": {
+  "primaryModel":   { "provider": "anthropic", "model": "claude-opus",  "tier": "premium" },
+  "secondaryModel": { "provider": "anthropic", "model": "claude-haiku", "tier": "cheap"  }
+}
+```
+
+Two retries of an expensive call without new evidence is plenty for most workloads. Pair with `checkOrDowngrade` in the TS SDK or `check_or_downgrade` in Python — the SDK will read `suggested_action.model_route.to` from the response and switch to `secondaryModel` automatically.
+
+Full schema (`type`, `default`, `min`, `recommended_range`, `description` for each of the four knobs) is available at `GET /v1/meta` under `detector_policy.supported_fields`.
+
+---
+
+## SDK error behavior
+
+Agent Spend Guard SDKs **fail open only on transport / service-availability failures**. They do NOT fail open on:
+
+- malformed payloads (e.g. BigInt or circular reference passed to `JSON.stringify`)
+- JSON serialization errors
+- server-side validation errors (HTTP 400)
+- authentication / authorization errors (HTTP 401 / 403)
+- missing required fields
+- any other programmer error
+
+If your payload is invalid, the SDK raises — your agent should NOT silently keep going. This is intentional and was hardened in Stage 0.4.1 / 0.4.2.
+
+**Stage 0.5: structured error details.** Both SDKs now expose a `details` block on every error (TS) / structured attributes (Python) so you can write one handler and branch on a discriminator instead of importing every subclass.
+
+TypeScript:
+
+```ts
+try {
+  await guard.check(input);
+} catch (err) {
+  const d = (err as { details?: { kind?: string; retryable?: boolean } }).details;
+  if (d?.kind === "transport" || d?.kind === "http_5xx") {
+    // retry — guard was unreachable / temporarily down
+  } else if (d?.kind === "validation") {
+    // fix your payload (HTTP 400)
+  } else if (d?.kind === "http_4xx" && d.statusCode === 401) {
+    // bad / missing API key
+  } else if (d?.kind === "blocked") {
+    // SpendingGuardBlockedError — read err.result for the structured decision
+  } else {
+    throw err;
+  }
+}
+```
+
+Python:
+
+```py
+from agent_spend_guard import AgentSpendGuard, SpendingGuardError
+
+try:
+    guard.check(payload)
+except SpendingGuardError as err:
+    if err.kind in ("transport", "http_5xx"):
+        ...  # retry
+    elif err.kind == "validation":
+        ...  # HTTP 400 — fix payload
+    elif err.kind == "http_4xx" and err.status_code == 401:
+        ...  # bad / missing API key
+    elif err.kind == "blocked":
+        ...  # err.result is the structured decision
+```
+
+`err.details.retryable` (TS) / `err.retryable` (Python) is a hint: `true` for transport / 5xx / 429, `false` otherwise.
+
+---
+
 ## After 7 days
 
 Open `BETA_FEEDBACK_TEMPLATE.md`, fill it in, send it to the maintainer. Three things matter most:

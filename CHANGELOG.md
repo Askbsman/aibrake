@@ -6,6 +6,54 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.0-beta — Partner-Ready Hardening (PARTIAL — Python execution deferred)
+
+**Tag:** `spending-guard-v0.5.0-beta`
+**Goal:** remove final integration friction before real partners use the hosted beta. No new detectors, no new adapters, no dashboard. Three workstreams: discoverable `detector_policy` knobs via `/v1/meta`, structured `details` on every SDK error, and partner-facing docs around error behavior and threshold guidance.
+
+> **⚠️ Honesty disclaimer (Stage 0.5 §6).** This release is **partial**. Stage 0.5 § 6 required that the Python SDK tests be *actually executed* via local Python or Docker before tagging. The maintainer machine has no Python installed (no `python` / `python3` / `py` / `winget`), and Docker Desktop's Linux WSL distro (`docker-desktop`) refused to come online despite a multi-attempt startup (Docker GUI processes were running, but the engine pipe `//./pipe/dockerDesktopLinuxEngine` never opened and `wsl --list --verbose` continued to show the distro as `Stopped`). Per spec § 6 — "If neither can be run on the maintainer machine, do not fake it. Leave Stage 0.5 incomplete." — the Python SDK source/tests are written and committed but the criterion #3 of § 11 ("Python SDK tests are actually executed and pass") is **not met**. A partner with Python ≥ 3.9 can run `cd python && pip install -e ".[dev]" && python -m pytest` to validate them; the Stage will be re-tagged or amended once that pass is confirmed.
+
+### Added
+
+- **`/v1/meta` exposes `detector_policy.supported_fields`.** Partners can discover the four tunable knobs (`same_tool_retry_threshold`, `premium_retry_without_evidence_threshold`, `expensive_action_usd_threshold`, `require_confirmation_after_repeats`) without grepping the source. Each field carries `type` / `default` / `min` / `recommended_range` / `description`. A worked `example` block ships alongside `supported_fields` showing tighter thresholds (e.g. `same_tool_retry_threshold: 3` for expensive-per-call agents). `/v1/meta` remains discovery-only; runtime is still driven by the request's `objective.detector_policy`.
+- **TypeScript SDK: structured `details` on every error.** New `SpendingGuardErrorKind` union (`transport | validation | http_4xx | http_5xx | serialization | parse | blocked | confirmation_denied | unknown`) and `SpendingGuardErrorDetails` interface (`kind`, `statusCode`, `code`, `requestId`, `retryable`, `message`). Every SDK error subclass (`SpendingGuardBlockedError`, `SpendingGuardConfirmationDeniedError`, `SpendingGuardTransportError`, `SpendingGuardValidationError`) now exposes a `.details` block. Partners can `catch (err)` once and branch on `err.details?.kind` / `err.details?.retryable` instead of importing every subclass.
+- **Python SDK: matching structured attributes.** New `SpendingGuardError` base class with `.kind` / `.status_code` / `.retryable` / `.code`. Existing errors (`SpendingGuardTransportError`, `SpendingGuardValidationError`, `SpendingGuardBlockedError`, `SpendingGuardConfirmationDeniedError`) all subclass it. Kind constants exported at package level (`KIND_TRANSPORT`, `KIND_VALIDATION`, `KIND_HTTP_4XX`, `KIND_HTTP_5XX`, `KIND_BLOCKED`, `KIND_CONFIRMATION_DENIED`, etc.) so partners can use string-literal comparisons against typed names.
+- **Python SDK: 4xx now propagates as `SpendingGuardValidationError` instead of routing through `failure_mode` (matches TS 0.4.2).** Server-side 4xx means the guard saw the request and rejected it — propagate so the partner fixes their integration. Previously the Python SDK lumped HTTP 4xx and 5xx into the same handler. The new contract matches the TS SDK: 4xx propagates, 5xx (and network errors) wrap as `SpendingGuardTransportError` and route via `failure_mode`.
+- **PARTNER_ONBOARDING.md**: "Choosing detector_policy thresholds" section with concrete recommendations for scraper / coding / premium-routing agents; "SDK error behavior" section explaining fail-open scope.
+- **PYTHON_SDK.md, DEPLOYMENT.md**: documented `python -m pytest` smoke command + the `python -c "from agent_spend_guard import AgentSpendGuard; print('ok')"` self-check.
+
+### Changed
+
+- README banner: `Stage 0.5 Partner-Ready Beta` / `Version: 0.5.0-beta`. Tag references updated.
+- Bumped versions to `0.5.0-beta` / `0.5.0b0` across `package.json`, `src/config/env.ts`, `tests/routes.test.ts`, `tests/stage-03-hosting.test.ts`, `python/pyproject.toml`, `python/agent_spend_guard/__init__.py`, and the README banner.
+- `python/tests/test_integration.py`: `test_int_04_invalid_key_returns_401_handled_as_failure_open` renamed to `test_int_04_invalid_key_returns_401_propagates_with_http_4xx_kind`; the test now asserts `SpendingGuardValidationError` with `kind == "http_4xx"` instead of synthetic allow. Documents the Stage 0.4.2 / 0.5 contract.
+
+### Tests
+
+- New: `tests/stage-05-partner-ready-hardening.test.ts` — **14 tests** covering `/v1/meta.detector_policy.supported_fields`, `details.kind` on every error path, BigInt programmer-error propagation contract, and confirmation-denied / blocked discriminators.
+- New: `python/tests/test_stage_05_error_kinds.py` — **12 Python tests** mirroring the TS contract. Source written; **execution deferred** per the disclaimer above.
+- TS unit tests: **162 / 162** (was 148; +14). ≥ 158 target met.
+- TS typecheck: clean.
+- Audit scenarios: 14 / 14 (unchanged; Stage 0.5 has no detector changes).
+- Harness: 36 / 36 (unchanged).
+- Python: **NOT EXECUTED on maintainer machine** — see disclaimer.
+
+### Not changed (deliberately)
+
+- Fail-open semantics. Still applies only to transport / server-availability failures (Stage 0.4.1 / 0.4.2 contract preserved). Programmer errors and 4xx still propagate.
+- No new detectors, no new adapters, no dashboard, no database, no full x402, no billing.
+- `/v1/meta` is still discovery-only; runtime is still per-request.
+- No PyPI publish.
+
+### Verification
+
+- `/health`: returns `version: "0.5.0-beta"`.
+- `/v1/meta`: returns `detector_policy.supported_fields` with all four knobs + `example`.
+- TS suite: 162 / 162.
+- Python suite: **deferred — see disclaimer**.
+
+---
+
 ## 0.4.2-beta — TypeScript SDK fail-open scope hotfix
 
 **Tag:** `spending-guard-v0.4.2-beta`
