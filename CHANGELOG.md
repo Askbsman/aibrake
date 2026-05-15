@@ -6,26 +6,21 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
-## 0.5.0-beta — Partner-Ready Hardening (PARTIAL — TAG DEFERRED)
+## 0.5.0-beta — Partner-Ready Hardening
 
-**Tag:** *deferred pending Python verification — see honesty disclaimer below*
-**Commit on main:** see `git log --grep "Stage 0.5"`
+**Tag:** `spending-guard-v0.5.0-beta`
 **Goal:** remove final integration friction before real partners use the hosted beta. No new detectors, no new adapters, no dashboard. Three workstreams: discoverable `detector_policy` knobs via `/v1/meta`, structured `details` on every SDK error, and partner-facing docs around error behavior and threshold guidance.
 
-> **⚠️ Honesty disclaimer (Stage 0.5 §6 — TAG DEFERRED).** Stage 0.5 § 6 required that the Python SDK tests be *actually executed* via local Python or Docker before tagging. The maintainer machine has no Python installed (no `python` / `python3` / `py` / `winget`), and Docker Desktop's Linux WSL distro (`docker-desktop`) refused to come online despite a multi-attempt startup (Docker GUI processes were running, but the engine pipe `//./pipe/dockerDesktopLinuxEngine` never opened and `wsl --list --verbose` continued to show the distro as `Stopped`).
->
-> Per spec § 6 — "**If neither can be run on the maintainer machine, do not fake it. Leave Stage 0.5 incomplete.**" — the Python SDK source/tests are written, committed, and ready, but the criterion #3 of § 11 ("Python SDK tests are actually executed and pass") is **not met from this host**. The commit ships on `main` so the TS work is not held hostage, but **the `spending-guard-v0.5.0-beta` tag is intentionally NOT created** until Python verification lands.
->
-> **To complete Stage 0.5** on any host with Python ≥ 3.9:
-> ```bash
-> cd python
-> pip install -e ".[dev]"
-> python -m pytest
-> ```
-> Expected result: 30 tests pass (18 prior + 12 new). On success, tag with:
-> ```bash
-> git tag -a spending-guard-v0.5.0-beta -m "Stage 0.5 — partner-ready hardening (verified)"
-> ```
+### Verification — both sides green
+
+- **TypeScript:** 162 / 162 unit tests; typecheck clean.
+- **Python (Python 3.14.5 on Windows):** 35 / 35 tests — 19 `test_client.py` unit + 4 `test_integration.py` against live `:8080` + 12 new `test_stage_05_error_kinds.py`. Verification command: `cd python && py -m pip install -e ".[dev]" && py -m pytest`.
+
+### Late fix during Python verification
+
+After Python 3.14 became available on the host, `py -m pytest` surfaced two failures in `tests/test_client.py` (`test_06_check_shadow_swallows_transport_error`, `test_06b_check_shadow_swallows_timeout_error`). These tests mock `_invoke` to raise `urllib.error.URLError` / `TimeoutError` *directly*, bypassing `_invoke`'s wrap-as-`SpendingGuardTransportError` logic. The Stage 0.5 narrow-catch in `check_shadow()` only caught `SpendingGuardTransportError`, which let raw `URLError` / `TimeoutError` propagate when they should synthesize allow.
+
+Fix: broaden the narrow-catch tuple in `check_shadow` to `(SpendingGuardTransportError, urllib.error.URLError, TimeoutError, OSError)` — still explicit, still no bare `except Exception`, and explicitly matches the spec contract ("URLError / TimeoutError / OSError / SpendingGuardTransportError → synthetic allow"). Programmer errors (`TypeError`, `ValueError`, `json.JSONDecodeError`) and `SpendingGuardValidationError` (server-side 4xx) still propagate.
 
 ### Added
 
@@ -50,7 +45,7 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 - TS typecheck: clean.
 - Audit scenarios: 14 / 14 (unchanged; Stage 0.5 has no detector changes).
 - Harness: 36 / 36 (unchanged).
-- Python: **NOT EXECUTED on maintainer machine** — see disclaimer.
+- Python tests: **35 / 35** passing on Python 3.14.5 (19 unit + 4 integration + 12 Stage 0.5).
 
 ### Not changed (deliberately)
 
@@ -59,12 +54,12 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 - `/v1/meta` is still discovery-only; runtime is still per-request.
 - No PyPI publish.
 
-### Verification
+### Verification (re-stated at end)
 
 - `/health`: returns `version: "0.5.0-beta"`.
 - `/v1/meta`: returns `detector_policy.supported_fields` with all four knobs + `example`.
-- TS suite: 162 / 162.
-- Python suite: **deferred — see disclaimer**.
+- TS suite: 162 / 162; typecheck clean.
+- Python suite: 35 / 35 on Python 3.14.5 (19 unit + 4 integration vs live `:8080` + 12 Stage 0.5).
 
 ---
 

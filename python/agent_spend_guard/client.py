@@ -96,12 +96,21 @@ class AgentSpendGuard:
           - SpendingGuardValidationError        — server-side 4xx (e.g. 400/401)
           - SpendingGuardClientError            — SDK-internal configuration error
 
-        Caught and converted to synthetic allow:
-          - SpendingGuardTransportError         — network/DNS/5xx (Stage 0.5)
+        Caught and converted to synthetic allow (narrow, explicit tuple — no
+        bare `except Exception`):
+          - SpendingGuardTransportError         — wrapped network/DNS/5xx
+          - urllib.error.URLError               — host unreachable, DNS failure
+          - TimeoutError                        — request timed out
+          - OSError                             — socket reset, connection refused
         """
         try:
             return self._invoke(payload)
-        except SpendingGuardTransportError as err:
+        except (
+            SpendingGuardTransportError,
+            urllib.error.URLError,
+            TimeoutError,
+            OSError,
+        ) as err:
             return _synthesize_failure_open(err)
 
     def check_or_confirm(

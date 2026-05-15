@@ -8,3 +8,14 @@ coverage/
 .vitest/
 .tsbuildinfo
 validation-log/
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+*.dist-info/

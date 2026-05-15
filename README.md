@@ -4,18 +4,16 @@
 >
 > **PQS checks the prompt. Agent Spend Guard checks the loop.**
 
-> **Status:** Stage 0.5 Partner-Ready Beta (partial — TAG DEFERRED, see disclaimer below)
-> **Version:** `0.5.0-beta` (on `main`)
+> **Status:** Stage 0.5 Partner-Ready Beta
+> **Version:** `0.5.0-beta`
 > **Base:** `spending-guard-v0.4.2-beta`
-> **Tag:** *deferred pending Python verification — run `python -m pytest` to validate, then tag manually*
+> **Tag:** `spending-guard-v0.5.0-beta`
 > **Primary value:** loop detection + model stop-loss for paid AI agents
 > **Mode:** hosted beta / shadow-first
-> **Tests:** 162 TS unit + 14 audit + 36 harness actions; 30 Python unit *written* (execution deferred — see CHANGELOG § 0.5)
+> **Tests:** 162 TS unit + 14 audit + 36 harness actions; **35 Python tests passing** (19 unit + 4 integration + 12 Stage 0.5) on Python 3.14
 > **SDKs:** TypeScript (`spending-guard`) + Python (`python/agent_spend_guard`)
 > **Next step:** real partner integration → 7 days of logs → useful-warning review → pricing/x402 decision (see [`INTEGRATION_GUIDE.md`](./INTEGRATION_GUIDE.md), [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md), [`PYTHON_SDK.md`](./PYTHON_SDK.md), [`CODING_AGENT_ADAPTER.md`](./CODING_AGENT_ADAPTER.md), [`DEPLOYMENT.md`](./DEPLOYMENT.md))
 > **npm package name:** `spending-guard` (historical; product brand is "Agent Spend Guard" — see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
->
-> **⚠️ Stage 0.5 disclaimer (per spec § 6):** the maintainer machine has no Python and Docker Desktop's WSL distro refused to come online, so the Python SDK tests were *written* and *committed* but **not executed**. Run `cd python && pip install -e ".[dev]" && python -m pytest` on any host with Python ≥ 3.9 to validate. TS side is fully verified (162/162 + typecheck clean).
 
 Spending Guard is a provider-agnostic, x402-ready pre-flight judgment middleware for expensive AI agent actions. It checks paid LLM calls, tool retries, model escalations and objective drift **before** execution and tells the operator whether to allow, warn, ask for confirmation, downgrade, delay or block.
 

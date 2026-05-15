@@ -558,7 +558,7 @@ Note: Python 0.4.1 did not introduce a `ValidationError` class because the Pytho
 
 ---
 
-## 18. Stage 0.5 Partner-Ready Hardening (partial — Python execution deferred)
+## 18. Stage 0.5 Partner-Ready Hardening
 
 **Refers to:** `AGENT_SPEND_GUARD_STAGE_0_5_PARTNER_READY_HARDENING_SPEC.md` (the Stage 0.5 build spec).
 
@@ -580,10 +580,10 @@ Note: Python 0.4.1 did not introduce a `ValidationError` class because the Pytho
 - Python SDK: new `SpendingGuardError` base class with `.kind`, `.status_code`, `.retryable`, `.code`. All subclasses inherit from it. Kind constants exported at package level.
 - Python SDK: 4xx now propagates as `SpendingGuardValidationError` instead of routing through `failure_mode`. This brings Python in line with TS 0.4.2 — both SDKs now have the same observable contract for 4xx vs 5xx vs network.
 - 14 new TS tests in `tests/stage-05-partner-ready-hardening.test.ts`. Suite now **162 / 162** (was 148, target ≥158).
-- 12 new Python tests in `python/tests/test_stage_05_error_kinds.py`. Source written and committed; **execution deferred — see § 18.1 below.**
+- 12 new Python tests in `python/tests/test_stage_05_error_kinds.py`. Python suite now **35 / 35** on Python 3.14.5 (19 `test_client.py` unit + 4 `test_integration.py` against live `:8080` + 12 Stage 0.5).
 - Docs: README banner updated, `PARTNER_ONBOARDING.md` gained "Choosing detector_policy thresholds" + "SDK error behavior" sections, `PYTHON_SDK.md` / `DEPLOYMENT.md` got the smoke command (`python -m pytest` + `python -c "from agent_spend_guard import AgentSpendGuard; print('ok')"`).
 
-### 18.1 The "do not fake it" path — Stage 0.5 § 6
+### 18.1 The "do not fake it" path — Stage 0.5 § 6 (resolved)
 
 **Spec § 6 verbatim:**
 
@@ -593,26 +593,20 @@ Note: Python 0.4.1 did not introduce a `ValidationError` class because the Pytho
 >
 > If neither can be run on the maintainer machine, do not fake it. Leave Stage 0.5 incomplete.
 
-**What happened on this maintainer machine (2026-05-15):**
+**Timeline:**
 
-1. **Local Python: not available.** No `python`, no `python3`, no `py`, no Anaconda / Conda. PowerShell `Get-Command` returned nothing for all three names. The Windows Store stub at `%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe` was absent. `winget` was also absent — no easy installer path. Git Bash's `/usr/bin/python*` empty. No path forward without admin-level install.
-2. **Docker: daemon would not come online.** Docker Desktop's process tree was running (`Docker Desktop.exe`, `com.docker.backend` × 2, `vmcompute`), but `docker info` and `docker version` hung indefinitely on `//./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified`. `wsl --list --verbose` showed `docker-desktop  Stopped  2` throughout. Manual `wsl -d docker-desktop -e echo wsl-ok` did wake that distro briefly but the engine pipe still never opened. Total wait budget invested before declaring blocked: **~7 minutes from `Start-Process`** plus a background poller that ran for the remainder of the session (60 probes × 10s = 10 min).
+1. **Initial attempt — both paths blocked.** At first pass on this maintainer machine, no Python was installed (no `python`/`python3`/`py`/`winget` on PATH) and Docker Desktop's WSL distro `docker-desktop` refused to come online despite a multi-attempt startup (Docker GUI processes were running but `//./pipe/dockerDesktopLinuxEngine` never opened and `wsl --list --verbose` continued reporting the distro as `Stopped`). Per spec § 6 the work was committed on `main` with the tag deferred.
+2. **Python 3.14.5 installed by the user.** Located at `%LOCALAPPDATA%\Programs\Python\Python314\python.exe`.
+3. **`py -m pytest` surfaced 2 failures** in `test_client.py`: `test_06_check_shadow_swallows_transport_error` and `test_06b_check_shadow_swallows_timeout_error`. Both mock `_invoke` to raise `urllib.error.URLError` / `TimeoutError` *directly* — bypassing `_invoke`'s wrap-as-`SpendingGuardTransportError` logic. The Stage 0.5 narrow-catch in `check_shadow()` (`except SpendingGuardTransportError`) let these propagate when they should synthesize allow.
+4. **Fix landed in `client.py`:** broaden the narrow-catch tuple to `(SpendingGuardTransportError, urllib.error.URLError, TimeoutError, OSError)` — still explicit, no bare `except Exception`. Matches the spec contract: "URLError / TimeoutError / OSError / SpendingGuardTransportError → synthetic allow." Programmer errors and `SpendingGuardValidationError` still propagate.
+5. **Final result:** **35 / 35** Python tests pass on Python 3.14.5 — 19 `test_client.py` unit + 4 `test_integration.py` (against live `:8080` `0.5.0-beta`) + 12 `test_stage_05_error_kinds.py`. Acceptance criterion #3 of § 11 met. Tag `spending-guard-v0.5.0-beta` created.
 
-**Decision:** per spec § 6, do not fake execution. The Python source is correct (mirrors the TS contract pinned by the new TS tests) and is committed. Stage 0.5 ships **partial** — TS verified, Python source written and committed but **not executed**. Acceptance criterion #3 of § 11 ("Python SDK tests are actually executed and pass") is **not met**.
-
-**For a partner or future maintainer with Python ≥ 3.9 (or a working Docker daemon):**
+**Reproduction:**
 
 ```bash
-# Option A — local Python
 cd python
-pip install -e ".[dev]"
-python -m pytest
-
-# Option B — Docker
-docker build -f python/Dockerfile.test -t asg-python-test python/
-docker run --rm asg-python-test
+py -m pip install -e ".[dev]"      # or python -m pip on Linux/macOS
+py -m pytest                       # 35 passed in ~25s
 ```
 
-Expected pass count once executed: 18 prior tests + 12 new = **30 Python tests**. If any fail, the tag can be amended (`git tag -d spending-guard-v0.5.0-beta && git tag …`) or a `v0.5.1-beta` follow-up shipped with the fix.
-
-**Why ship partial rather than not at all:** the TS work is independently valuable (discoverable `/v1/meta`, structured error `details`, partner doc updates, 14 new tests, version coherence). Holding it back from `main` because one local-environment constraint blocked Python execution would freeze the project on a setup detail rather than a product problem. The disclaimer in the README banner, the CHANGELOG entry, and this section make the gap impossible to miss; nothing is being misrepresented.
+**Why the bug existed:** the Stage 0.5 narrow-catch was correct for the *real* code path (`_invoke` wraps `URLError`/`TimeoutError`/`OSError` into `SpendingGuardTransportError` before they escape) but the mock-based tests in `test_06` / `test_06b` patch `_invoke` itself to raise the raw exception. Both tests pre-dated Stage 0.5 — the original 0.4.1 `check_shadow` caught the raw transport classes directly, which is why these tests existed in that shape. When 0.5 added the `SpendingGuardTransportError` discriminator, the narrow-catch was tightened too far. The fix restores the historical (correct) behavior alongside the new typed class.
