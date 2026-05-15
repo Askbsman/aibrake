@@ -6,12 +6,26 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
-## 0.5.0-beta — Partner-Ready Hardening (PARTIAL — Python execution deferred)
+## 0.5.0-beta — Partner-Ready Hardening (PARTIAL — TAG DEFERRED)
 
-**Tag:** `spending-guard-v0.5.0-beta`
+**Tag:** *deferred pending Python verification — see honesty disclaimer below*
+**Commit on main:** see `git log --grep "Stage 0.5"`
 **Goal:** remove final integration friction before real partners use the hosted beta. No new detectors, no new adapters, no dashboard. Three workstreams: discoverable `detector_policy` knobs via `/v1/meta`, structured `details` on every SDK error, and partner-facing docs around error behavior and threshold guidance.
 
-> **⚠️ Honesty disclaimer (Stage 0.5 §6).** This release is **partial**. Stage 0.5 § 6 required that the Python SDK tests be *actually executed* via local Python or Docker before tagging. The maintainer machine has no Python installed (no `python` / `python3` / `py` / `winget`), and Docker Desktop's Linux WSL distro (`docker-desktop`) refused to come online despite a multi-attempt startup (Docker GUI processes were running, but the engine pipe `//./pipe/dockerDesktopLinuxEngine` never opened and `wsl --list --verbose` continued to show the distro as `Stopped`). Per spec § 6 — "If neither can be run on the maintainer machine, do not fake it. Leave Stage 0.5 incomplete." — the Python SDK source/tests are written and committed but the criterion #3 of § 11 ("Python SDK tests are actually executed and pass") is **not met**. A partner with Python ≥ 3.9 can run `cd python && pip install -e ".[dev]" && python -m pytest` to validate them; the Stage will be re-tagged or amended once that pass is confirmed.
+> **⚠️ Honesty disclaimer (Stage 0.5 §6 — TAG DEFERRED).** Stage 0.5 § 6 required that the Python SDK tests be *actually executed* via local Python or Docker before tagging. The maintainer machine has no Python installed (no `python` / `python3` / `py` / `winget`), and Docker Desktop's Linux WSL distro (`docker-desktop`) refused to come online despite a multi-attempt startup (Docker GUI processes were running, but the engine pipe `//./pipe/dockerDesktopLinuxEngine` never opened and `wsl --list --verbose` continued to show the distro as `Stopped`).
+>
+> Per spec § 6 — "**If neither can be run on the maintainer machine, do not fake it. Leave Stage 0.5 incomplete.**" — the Python SDK source/tests are written, committed, and ready, but the criterion #3 of § 11 ("Python SDK tests are actually executed and pass") is **not met from this host**. The commit ships on `main` so the TS work is not held hostage, but **the `spending-guard-v0.5.0-beta` tag is intentionally NOT created** until Python verification lands.
+>
+> **To complete Stage 0.5** on any host with Python ≥ 3.9:
+> ```bash
+> cd python
+> pip install -e ".[dev]"
+> python -m pytest
+> ```
+> Expected result: 30 tests pass (18 prior + 12 new). On success, tag with:
+> ```bash
+> git tag -a spending-guard-v0.5.0-beta -m "Stage 0.5 — partner-ready hardening (verified)"
+> ```
 
 ### Added
 

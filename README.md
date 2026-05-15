@@ -4,10 +4,10 @@
 >
 > **PQS checks the prompt. Agent Spend Guard checks the loop.**
 
-> **Status:** Stage 0.5 Partner-Ready Beta (partial — see disclaimer below)
-> **Version:** `0.5.0-beta`
+> **Status:** Stage 0.5 Partner-Ready Beta (partial — TAG DEFERRED, see disclaimer below)
+> **Version:** `0.5.0-beta` (on `main`)
 > **Base:** `spending-guard-v0.4.2-beta`
-> **Tag:** `spending-guard-v0.5.0-beta`
+> **Tag:** *deferred pending Python verification — run `python -m pytest` to validate, then tag manually*
 > **Primary value:** loop detection + model stop-loss for paid AI agents
 > **Mode:** hosted beta / shadow-first
 > **Tests:** 162 TS unit + 14 audit + 36 harness actions; 30 Python unit *written* (execution deferred — see CHANGELOG § 0.5)
