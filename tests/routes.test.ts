@@ -25,7 +25,7 @@ describe("HTTP routes", () => {
     expect(body.ok).toBe(true);
     // Stage 0.3: branded as "agent-spend-guard" via env config default.
     expect(body.service).toBe("agent-spend-guard");
-    expect(body.version).toBe("0.3.0-beta");
+    expect(body.version).toBe("0.3.1-beta");
     expect(body.mode).toBe("hosted-beta");
   });
 

@@ -4,12 +4,12 @@
 >
 > **PQS checks the prompt. Agent Spend Guard checks the loop.**
 
-> **Status:** Stage 0.3 Hosted Beta Candidate
-> **Base:** `spending-guard-v0.2.0-rc` (audit-frozen point)
-> **Tag:** `spending-guard-v0.3.0-beta`
+> **Status:** Stage 0.3.1 Pre-Partner Calibration (Hosted Beta Candidate)
+> **Base:** `spending-guard-v0.3.0-beta`
+> **Tag:** `spending-guard-v0.3.1-beta`
 > **Primary value:** loop detection + structured `primary → secondary` model stop-loss for paid AI agents
 > **Mode:** shadow-first
-> **Tests:** 123 unit + 14 audit scenarios + 36 harness actions — all passing
+> **Tests:** 129 unit + 14 audit scenarios + 36 harness actions — all passing
 > **Next step:** hosted beta with first users — see [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md) and [`DEPLOYMENT.md`](./DEPLOYMENT.md)
 > **npm package name:** `spending-guard` (historical; product brand is "Agent Spend Guard" — see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
 

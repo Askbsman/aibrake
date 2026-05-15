@@ -6,6 +6,40 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.3.1-beta — Pre-Partner Calibration
+
+**Tag:** `spending-guard-v0.3.1-beta`
+**Goal:** fix the two real defects surfaced by the simulated 3-partner validation run before sending the build to a real partner. Three small fixes; no new features, no new detectors, no new SDK / adapter / dashboard work.
+
+### Fixed
+
+- **Cold-start false-positive in `model_escalation_without_evidence`** (Partner A reproduction). On attempt #1 of any workflow with no prior history — `same_failure_count: 0`, `paid_attempts_on_same_failure: 0`, `same_action_count: 0` — but `new_evidence_since_last_attempt: false`, the detector used to fire with `decision: uncertain` and a `downgrade_model` suggestion. Operators following PARTNER_ONBOARDING.md were natural to set `new_evidence: false` on first call (their mental model: "I haven't gathered evidence yet"); the `OpenClawAdapter` correctly sets `null` for cold starts but hand-rolled clients tripped this. Fix: gate the `no_new_evidence` rule on `(same_failure_count ≥ 1) OR (paid_attempts_on_same_failure ≥ 1) OR (same_action_count ≥ 1)`. Cold start now returns `decision: allow` / `pattern: none`.
+- **`looksExpensive` cost-only branch removed.** A $0.50 paid scrape with `model: "browser-v1"` (Anchor scraper, not an LLM) used to register as expensive purely on cost. Model-escalation semantics imply a model is being escalated; cost alone is not enough. The detector now requires at least one of: `model_role: "primary"`, `model_tier: "premium"`, `model_policy.primaryModel` matching the action, or a model-name regex hit. Operators with non-LLM expensive actions (paid scrapes, paid browser sessions) are now correctly NOT flagged by this detector — `same_tool_retry_loop` is the right detector for those, and it remains unchanged.
+- **`allow + downgrade_model` dissonance in `model_escalation_without_evidence`** (Partner B reproduction). Operators without `objective.model_policy` declared used to receive `decision: allow` and `suggested_action.type: downgrade_model` in the same response, because coverage_ratio ran at 4/5 → confidence 0.60 → below the warn-band threshold of 0.70. Fix: drop `objective.model_policy` from the detector's `recommendedFields` (now 4 fields). Both with-policy and without-policy callers hit coverage 1.0 → confidence 0.75 → decision `warn` at score 25+. Operators who declare `model_policy` still receive the structured `model_route.to` in the response — that is the real benefit of declaring, not a confidence bonus. Same class of fix as the v0.1.2 `same_tool_retry_loop` calibration (0.65 → 0.70 baseConfidence).
+
+### Changed
+
+- `PARTNER_ONBOARDING.md` rewritten with three top-level "Pick your path" tiles: **Coding-agent operator** (canonical retry-storm demo), **Scraper / research-agent operator** (scraper-loop demo), **Primary/secondary model operator** (premium-model-loop demo). Each tile names the canonical demo command, the pain it addresses, the detector that will fire, the sample payload path, and the minimal telemetry shape. Partner A and Partner C both reported in simulated validation that the docs leaned coding-agent and they had to spelunk for the right shape; this fixes that without code changes.
+- Bumped `package.json` `version` and env `serviceVersion` to `0.3.1-beta`. `/health` now reports `version: "0.3.1-beta"`.
+- `IMPLEMENTATION_NOTES.md § 11` extended with the `recommendedFields` calibration entry alongside the existing baseConfidence drift entries.
+
+### Tests
+
+- Added `tests/stage-03-1-calibration.test.ts` with 6 regression tests pinning the two fixes:
+  - 01–04 reproduce Partner A's cold-start case and assert clean allow/none.
+  - 05–06 reproduce Partner B's dissonance and assert no `allow + downgrade-class suggestion` response can be emitted.
+- Total tests: **129** (was 123). All pass. Existing 14 audit scenarios and 36 harness actions unchanged.
+
+### Not changed (deliberately)
+
+- No new detectors.
+- No SDK changes.
+- No new adapters.
+- No dashboard, no DB, no billing, no x402 publishing.
+- `validation-log/` partner feedback files are gitignored — produced by the simulated 3-partner stress test that surfaced these fixes.
+
+---
+
 ## 0.3.0-beta — Hosted Beta Candidate
 
 **Tag:** `spending-guard-v0.3.0-beta`

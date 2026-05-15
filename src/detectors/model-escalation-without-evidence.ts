@@ -53,8 +53,12 @@ function looksExpensive(
   if (matchesConfiguredPrimary(action, policy)) {
     return { expensive: true, reasonTag: "policy" };
   }
-  // 3. Fallback: regex + cost heuristic (existing 0.1.x behavior).
-  if (action.estimated_cost.amount >= 0.1) return { expensive: true, reasonTag: "heuristic" };
+  // 3. Regex on a known premium-model name. Stage 0.3.1: cost alone is no
+  //    longer enough to qualify as "model escalation" — Partner A surfaced a
+  //    false positive when a $0.50 paid scrape (no model at all) tripped the
+  //    detector. Operators with an LLM call should either provide a model name
+  //    matching one of the regex patterns, declare model_tier: "premium" /
+  //    model_role: "primary", or supply objective.model_policy.primaryModel.
   if (!action.model) return { expensive: false, reasonTag: "none" };
   if (EXPENSIVE_MODEL_PATTERNS.some((re) => re.test(action.model!))) {
     return { expensive: true, reasonTag: "heuristic" };
@@ -66,17 +70,24 @@ export const modelEscalationWithoutEvidenceDetector: DetectorDefinition = {
   name: NAME,
   version: VERSION,
   baseConfidence: 0.75,
-  // Five recommended fields. Operators on 0.1.x (no model_policy) hit 4/5
-  // coverage → confidence ~0.60 → soft signal preserved (same as old 0.1.x
-  // behavior). Operators on 0.2-minimal who declare model_policy hit 5/5 →
-  // confidence ~0.75 → warn at score 25+, matching the calibrated philosophy
-  // "allow by default, warn when suspicious."
+  // Stage 0.3.1 calibration: 4 recommended fields (dropped objective.model_policy).
+  //
+  // Why: with 5 fields, operators who did NOT declare model_policy hit
+  // coverage 4/5 = 0.80 → confidence 0.60 → at score 25 (warn band threshold
+  // is conf >= 0.70) → decision: allow, but suggested_action: downgrade.
+  // Partner B in simulated validation flagged this dissonance: response says
+  // "feel free to proceed" while suggesting a model downgrade in the same
+  // payload. Dropping model_policy from recommended fields makes coverage
+  // ~1.0 for both shapes (with/without policy), confidence 0.75, decision
+  // warn — aligned with the calibrated philosophy "warn when suspicious".
+  //
+  // Operators who declare model_policy still get the structured model_route
+  // in suggested_action — that is the actual reward, not a confidence bonus.
   recommendedFields: [
     "next_action.model",
     "next_action.estimated_cost",
     "history.same_failure_count",
     "history.new_evidence_since_last_attempt",
-    "objective.model_policy",
   ],
   evaluate(input: SpendingGuardCheckInput): DetectorResult | null {
     const h = input.history;
@@ -92,7 +103,17 @@ export const modelEscalationWithoutEvidenceDetector: DetectorDefinition = {
       matched.push("same_failure_repeated");
       score += 10;
     }
-    if (h.new_evidence_since_last_attempt === false) {
+    // Stage 0.3.1: gate the "no new evidence" penalty on the existence of
+    // some history. Partner A surfaced the cold-start false positive: a
+    // first-call request with no prior attempts at all (same_failure_count=0,
+    // paid_attempts_on_same_failure=0, same_action_count=0) but
+    // new_evidence_since_last_attempt=false should not be punished — there's
+    // no previous attempt to have gathered evidence between.
+    const hasHistoryOfAttempts =
+      (h.same_failure_count ?? 0) >= 1 ||
+      (h.paid_attempts_on_same_failure ?? 0) >= 1 ||
+      (h.same_action_count ?? 0) >= 1;
+    if (hasHistoryOfAttempts && h.new_evidence_since_last_attempt === false) {
       matched.push("no_new_evidence");
       score += 15;
     }

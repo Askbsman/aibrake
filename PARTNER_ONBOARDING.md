@@ -4,6 +4,46 @@ Welcome. You are one of 2–3 first partners trying Agent Spend Guard against a 
 
 ---
 
+## Pick your path
+
+Agent Spend Guard is **one product**, but the canonical demo and payload shape that will resonate fastest depend on what your agent actually does. Pick the tile that matches your stack — read that section first, the others are reference.
+
+### 🛠️  Coding-agent operator
+
+> *You run paid LLM calls inside a coding agent — Claude Code, Cursor, Codex, a custom wrapper.*
+
+- **Canonical demo:** `npm run demo:retry-storm` (in `openclaw-harness/`)
+- **Your pain:** the agent keeps making expensive LLM calls on the same failing build / test / lint error without refreshing context. ~$30+ /day burned on doomed retries.
+- **Detector you'll see most:** `stale_context_retry_storm` once `same_failure_count >= 3` and `new_evidence_since_last_attempt: false`.
+- **Sample payload:** [`examples/payloads/retry-storm.json`](./examples/payloads/retry-storm.json)
+- **Telemetry shape:** `failure_signal_present: true`, `failure_signal_type: "build_error" | "test_failure" | "command_error"`, `failure_fingerprint`, `same_failure_count`, `paid_attempts_on_same_failure`, `new_evidence_since_last_attempt`, `evidence_kind: "code"`, `evidence_signals.{files_read_since_last_attempt, tests_run_since_last_attempt, git_diff_changed_since_last_attempt}`.
+
+### 🌐  Scraper / research-agent operator
+
+> *You run paid web scrapers / search APIs / browser agents — Anchor, Browserbase, Exa, Firecrawl, Hyperbrowser, custom.*
+
+- **Canonical demo:** `npm run demo:scraper-loop` (in `openclaw-harness/`)
+- **Your pain:** the agent keeps hitting the same paid endpoint / running the same paid search with unchanged results. No deterministic failure, but cost adds up — $5–$50 /day per stuck agent.
+- **Detector you'll see most:** `same_tool_retry_loop` once `same_action_count >= 6` and `tool_results_changed_since_last_attempt: false`.
+- **Sample payload:** [`examples/payloads/scraper-loop.json`](./examples/payloads/scraper-loop.json)
+- **Telemetry shape:** `failure_signal_present: false` (no error — the API answered, results just didn't help), `same_action_count`, `evidence_kind: "web" | "api"`, `evidence_signals.tool_results_changed_since_last_attempt`. **You do NOT need to send `failure_fingerprint` or `same_failure_count`.**
+- **Critical note for Stage 0.3.1:** on your first paid call, set `new_evidence_since_last_attempt: null` (not `false`). `false` means "I had a chance to gather evidence and didn't" — on attempt #1 there has been no chance. Sending `false` from attempt #1 used to false-trigger in 0.3.0; fixed in 0.3.1.
+
+### ⚡  Primary / secondary model operator
+
+> *You run a multi-model agent — primary expensive (GPT-4 / Claude Opus / Claude 4.x), secondary cheap (GPT-3.5 / Haiku / Sonnet). LangChain, AutoGen, CrewAI, custom orchestrator.*
+
+- **Canonical demo:** `npm run demo:premium-model-loop` (in `openclaw-harness/`)
+- **Your pain:** the agent keeps retrying the expensive primary model when it could switch to the secondary for summary / audit / cheaper continuation. $50–$200 /day burnt per stuck objective.
+- **Detector you'll see most:** `model_escalation_without_evidence` once `same_failure_count >= 3` with a primary model declared. Returns a structured `suggested_action.model_route.to` so the SDK auto-routes via `checkOrDowngrade`.
+- **Sample payload:** [`examples/payloads/premium-model-loop.json`](./examples/payloads/premium-model-loop.json)
+- **Telemetry shape:** declare `objective.model_policy.primaryModel` and `secondaryModel` (and optionally `auditModel`) on every call. Set `next_action.model_role: "primary"` and `model_tier: "premium"` on the primary calls. The detector reads either signal to identify "this is a primary call."
+- **Promotion path:** start with `guard.checkShadow()`; after a week of clean logs, switch to `guard.checkOrDowngrade({ downgradeTo: { provider, model } })` — the SDK reads `model_route.to` from the response and auto-applies the operator's configured secondary.
+
+> **If you do not fit any of the three:** send the maintainer your workflow description. The Core schema is universal (`evidence_kind` is a free field); the canonical demos are starting points, not constraints.
+
+---
+
 ## What Agent Spend Guard does
 
 Pre-flight check for paid AI agent actions. Detects loops, stale-context retries, model escalation without evidence, and objective drift **before** the next expensive call.
