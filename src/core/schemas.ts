@@ -18,6 +18,40 @@ const objectiveBudgetSchema = z.object({
   hard_limit: z.boolean().optional(),
 });
 
+const modelRoleSchema = z.enum([
+  "primary",
+  "secondary",
+  "fallback",
+  "audit",
+  "unknown",
+]);
+
+const modelTierSchema = z.enum([
+  "premium",
+  "standard",
+  "cheap",
+  "free",
+  "unknown",
+]);
+
+const modelRefSchema = z
+  .object({
+    provider: z.string().optional(),
+    model: z.string().optional(),
+    role: modelRoleSchema.optional(),
+    tier: modelTierSchema.optional(),
+  })
+  .strict();
+
+const modelPolicySchema = z
+  .object({
+    primaryModel: modelRefSchema.optional(),
+    secondaryModel: modelRefSchema.optional(),
+    auditModel: modelRefSchema.optional(),
+    maxPremiumRetriesWithoutEvidence: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
 const objectiveSchema = z
   .object({
     id: z.string().optional(),
@@ -27,6 +61,7 @@ const objectiveSchema = z
     max_paid_attempts: z.number().int().positive().optional(),
     allowed_actions: z.array(z.string()).optional(),
     blocked_actions: z.array(z.string()).optional(),
+    model_policy: modelPolicySchema.optional(),
   })
   .strict();
 
@@ -39,6 +74,8 @@ const nextActionSchema = z
     estimated_cost: moneyAmountSchema,
     reason: z.string().optional(),
     fingerprint: z.string().optional(),
+    model_role: modelRoleSchema.optional(),
+    model_tier: modelTierSchema.optional(),
   })
   .strict();
 

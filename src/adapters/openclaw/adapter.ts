@@ -163,6 +163,8 @@ export class OpenClawAdapter {
         estimated_cost: { amount: cost, currency: "USD" },
         ...(nextAction.reason !== undefined ? { reason: nextAction.reason } : {}),
         fingerprint: actionFingerprintNext,
+        ...(nextAction.modelRole !== undefined ? { model_role: nextAction.modelRole } : {}),
+        ...(nextAction.modelTier !== undefined ? { model_tier: nextAction.modelTier } : {}),
       },
       history: {
         attempt_number: sameActionCount + 1,
@@ -217,6 +219,9 @@ export class OpenClawAdapter {
           : {}),
         ...(options.objective.blockedActions !== undefined
           ? { blocked_actions: options.objective.blockedActions }
+          : {}),
+        ...(options.objective.modelPolicy !== undefined
+          ? { model_policy: options.objective.modelPolicy }
           : {}),
       };
     }

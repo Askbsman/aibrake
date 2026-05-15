@@ -54,6 +54,38 @@ export type FailureSignalType =
 
 export type TelemetryCompleteness = "high" | "medium" | "low" | "unknown";
 
+// Stage 0.2-minimal additions: model role / tier / policy. All optional;
+// existing 0.1.x callers do not need to set them. When set, model_policy
+// gives the escalation detector a structured target to recommend switching
+// to (instead of a regex-based heuristic).
+
+export type ModelRole = "primary" | "secondary" | "fallback" | "audit" | "unknown";
+
+export type ModelTier = "premium" | "standard" | "cheap" | "free" | "unknown";
+
+export interface ModelRef {
+  provider?: string;
+  model?: string;
+  role?: ModelRole;
+  tier?: ModelTier;
+}
+
+export interface ModelPolicy {
+  primaryModel?: ModelRef;
+  secondaryModel?: ModelRef;
+  auditModel?: ModelRef;
+  // Soft hint only — never produces a hard block in 0.2-minimal. The detector
+  // may use this to escalate decision from `warn` to `require_confirmation`
+  // but will not emit `block`. Hard limits live in `objective.budget`.
+  maxPremiumRetriesWithoutEvidence?: number;
+}
+
+export interface ModelRoute {
+  from?: ModelRef;
+  to?: ModelRef;
+  reason?: string;
+}
+
 export type EvidenceSignalValue =
   | string
   | number
@@ -91,6 +123,8 @@ export interface Objective {
   max_paid_attempts?: number;
   allowed_actions?: string[];
   blocked_actions?: string[];
+  // Stage 0.2-minimal: optional model-routing policy.
+  model_policy?: ModelPolicy;
 }
 
 export interface NextAction {
@@ -101,6 +135,11 @@ export interface NextAction {
   estimated_cost: MoneyAmount;
   reason?: string;
   fingerprint?: string;
+  // Stage 0.2-minimal: optional explicit role/tier. When `model_role` or
+  // `model_tier` indicate premium/primary, the escalation detector treats
+  // the action as expensive regardless of the regex heuristic.
+  model_role?: ModelRole;
+  model_tier?: ModelTier;
 }
 
 export interface History {
@@ -143,6 +182,10 @@ export interface SpendingGuardCheckInput {
 export interface SuggestedAction {
   type: string;
   message: string;
+  // Stage 0.2-minimal: optional structured route when the suggested action is
+  // a model switch / downgrade. The SDK helper `checkOrDowngrade` prefers
+  // `model_route.to` over its static `downgradeTo` option when present.
+  model_route?: ModelRoute;
 }
 
 export interface DetectorResult {

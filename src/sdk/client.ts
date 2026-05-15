@@ -126,9 +126,20 @@ export class SpendingGuard {
       case "require_confirmation": {
         const isModelEscalation =
           result.pattern === "model_escalation_without_evidence" ||
-          result.recommended_policy === "downgrade";
+          result.recommended_policy === "downgrade" ||
+          result.suggested_action.type === "switch_model";
         if (isModelEscalation) {
-          const downgraded = applyDowngrade(input.next_action, options.downgradeTo);
+          // Stage 0.2-minimal: prefer the structured model_route.to from the
+          // guard response over the operator's static downgradeTo. The route
+          // comes from the operator's own model_policy.secondaryModel, so it
+          // is more authoritative than the local SDK fallback.
+          const routeTo = result.suggested_action.model_route?.to;
+          const target = {
+            provider: routeTo?.provider ?? options.downgradeTo.provider,
+            model: routeTo?.model ?? options.downgradeTo.model,
+            estimatedCost: options.downgradeTo.estimatedCost,
+          };
+          const downgraded = applyDowngrade(input.next_action, target);
           await options.onDowngrade?.(result, downgraded);
           return { action: downgraded, result };
         }

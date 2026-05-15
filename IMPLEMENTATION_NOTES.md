@@ -177,3 +177,60 @@ All other detector base confidences match the spec table:
 | `explicit_blocked_action` (sub-case of `objective_drift`) | n/a — handled via `deterministicDecision: "block"` rather than confidence |
 
 If a future patch re-pins these values to match the spec table exactly, both Demo 02 (audit) and the `objective_drift` warn-case test will need new thresholds to keep their current decisions.
+
+---
+
+## 12. Stage 0.2-minimal — Premium model awareness without a new detector
+
+**Refers to:** `STAGE_0_2_PREMIUM_MODEL_STOPLOSS_SPEC.md` (full Stage 0.2 design); this section records the scoped-down implementation actually shipped on top of v0.1.2 RC.
+
+**Decision:** the full Stage 0.2 spec proposed a new `premium_model_loop` detector plus six new `history` counters, two new hard-block paths, two new suggested-action types, and a new `cross_model_audit` recommended_policy value. Architectural review (see ADR commentary in the build log) concluded that ~80% of the partner-visible value comes from:
+
+1. Operator can declare `objective.model_policy.primaryModel` and `secondaryModel`.
+2. The existing `model_escalation_without_evidence` detector reads that policy and uses it as the strongest "expensive" signal (stronger than the regex heuristic).
+3. When `secondaryModel` is declared, the suggested action ships a structured `model_route.to` instead of free-text "downgrade somehow."
+4. `SpendingGuard.checkOrDowngrade()` prefers `model_route.to` over its static `downgradeTo` option.
+
+This is what 0.2-minimal ships. Nothing else from the full spec was added.
+
+**Explicitly NOT added in 0.2-minimal:**
+
+| Full spec | Status here |
+| --- | :---: |
+| New `premium_model_loop` detector | not added — existing `model_escalation_without_evidence` extended |
+| 6 new history counters (`premium_attempts_*`, `last_*_at_attempt`) | not added — existing `same_failure_count` + `evidence_signals` are sufficient |
+| New hard-block path via `requireEvidenceBeforePremiumRetry` | not added — would creep the deterministic-block surface; budget caps remain the only hard-block class |
+| New hard-block path via `maxPremiumSpendOnObjectiveUsd` | not added — same reason; existing `objective.budget.hard_limit` covers this |
+| `model_cost_class` field | not added — duplicates `model_tier`, dropped to keep schema small |
+| `cross_model_audit` as a `recommended_policy` value | not added — existing `run_deep_check` covers the policy; `cross_model_audit` may be a future `suggested_action.type` |
+| Cross-model audit prompt template (docs/examples) | not added — operator-side concern, ship when a partner asks |
+
+**Schema additions actually made (all optional, fully backward-compatible):**
+
+```ts
+type ModelRole = "primary" | "secondary" | "fallback" | "audit" | "unknown";
+type ModelTier = "premium" | "standard" | "cheap" | "free" | "unknown";
+
+interface ModelRef    { provider?, model?, role?: ModelRole, tier?: ModelTier }
+interface ModelPolicy { primaryModel?, secondaryModel?, auditModel?, maxPremiumRetriesWithoutEvidence? }
+interface ModelRoute  { from?: ModelRef, to?: ModelRef, reason?: string }
+
+NextAction      += { model_role?, model_tier? }
+Objective       += { model_policy? }
+SuggestedAction += { model_route? }
+```
+
+**Backward-compatibility guarantees:**
+
+- Existing 96 unit tests pass unchanged.
+- Existing 14 audit scenarios pass unchanged.
+- `withCodingFailure()` fixture (no model_policy) still triggers escalation via the regex heuristic.
+- Operators on v0.1.2 callers do not need to send any new field.
+
+**When the full Stage 0.2 spec should land instead:**
+
+- If a partner reports they need to track `premium_attempts_without_evidence` *separately* from `same_failure_count` (e.g., because they want to allow expensive retries on different failures but block them on the same one).
+- If a partner asks for a hard block on premium retries that is independent of budget.
+- If decision logs from shadow-mode integrations show that `model_escalation_without_evidence` is too coarse (e.g., conflates legitimate model upgrades with stuck loops).
+
+Until any of those signals arrive from a real integration, 0.2-minimal is the correct shipped surface.
