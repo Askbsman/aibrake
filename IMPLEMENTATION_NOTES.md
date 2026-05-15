@@ -449,3 +449,109 @@ except (
 **What was not fixed in 0.4.1:** Partner C's Finding 2 (`test_14_failure_mode_open_returns_synthetic_allow` has a pointless `mocker.stopall()` call that shadows the first `g` variable). That is a test-code quality issue, not a partner-facing SDK behavior bug. Deferred until a real partner reports something tied to it. Scope discipline: one fix per hotfix.
 
 **Verification awaited:** the maintainer's Windows host still has no Python installed and Docker daemon is not running. The Python SDK still cannot be `python -m pytest`-ed locally. The fix was authored against the test code; the first real `pytest` run against this code will be the first real Python partner. This is unchanged from 0.4 — the constraint was acknowledged in 0.4 CHANGELOG and persists into 0.4.1.
+
+---
+
+## 17. Stage 0.4.2 — TypeScript SDK fail-open scope (hotfix, mirror of 0.4.1)
+
+**Refers to:** `validation-log/partner-D-real-eval.md` Finding F1 (severity HIGH) and the user's explicit decision to fix it as a `v0.4.2-beta` hotfix on the same discipline as 0.4.1.
+
+**The bug:** Stage 0.4 shipped `src/sdk/client.ts` with broad catches in both `invoke()` and `checkShadow()`:
+
+```ts
+// invoke (before 0.4.2)
+try {
+  return await this.fetcher(input, controller.signal);
+} catch (err) {
+  return this.handleFailure(err);   // catches EVERYTHING — same bug class as Python 0.4.0
+}
+
+// checkShadow (before 0.4.2)
+try {
+  return await this.invoke(input, this.timeoutMs);
+} catch (err) {
+  return synthesizeFailureOpen(err);
+}
+```
+
+`createHttpFetcher` made it worse: `if (!res.ok) throw new Error(\`Spending Guard HTTP error: ${res.status}\`);` — so a server-side 400 VALIDATION_ERROR was indistinguishable from a 503 to the caller.
+
+Partner D verified live against `:8080` v0.4.1-beta:
+
+```
+3a. BigInt in payload         → decision: allow, pattern: guard_unavailable
+3b. Circular reference        → decision: allow, pattern: guard_unavailable
+3c. Missing next_action field → decision: allow, pattern: guard_unavailable
+                                  (server returned 400 VALIDATION_ERROR; SDK lost it)
+```
+
+**The fix:** introduce typed error classes that discriminate transport failures from validation failures, narrow `invoke()` + `checkShadow()` to catch only transport errors, update `createHttpFetcher` to throw the typed errors.
+
+```ts
+// src/sdk/errors.ts (added)
+export class SpendingGuardTransportError extends Error { /* DNS, 5xx, abort */ }
+export class SpendingGuardValidationError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+  /* 4xx — server saw the request and rejected it; propagate */
+}
+
+// invoke (after 0.4.2)
+try {
+  return await this.fetcher(input, controller.signal);
+} catch (err) {
+  if (err instanceof SpendingGuardTransportError) return this.handleFailure(err);
+  throw err;
+}
+
+// checkShadow (after 0.4.2)
+try {
+  return await this.invoke(input, this.timeoutMs);
+} catch (err) {
+  if (err instanceof SpendingGuardTransportError) return synthesizeFailureOpen(err);
+  throw err;
+}
+
+// createHttpFetcher (after 0.4.2)
+//   fetch reject       → wrap as SpendingGuardTransportError
+//   5xx response       → SpendingGuardTransportError(status, body)
+//   4xx response       → SpendingGuardValidationError(status, body)
+//   JSON.stringify err → propagate naked TypeError (programmer error)
+//   2xx response       → parse and return SpendingGuardCheckOutput
+```
+
+**Contract — what propagates vs what is synthesized (TS, mirroring Python 0.4.1):**
+
+| Error class / cause | Caught (synthesizes `allow` via failureMode) | Propagates (operator sees the bug) |
+| --- | :---: | :---: |
+| `SpendingGuardTransportError` (DNS, 5xx, abort, timeout) | ✅ |  |
+| `SpendingGuardValidationError` (4xx — payload / auth rejected) |  | ✅ |
+| `TypeError` from `JSON.stringify` (BigInt, circular ref) |  | ✅ |
+| `SyntaxError` from `JSON.parse` on response |  | ✅ |
+| `SpendingGuardBlockedError` / `SpendingGuardConfirmationDeniedError` |  | ✅ |
+| Any other / generic `Error` from a custom fetcher |  | ✅ |
+
+**Custom-fetcher migration:** SDK callers who wrote custom `Fetcher` implementations and threw plain `Error` to simulate transport failures must now throw `SpendingGuardTransportError` explicitly to opt into transport-class handling. Documented in CHANGELOG. The `createHttpFetcher` (used when you pass `baseUrl`) wraps DNS / 5xx automatically; this matters only for hand-rolled fetchers.
+
+**Why this stage is hotfix, not feature work:** identical reasoning to 0.4.1. Silent error hiding in a guardrail SDK is the single fastest path to operators ripping middleware out. A guard that converts programmer bugs into `decision: allow` is worse than no guard, because the operator believes they have protection. Partner D's report was explicit: "Trust loss = guard rip-out."
+
+**Symmetry achieved:** both SDKs now share the same fail-open scope discipline.
+
+| Behavior | Python 0.4.1 | TypeScript 0.4.2 |
+| --- | --- | --- |
+| Transport-only synthesis | `(URLError, HTTPError, TimeoutError, OSError)` | `SpendingGuardTransportError` |
+| Programmer error propagates | `TypeError`, `ValueError`, `json.JSONDecodeError` | `TypeError`, `SyntaxError`, generic `Error` |
+| Server 4xx propagates | (currently routed as transport because Python `_invoke` only catches transport — 4xx never reached the broad catch) | `SpendingGuardValidationError` (explicit) |
+
+Note: Python 0.4.1 did not introduce a `ValidationError` class because the Python SDK never wrapped the 4xx response in the first place — `_invoke` returns whatever the server sent. The TS SDK historically wrapped `!res.ok` in a generic Error, so the 0.4.2 fix had to add the discriminator. Both ends now have the same observable behavior for partners: 4xx → caller sees the validation problem.
+
+**Verification:**
+
+- TS typecheck: clean.
+- TS unit tests: 148 / 148 (137 + 11 new in `tests/stage-04-2-sdk-fail-open-scope.test.ts`).
+- Audit scenarios: 14 / 14.
+- Harness: 36 / 36 actions against `:8080`.
+- `/health`: `version: "0.4.2-beta"`.
+- Partner D rerun: BigInt and circular payloads now reject with `TypeError`; missing `next_action` now rejects with `SpendingGuardValidationError(400, {...VALIDATION_ERROR...})`. Bug class closed.
+
+**Python side:** unchanged. Version bumped to `0.4.2b0` for release coherence only — Python users running `pip install -e .` get the same version banner as TS users running `npm install spending-guard`. The Python SDK's behavior is identical to 0.4.1.

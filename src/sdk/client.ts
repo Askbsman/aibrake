@@ -9,6 +9,8 @@ import type {
 import {
   SpendingGuardBlockedError,
   SpendingGuardConfirmationDeniedError,
+  SpendingGuardTransportError,
+  SpendingGuardValidationError,
 } from "./errors.js";
 
 export type Fetcher = (
@@ -81,12 +83,18 @@ export class SpendingGuard {
   async checkShadow(
     input: SpendingGuardCheckInput
   ): Promise<SpendingGuardCheckOutput> {
+    // Stage 0.4.2 fix (Partner D F1, mirroring Python 0.4.1):
+    // Catch ONLY transport errors. Programmer errors (TypeError from
+    // JSON.stringify on BigInt/circular refs), server-side 4xx validation
+    // errors, and contract violations propagate so the operator sees their
+    // integration bug instead of a silent `decision: allow`.
     try {
       return await this.invoke(input, this.timeoutMs);
     } catch (err) {
-      // checkShadow never throws because of a guard decision; only programmer
-      // errors propagate. We swallow guard-related failures and synthesize.
-      return synthesizeFailureOpen(err);
+      if (err instanceof SpendingGuardTransportError) {
+        return synthesizeFailureOpen(err);
+      }
+      throw err;
     }
   }
 
@@ -192,7 +200,13 @@ export class SpendingGuard {
     try {
       return await this.fetcher(input, controller.signal);
     } catch (err) {
-      return this.handleFailure(err);
+      // Stage 0.4.2 fix: route ONLY transport errors through failureMode.
+      // Everything else (TypeError from JSON.stringify, ValidationError from
+      // a 4xx, contract violations from JSON.parse) propagates to the caller.
+      if (err instanceof SpendingGuardTransportError) {
+        return this.handleFailure(err);
+      }
+      throw err;
     } finally {
       clearTimeout(timer);
     }
@@ -289,15 +303,45 @@ function createHttpFetcher(baseUrl: string, apiKey?: string): Fetcher {
       accept: "application/json",
     };
     if (apiKey) headers["authorization"] = `Bearer ${apiKey}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(input),
-      signal,
-    });
-    if (!res.ok) {
-      throw new Error(`Spending Guard HTTP error: ${res.status}`);
+
+    // NOTE: JSON.stringify can throw TypeError on BigInt / circular refs.
+    // We deliberately do NOT wrap this in try/catch — let the TypeError
+    // propagate so the partner sees the programmer error instead of a
+    // silent `decision: allow, pattern: guard_unavailable`. This is the
+    // Stage 0.4.2 fix mirroring Python 0.4.1.
+    const body = JSON.stringify(input);
+
+    let res: Response;
+    try {
+      res = await fetch(url, { method: "POST", headers, body, signal });
+    } catch (err) {
+      // `fetch` itself threw — DNS, connection refused, abort/timeout, etc.
+      // All transport-class; wrap so `invoke()` can route via failureMode.
+      throw new SpendingGuardTransportError(
+        err instanceof Error ? err.message : String(err),
+        { cause: err }
+      );
     }
+
+    if (!res.ok) {
+      let parsedBody: unknown = undefined;
+      try {
+        parsedBody = await res.json();
+      } catch {
+        // Server returned non-JSON; keep body undefined.
+      }
+      // 5xx = server-side issue; treat as transport (guard unavailable).
+      // 4xx = the guard saw the request and rejected the payload/auth.
+      //       Propagate so the caller sees the validation message.
+      if (res.status >= 500) {
+        throw new SpendingGuardTransportError(
+          `Spending Guard server error ${res.status}`,
+          { status: res.status, cause: parsedBody }
+        );
+      }
+      throw new SpendingGuardValidationError(res.status, parsedBody);
+    }
+
     return (await res.json()) as SpendingGuardCheckOutput;
   };
 }

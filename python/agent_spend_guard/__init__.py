@@ -40,4 +40,4 @@ __all__ = [
     "SpendingGuardClientError",
 ]
 
-__version__ = "0.4.1b0"
+__version__ = "0.4.2b0"

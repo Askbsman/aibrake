@@ -6,6 +6,83 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.4.2-beta — TypeScript SDK fail-open scope hotfix
+
+**Tag:** `spending-guard-v0.4.2-beta`
+**Goal:** mirror the Stage 0.4.1 Python fix in the TypeScript SDK. Same bug class, found by Partner D (`validation-log/partner-D-real-eval.md`, Finding F1, severity HIGH) during their first-hour eval against `:8080` v0.4.1-beta. No new features. No new detectors.
+
+### Fixed
+
+- **TS SDK: `invoke()` and `checkShadow()` no longer swallow programmer errors or server-side 4xx validation errors.** Both helpers previously had broad `catch (err)` blocks that routed everything — including `TypeError` from `JSON.stringify` on BigInt / circular references, and server 400 VALIDATION_ERROR responses — through `failureMode`. Partner D verified live against `:8080`: BigInt payload, circular reference, and missing required field all produced `decision: allow, pattern: guard_unavailable`. **Severity: HIGH**, same class as Stage 0.4.1.
+
+  The fix routes ONLY transport-class errors through `failureMode`. Two new typed error classes discriminate:
+
+  ```ts
+  export class SpendingGuardTransportError extends Error { /* DNS, 5xx, abort, timeout */ }
+  export class SpendingGuardValidationError extends Error {
+    readonly status: number;
+    readonly body: unknown;
+    /* 4xx — partner's payload or auth was rejected by the server */
+  }
+  ```
+
+  `createHttpFetcher` now distinguishes:
+  - `fetch` rejected (DNS / connection refused / abort)          → `SpendingGuardTransportError`
+  - server returned 5xx                                          → `SpendingGuardTransportError`
+  - server returned 4xx (validation, auth, etc.)                 → `SpendingGuardValidationError`
+  - `JSON.stringify` threw on payload (BigInt, circular, etc.)   → naked `TypeError` propagates
+  - successful 2xx                                               → parsed `SpendingGuardCheckOutput`
+
+  `invoke()` and `checkShadow()` both catch only `SpendingGuardTransportError`; everything else propagates so the operator sees the bug.
+
+### Changed
+
+- `src/sdk/errors.ts` adds `SpendingGuardTransportError` and `SpendingGuardValidationError`. Both exported from `src/sdk/index.ts` and `src/index.ts`.
+- `src/sdk/client.ts`: `createHttpFetcher` updated to throw typed errors per the contract above. `invoke()` and `checkShadow()` narrow their catches to `instanceof SpendingGuardTransportError`.
+- `tests/sdk.test.ts`: failure-mode test fixtures switched from `fetcherThrowing(new Error(...))` (no longer treated as transport) to a new `fetcherThrowingTransport(...)` helper that throws `SpendingGuardTransportError`. The timeout test's mocked fetcher likewise rejects with `SpendingGuardTransportError` to opt into synthesis.
+- Bumped versions to `0.4.2-beta` / `0.4.2b0` across `package.json`, `src/config/env.ts`, `tests/routes.test.ts`, `tests/stage-03-hosting.test.ts`, `python/pyproject.toml`, `python/agent_spend_guard/__init__.py`. Python SDK source itself unchanged — version bumped for release coherence so partners see one consistent number across both clients and `/health`.
+
+### Tests
+
+- Added `tests/stage-04-2-sdk-fail-open-scope.test.ts` with 11 regression tests:
+  - **R1–R3**  programmer errors propagate: `BigInt` payload via `check()`, `BigInt` via `checkShadow()`, circular reference via `check()`. All assert `TypeError`.
+  - **R4–R6**  4xx propagates as `SpendingGuardValidationError`: via `check()`, via `checkShadow()`, and the error carries the server's parsed body so callers can read `error.code`.
+  - **R7–R9**  5xx is transport-class: synthesizes allow in `failureMode: "open"`, synthesizes block in `failureMode: "closed"`, propagates `SpendingGuardTransportError` in `failureMode: "throw"`.
+  - **R10–R11** custom fetcher contract: a fetcher throwing plain `Error` is no longer silently synthesized; partners must explicitly throw `SpendingGuardTransportError` to opt into transport-class handling.
+- TS unit tests: **148** passing (was 137 + 11 new).
+- Audit scenarios: 14 / 14.
+- Harness: 36 / 36 actions against `:8080`.
+
+### Custom-fetcher migration note (operator-facing)
+
+If you wrote a custom `Fetcher` against the TS SDK and your fetcher throws plain `Error` to simulate transport failures, that pattern stopped working in 0.4.2. Either:
+
+- Throw `SpendingGuardTransportError` explicitly (recommended for tests):
+  ```ts
+  const fetcher = async () => { throw new SpendingGuardTransportError("simulated outage"); };
+  ```
+- Let your fetcher throw whatever and accept that non-transport errors will propagate (semantically correct — your operator wants to see the bug).
+
+`createHttpFetcher` (used when you pass `baseUrl`) handles this automatically: it wraps DNS / connection failures and 5xx responses in `SpendingGuardTransportError`, and lets `TypeError` / 4xx errors propagate naturally.
+
+### Not changed (deliberately)
+
+- Partner D's F2 (`/v1/meta` doesn't advertise `detector_policy` knobs). Doc/discovery improvement; defer to v0.5.
+- Partner D's F3 (free-text `error.message` instead of structured `error.cause`). Defer to v0.5.
+- Python SDK source. Not affected by this bug class — fixed in 0.4.1. Only version-bumped here for release coherence.
+- No async TS SDK, no PyPI publish, no new adapters / detectors / dashboard.
+
+### Verification
+
+- TS typecheck: clean.
+- TS unit tests: 148 / 148.
+- Audit scenarios: 14 / 14.
+- Harness: 36 / 36 actions against `:8080`.
+- `/health`: returns `version: "0.4.2-beta"`.
+- Partner D rerun: the three repro cases that previously returned synthetic allow now correctly surface the bug — see verification section in `validation-log/raw/partner-D-results-after-042.txt`.
+
+---
+
 ## 0.4.1-beta — Python SDK fail-open scope hotfix
 
 **Tag:** `spending-guard-v0.4.1-beta`

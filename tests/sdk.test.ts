@@ -8,6 +8,7 @@ import {
   SpendingGuard,
   SpendingGuardBlockedError,
   SpendingGuardConfirmationDeniedError,
+  SpendingGuardTransportError,
 } from "../src/sdk/index.js";
 import type {
   SpendingGuardCheckInput,
@@ -31,6 +32,15 @@ function fetcherReturning(out: SpendingGuardCheckOutput): Fetcher {
 function fetcherThrowing(err: Error): Fetcher {
   return async () => {
     throw err;
+  };
+}
+
+// Stage 0.4.2: most failure-mode tests need to throw a transport-class error
+// to exercise the failureMode routing. Plain `Error` now propagates (it could
+// be a programmer bug); use this helper to simulate "the guard was unreachable".
+function fetcherThrowingTransport(message = "network down"): Fetcher {
+  return async () => {
+    throw new SpendingGuardTransportError(message);
   };
 }
 
@@ -73,8 +83,10 @@ describe("SDK SpendingGuard", () => {
     expect(result.decision).toBe("block");
   });
 
-  it("checkShadow() returns synthetic allow on guard error and never throws", async () => {
-    const guard = buildGuard(fetcherThrowing(new Error("network down")));
+  it("checkShadow() returns synthetic allow on guard transport error and never throws", async () => {
+    // Stage 0.4.2: must use TransportError to trigger synthesis. A plain
+    // Error now propagates (programmer error path).
+    const guard = buildGuard(fetcherThrowingTransport("network down"));
     const out = await guard.checkShadow(sampleInput);
     expect(out.decision).toBe("allow");
     expect(out.pattern).toBe("guard_unavailable");
@@ -135,8 +147,8 @@ describe("SDK SpendingGuard", () => {
     expect(action.estimated_cost.amount).toBe(0.01);
   });
 
-  it("failureMode 'open' returns synthetic allow on guard error", async () => {
-    const guard = buildGuard(fetcherThrowing(new Error("boom")), {
+  it("failureMode 'open' returns synthetic allow on transport error", async () => {
+    const guard = buildGuard(fetcherThrowingTransport("boom"), {
       failureMode: "open",
     });
     const out = await guard.check(sampleInput);
@@ -144,8 +156,8 @@ describe("SDK SpendingGuard", () => {
     expect(out.error?.code).toBe("GUARD_UNAVAILABLE");
   });
 
-  it("failureMode 'closed' returns synthetic block on guard error", async () => {
-    const guard = buildGuard(fetcherThrowing(new Error("boom")), {
+  it("failureMode 'closed' returns synthetic block on transport error", async () => {
+    const guard = buildGuard(fetcherThrowingTransport("boom"), {
       failureMode: "closed",
     });
     const out = await guard.check(sampleInput);
@@ -153,8 +165,8 @@ describe("SDK SpendingGuard", () => {
     expect(out.hard_block).toBe(true);
   });
 
-  it("failureMode 'throw' propagates guard error", async () => {
-    const guard = buildGuard(fetcherThrowing(new Error("boom")), {
+  it("failureMode 'throw' propagates transport error", async () => {
+    const guard = buildGuard(fetcherThrowingTransport("boom"), {
       failureMode: "throw",
     });
     await expect(guard.check(sampleInput)).rejects.toThrow("boom");
@@ -167,9 +179,14 @@ describe("SDK SpendingGuard", () => {
   });
 
   it("timeout triggers failureMode behavior", async () => {
+    // Stage 0.4.2: a custom fetcher must throw SpendingGuardTransportError
+    // (or wrap the abort cause) to opt into failureMode synthesis. The real
+    // createHttpFetcher does this wrapping; the mocked fetcher mirrors that.
     const slowFetcher: Fetcher = async (_input, signal) => {
       return new Promise((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(new Error("aborted")));
+        signal.addEventListener("abort", () =>
+          reject(new SpendingGuardTransportError("aborted"))
+        );
       });
     };
     const guard = buildGuard(slowFetcher, {

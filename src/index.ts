@@ -73,6 +73,8 @@ export {
   SpendingGuard,
   SpendingGuardBlockedError,
   SpendingGuardConfirmationDeniedError,
+  SpendingGuardTransportError,
+  SpendingGuardValidationError,
   type CheckOrConfirmOptions,
   type CheckOrDowngradeOptions,
   type FailureMode,

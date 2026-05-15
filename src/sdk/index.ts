@@ -9,4 +9,6 @@ export {
 export {
   SpendingGuardBlockedError,
   SpendingGuardConfirmationDeniedError,
+  SpendingGuardTransportError,
+  SpendingGuardValidationError,
 } from "./errors.js";
