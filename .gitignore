@@ -8,6 +8,7 @@ coverage/
 .vitest/
 .tsbuildinfo
 validation-log/
+logs/
 
 # Python build artifacts
 __pycache__/
