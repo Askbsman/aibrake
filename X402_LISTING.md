@@ -1,71 +1,99 @@
-# Spending Guard API — x402 Marketplace Listing
+# Agent Spend Guard — x402 Marketplace Listing Draft
 
-**Stop paying for useless agent loops.**
+**Status:** draft listing copy for `agentic.market` (and other x402 marketplaces). Not yet published.
+**Category:** Infra
+**Implementation:** Spending Guard Stage 0.2-minimal RC (tag `spending-guard-v0.2.0-rc`).
 
-Spending Guard is a provider-agnostic, x402-native judgment middleware for expensive AI agent actions. It checks paid LLM calls, tool retries, model escalation and objective drift before execution, and returns an actionable decision with a clear reason and suggested alternative.
+---
 
-## First detector
+## Listing — short form
 
-`stale_context_retry_storm` — detects repeated paid retries on the same deterministic failure without new evidence (no new files read, no tests rerun, no logs refreshed, no git diff change, no context-source confirmation).
+> **Agent Spend Guard**
+> Loop detection and model stop-loss for paid AI agents.
 
-> Example: a coding agent makes 6 paid Claude Opus calls trying to fix the same `TS2307: Cannot find module` build error. No files were read since attempt 2. The 7th paid call is about to fire. Spending Guard returns:
+**One-paragraph description:**
+
+> Agent Spend Guard is a pre-flight risk check for paid AI agent actions. It detects wasteful retry loops, stale-context failures, same-tool loops, objective drift, and premium-model burn before the next expensive step. Unlike prompt-quality preflight tools, Agent Spend Guard uses action history, objective state, evidence signals, and model policy to decide whether the next paid action is real progress — or another costly retry.
+
+---
+
+## Why this differs from existing preflight services
+
+The agentic.market catalog already lists preflight-style services: PQS, Boundary Guard, x402station, Fia Signals, AzurSafe, ShieldAPI. Each is good at a different question.
+
+```
+PQS              → Is this single prompt worth paying for?    (8-dim rubric)
+Boundary Guard   → Did the output pass schema / safety?       (boundary validation)
+x402station      → Is this x402 endpoint trustworthy?         (endpoint risk)
+Fia Signals      → Is this token / contract safe?             (onchain risk)
+AzurSafe / etc.  → Is this wallet / domain safe?              (security risk)
+
+Agent Spend Guard → Is the agent already stuck in a paid retry loop?
+                    Is the same failure repeating without new evidence?
+                    Is the operator about to burn the premium model
+                    when a configured secondary would do?
+```
+
+> **Prompt preflight is not enough. Agents fail in loops.**
 >
-> `decision: "warn" / "require_confirmation"` · `recommended_policy: "ask_human"` · `pattern: "stale_context_retry_storm"`
+> **PQS checks the prompt. Agent Spend Guard checks the loop.**
 
-## Use cases
+History-based loop detection + structured `primary → secondary` model routing are not in any other listing. That gap is the wedge.
 
-- OpenClaw-style agent runtimes
-- Hermes-style agents
-- Claude Code / Codex workflows
-- LiteLLM / OpenRouter pipelines
-- x402 paid agent actions
-- Custom autonomous agents
-- Coding agents
-- Research / scraper agents
-- Browser automation agents
-- Media-generation agents
-- Any paid AI tool/API workflow
+---
 
-## API surface (Stage 0.1)
+## API surface (Stage 0.2-minimal RC)
 
-| Endpoint | Description |
+| Endpoint | Description | Status |
+| --- | --- | --- |
+| `GET /health` | Free liveness probe | active |
+| `POST /v1/check` | Rules-only pre-flight judgment. Sub-300ms target. **Paid in production via x402 (price TBD, target sub-cent).** | active |
+| `POST /v1/check-deep` | Optional LLM-judgment endpoint. **Stub** in Stage 0.2 — returns `deep_check_used: false`. | stub |
+
+---
+
+## Detectors that fire (Stage 0.2-minimal)
+
+| Detector | What it catches |
 | --- | --- |
-| `GET /health` | Free liveness probe |
-| `POST /v1/check` | Rules-only pre-flight judgment. Sub-300ms target. |
-| `POST /v1/check-deep` | Optional deeper judgment (LLM judgment stubbed in v0.1) |
+| `stale_context_retry_storm` | Same deterministic failure repeats; no new files / tests / logs / git diff between attempts; agent is about to spend again. Requires `failure_signal_present: true`. |
+| `model_escalation_without_evidence` | Agent is about to call the configured `primaryModel` (or any expensive model) on a repeated failure without new evidence. With `objective.model_policy.secondaryModel` declared, emits a structured `model_route.to` so the SDK auto-downgrades. |
+| `task_budget_breach` | Projected spend would exceed `objective.budget`. Hard block only when `hard_limit: true`. |
+| `same_tool_retry_loop` | Same paid tool / search / scrape called repeatedly without changing results, even without a deterministic failure signal. Soft warn, never hard-blocks. |
+| `objective_drift` | Next action is in `blocked_actions` or outside `allowed_actions`. Deterministic block on explicit policy violation. |
 
-## Key outputs
+---
+
+## Key output fields
 
 ```jsonc
 {
-  "decision": "warn | allow | require_confirmation | delay | block | uncertain",
-  "recommended_policy": "continue | log_only | shadow_log | downgrade | ask_human | delay_action | stop_action | run_deep_check | request_more_telemetry",
-  "risk_score": 0-100,
-  "risk_level": "low | moderate | elevated | high | critical",
-  "confidence": 0.0-1.0,
-  "pattern": "stale_context_retry_storm | task_budget_breach | ...",
-  "matched_rules": [...],
-  "reason": "human-readable summary",
-  "suggested_action": { "type": "context_refresh", "message": "..." },
-  "detector_version": "stale_context_retry_storm@0.1.0",
-  "policy_version": "policy@0.1.0"
+  "decision":             "allow | warn | require_confirmation | delay | block | uncertain",
+  "recommended_policy":   "continue | log_only | shadow_log | downgrade | ask_human |
+                           delay_action | stop_action | run_deep_check | request_more_telemetry",
+  "risk_score":           0-100,
+  "risk_level":           "low | moderate | elevated | high | critical",
+  "confidence":           0.0-1.0,
+  "pattern":              "stale_context_retry_storm | model_escalation_without_evidence | ...",
+  "matched_rules":        [...],
+  "reason":               "human-readable summary",
+  "suggested_action": {
+    "type":               "switch_model | context_refresh | downgrade_model | ...",
+    "message":            "actionable text",
+    "model_route": {                 // present when secondaryModel is configured
+      "from": { "provider": "anthropic", "model": "claude-4.7",   "role": "primary",   "tier": "premium"  },
+      "to":   { "provider": "anthropic", "model": "claude-sonnet", "role": "secondary", "tier": "standard" },
+      "reason": "..."
+    }
+  },
+  "detector_version":     "stale_context_retry_storm@0.1.0",  // pin or compare
+  "policy_version":       "policy@0.1.0"
 }
 ```
 
-## Why this isn't a budget counter
+---
 
-Budget caps are table stakes — every LLM dashboard already ships them. Spending Guard's defensible product is *judgment*: it catches loops, stale context, model escalation without evidence, and objective drift before the next paid action. The API answers a question budget counters cannot: **"Is the next paid step actually likely to make progress, or is it just the 7th guess?"**
-
-## Pricing (model)
-
-Stage 0.1 ships free. Stage 0.3 introduces paid `/v1/check` via x402:
-
-- Rules-only `/v1/check`: sub-cent per call. Suitable for hot-path pre-flight at high volume.
-- `/v1/check-deep`: more expensive. Use only for ambiguous cases (when `/v1/check` returns `uncertain`).
-
-The architecture allows the SDK to fail open if the guard is unavailable, so operators integrating early are not exposed to availability risk before the paid path is wired.
-
-## SDK
+## SDK — five-line middleware
 
 ```bash
 npm install spending-guard
@@ -75,20 +103,110 @@ npm install spending-guard
 import { SpendingGuard } from "spending-guard";
 
 const guard = new SpendingGuard({
-  baseUrl: "https://spending-guard.example.com",
+  baseUrl: "https://agent-spend-guard.example.com",
   timeoutMs: 500,
-  failureMode: "open",
+  failureMode: "open",   // never takes your agent offline on guard outage
 });
 
-await guard.checkOrConfirm(input, {
-  onWarn: async (result) => askHumanForConfirmation(result),
-});
+// shadow mode — log only, never block
+await guard.checkShadow(input);
 ```
 
-## Repository
+Three integration patterns; each is one method call.
 
-Stage 0.1 reference implementation: TypeScript, stateless Fastify API, three-pattern SDK, OpenClaw/Hermes adapter, 96+ tests. See `README.md`.
+| Method | Behavior |
+| --- | --- |
+| `check(input)` | Returns the structured result. Never throws on a guard decision. |
+| `checkShadow(input)` | Same, but synthesizes `allow` on outage. Useful for first-week deployments. |
+| `checkOrConfirm(input, { onWarn })` | Throws `SpendingGuardBlockedError` on `block`; calls `onWarn` on `warn` / `require_confirmation`. |
+| `checkOrDowngrade(input, { downgradeTo })` | Auto-applies `model_route.to` from the guard response (operator's configured secondary), falling back to static `downgradeTo`. |
 
-## Contact
+---
 
-This listing is updated alongside each release. Detector and policy version strings appear in every `/v1/check` response so operators can pin behavior and detect drift.
+## Use cases
+
+- **Coding-agent runtimes** (Claude Code / Cursor / Codex / OpenClaw / Hermes): catch retry storms on the same build / test / lint error.
+- **Crypto / x402 agents** (scrapers, research bots, swap routers): catch repeated paid tool calls on unchanged results.
+- **Browser-automation agents** (Browserbase / Hyperbrowser / Anchor): catch repeated paid sessions on the same target.
+- **Image / media agents** (fal.ai / Magnific): catch repeated generation calls with unchanged prompts/results.
+- **Any agent with a configured `primaryModel` + `secondaryModel`**: catch premium-model burn and auto-route to secondary.
+
+---
+
+## What it does NOT do
+
+- Score a single prompt (use **PQS** for that).
+- Validate output schema or generate receipts (use **Boundary Guard**).
+- Check x402 endpoint trust before payment (use **x402station**).
+- Screen wallets / tokens / contracts for onchain risk (use **Fia Signals**, **AzurSafe**, **BlackSwan**).
+- Provide a dashboard, accounts, billing, or analytics UI.
+- Block the agent globally — `checkShadow` is the integration entry point; hard block fires only on deterministic budget breach or explicit policy violation.
+
+Agent Spend Guard composes with all of the above. A serious agent stack will use 2–3 preflight services in sequence: prompt quality (PQS) → loop detection (Agent Spend Guard) → output validation (Boundary Guard). We are the middle step.
+
+---
+
+## Pricing model (target)
+
+| Endpoint | Target price | Rationale |
+| --- | --- | --- |
+| `GET /health` | free | x402 norm |
+| `POST /v1/check` (rules-only) | **sub-cent** (e.g. $0.001 USDC, target band $0.001–$0.005) | Must not be a meaningful tax over a $0.001–$0.05 paid LLM/tool call it is guarding. |
+| `POST /v1/check-deep` (LLM judgment) | TBD when stub is replaced | More expensive; recommended only when `/v1/check` returns `uncertain`. |
+
+Stage 0.2-minimal RC ships free for first integration partners. Hosted paid endpoint goes live only after **2 of 3 builders** complete a one-week `checkShadow` integration. See `PARTNER_VALIDATION_SCRIPT.md` in the repo.
+
+---
+
+## Networks
+
+```
+Base
+Solana (planned, post-validation)
+```
+
+---
+
+## Tagline candidates (pick one before publishing)
+
+| Tagline | Notes |
+| --- | --- |
+| *Stop paying for useless agent loops.* | Used in the GitHub README. Direct. |
+| *PQS checks the prompt. We check the loop.* | Sharpest positioning against the closest competitor. Use on marketplace card. |
+| *Loop detection and model stop-loss for paid AI agents.* | Most descriptive. Use as the subtitle. |
+| *Don't pay for the 7th guess.* | Memorable, narrative. Use in pitch decks / demo intros. |
+
+Recommended pairing: **subtitle** = *"Loop detection and model stop-loss for paid AI agents"*; **first paragraph** = *"PQS checks the prompt. We check the loop."*
+
+---
+
+## Versions in production
+
+| Item | Version |
+| --- | --- |
+| Policy | `policy@0.1.0` |
+| Detector — stale context | `stale_context_retry_storm@0.1.0` |
+| Detector — model escalation | `model_escalation_without_evidence@0.2.0` |
+| Detector — same-tool loop | `same_tool_retry_loop@0.1.0` |
+| Detector — task budget | `task_budget_breach@0.1.0` |
+| Detector — objective drift | `objective_drift@0.1.0` |
+| Fingerprint format | `fp_v1_*` / `input_v1_*` |
+| Repository tag | `spending-guard-v0.2.0-rc` |
+
+Operators can pin these in production. Every `/v1/check` response carries `detector_version` and `policy_version` so silent behavior drift is detectable.
+
+---
+
+## Publishing checklist (when 2 of 3 partner-validation pass condition is met)
+
+1. Replace `https://agent-spend-guard.example.com` placeholder with the real hosted endpoint.
+2. Pick one tagline + one description from the candidates above.
+3. Add the repository link.
+4. Confirm pricing tier on `/v1/check` (start at $0.001 USDC).
+5. Submit to `agentic.market` listing form (category: **Infra**).
+6. Update this file with the live listing URL once approved.
+
+Do NOT publish before:
+- 2 of 3 partner validation calls return "yes, integrating this week."
+- Hosted `/v1/check` has been running for >7 days with <5% false-positive rate on shadow-mode logs from at least one partner.
+- A `CHANGELOG.md` exists in the repo (currently missing — required before any external listing).

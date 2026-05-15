@@ -6,15 +6,36 @@
 
 ---
 
-## 30-second pitch
+## 30-second pitch (post-agentic.market competitive scan)
 
-> We built Spending Guard — pre-flight middleware for AI agents that catches paid loops **before** the next expensive call.
+> **Prompt preflight is not enough. Agents fail in loops.**
 >
-> The first case: an agent fixes the same build or test error 6 times without new evidence and is about to make a 7th expensive LLM call. Spending Guard returns `warn` or `require_confirmation` and tells the operator to refresh context, downgrade the model, or ask a human — *before* the call fires.
+> Spending Guard is a **loop-detection layer for paid AI agents**.
 >
-> It does not block creative iteration, research, planning, or normal debugging *with* evidence. We tested that explicitly.
+> PQS, Boundary Guard and other preflight tools on x402 check whether a *single* prompt or endpoint is worth paying for. We check whether the agent is already stuck in a paid retry loop — the 7th expensive call on the same failure with no new files, no test rerun, no git diff change since attempt 2.
 >
-> If this drops in as 5-line middleware — would you put it in your agent workflow this week?
+> One sentence:
+>
+> > **PQS checks the prompt. We check the loop.**
+>
+> When the loop fires, we recommend a concrete action — `switch_model` to your configured secondary, `context_refresh`, `cross_model_audit`, or `ask_human`. Not just "warn." A structured route the SDK can apply automatically.
+>
+> 5-line middleware. Shadow mode for the first week.
+>
+> Question: if I drop this into your paid-agent workflow on `checkShadow` this week, will it land?
+
+### Why this framing changed
+
+The original pitch positioned Spending Guard as "pre-flight guardrail." A 2026-05-15 scan of agentic.market (Coinbase's x402 marketplace) showed the "preflight" category is already populated:
+
+| Service | What it does | Overlap with us |
+| --- | --- | --- |
+| **PQS** (`pqs.onchainintel.net`) | Scores a single prompt 0–80 against an 8-dimension rubric + pulls endpoint trust signals. "Two-in-one circuit breaker for agents." | Highest framing overlap. Different substrate — they judge one prompt, we judge the history. |
+| **Boundary Guard** (`boundary-guard-x402.onrender.com`) | Safety + validation boundary pass: risk scan, JSON extraction, schema normalization, receipt before continuing. | Output validation, not loop detection. |
+| **x402station** | Checks x402 endpoints before agents pay. Returns `{decision, recommended_action, risk_score, evidence}`. | Endpoint trust, not action history. |
+| **Fia Signals**, **AzurSafe**, **BlackSwan**, **Shield**, **trustscore** | Wallet / token / smart-contract / domain risk. | Different domain (onchain), same "before X" vocabulary. |
+
+**No service in the catalog does history-based loop detection or `primary → secondary` model routing.** That gap is the real differentiator — not "we are also preflight."
 
 ---
 
@@ -78,6 +99,26 @@ If you need a second demo, show one false-positive case from the audit (writer-a
 7. **Would you pay for it if it saved paid retries?**
    - Don't anchor a price. Listen for "yes if it saves $X / month" vs "we'd only use it free." Both are useful signal.
    - If "no even if it works" → no business; thank and end.
+
+8. **Have you seen PQS or other preflight tools on x402?** (added 2026-05-15)
+   - If "no" → don't lead with the comparison. Show our demo first, then mention competitors only if they ask "is this new."
+   - If "yes, we use PQS" → ask what it does NOT cover for their workflow. Likely answer: "it scores one prompt, it doesn't know my agent is on its 6th retry." That's the wedge to lean into.
+   - If "yes, we looked at it, didn't integrate" → ask why. Their objection IS our differentiation hint.
+   - **Follow-up:** *"Would loop detection across a session — same failure repeated, no new evidence between attempts, model escalation without context refresh — be more useful than a single-prompt quality score for your case?"* If "no" → we may be solving the wrong adjacent problem; treat as soft signal. If "yes" → it's our wedge confirmed.
+
+---
+
+## Demo backup: marketplace-friendly scenario
+
+The canonical `$40 TypeScript Retry Storm` is the strongest demo for **coding-agent operators**. For **crypto / x402-native agent operators** (the agentic.market core audience), use the scraper-loop demo instead:
+
+```bash
+npm run demo:scraper-loop          # in openclaw-harness/
+```
+
+This shows a paid scraper + paid LLM analysis pair repeating 8 times with the same target and unchanged results. The same `same_tool_retry_loop` detector fires; the framing matches what an x402 operator already burns money on.
+
+Pick the demo that matches the partner's stack — don't make a coding-agent demo for a scraping-agent operator.
 
 ---
 
