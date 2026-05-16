@@ -63,6 +63,7 @@ export async function registerMetaRoute(
       endpoints: {
         check: "/v1/check",
         check_deep: "/v1/check-deep",
+        public_stats: "/v1/public/stats",
       },
       supported_patterns: [
         "stale_context_retry_storm",

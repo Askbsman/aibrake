@@ -1,6 +1,6 @@
 {
   "name": "spending-guard",
-  "version": "0.5.2-beta",
+  "version": "0.5.3-beta",
   "description": "Provider-agnostic pre-flight judgment middleware for expensive AI agent actions.",
   "type": "module",
   "main": "dist/index.js",

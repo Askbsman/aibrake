@@ -8,6 +8,7 @@ import { registerCheckRoute } from "./routes/check.js";
 import { registerCheckDeepRoute } from "./routes/check-deep.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerMetaRoute } from "./routes/meta.js";
+import { registerPublicStatsRoute } from "./routes/public-stats.js";
 
 export interface BuildServerOptions {
   logger?: boolean;
@@ -53,6 +54,7 @@ export async function buildServerWithDeps(
 
   await registerHealthRoute(app, config);
   await registerMetaRoute(app, config);
+  await registerPublicStatsRoute(app, config);
   await registerCheckRoute(app, { authMiddleware, rateLimitMiddleware });
   await registerCheckDeepRoute(app, { authMiddleware, rateLimitMiddleware });
 

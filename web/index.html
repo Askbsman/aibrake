@@ -4,10 +4,20 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Agent Spend Guard — Loop detection and model stop-loss for paid AI agents</title>
-<meta name="description" content="PQS checks the prompt. Agent Spend Guard checks the loop. Detect stale retries, same-tool loops, and premium model burn before the next expensive agent step." />
-<meta property="og:title" content="Agent Spend Guard" />
-<meta property="og:description" content="Loop detection and model stop-loss for paid AI agents." />
+<meta name="description" content="PQS checks the prompt. Agent Spend Guard checks the loop. Detect stale retries, same-tool loops, and premium model burn before the next expensive agent step. ~5ms per check." />
+<link rel="canonical" href="https://agentspendguard.example.com/" />
+<!-- Favicon: inline SVG, no extra request -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230b0d10'/><path d='M32 8 L52 18 L52 32 C52 44 42 54 32 58 C22 54 12 44 12 32 L12 18 Z' fill='none' stroke='%236ee7b7' stroke-width='3'/><circle cx='32' cy='32' r='6' fill='%236ee7b7'/></svg>" />
+<!-- OpenGraph + Twitter -->
 <meta property="og:type" content="website" />
+<meta property="og:url" content="https://agentspendguard.example.com/" />
+<meta property="og:title" content="Agent Spend Guard — loop detection for paid AI agents" />
+<meta property="og:description" content="PQS checks the prompt. Agent Spend Guard checks the loop. Catch stale retries and premium-model burn before the next expensive agent step." />
+<meta property="og:site_name" content="Agent Spend Guard" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Agent Spend Guard" />
+<meta name="twitter:description" content="Loop detection and model stop-loss for paid AI agents. ~5ms per check. Stage 0.5.3-beta." />
+<meta name="theme-color" content="#0b0d10" />
 <style>
   :root {
     --bg: #0b0d10;
@@ -256,11 +266,127 @@
   }
   form.access input[type="email"]:focus { outline: none; border-color: var(--accent); }
 
+  /* Live savings counter (hero) */
+  .counter-card {
+    background: linear-gradient(135deg, rgba(110,231,183,0.06), rgba(110,231,183,0.02));
+    border: 1px solid var(--accent-dim);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin: 28px 0 28px;
+    max-width: 760px;
+  }
+  .counter-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 24px;
+    align-items: end;
+  }
+  .counter-cell { display: flex; flex-direction: column; gap: 4px; }
+  .counter-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+  .counter-value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+  .counter-cell:first-child .counter-value { font-size: 2.4rem; }
+  .counter-note {
+    margin-top: 14px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+  .counter-note code {
+    background: rgba(110,231,183,0.07);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent);
+  }
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(110,231,183,0.0); }
+    50%      { box-shadow: 0 0 0 4px rgba(110,231,183,0.18); }
+  }
+  .counter-card.updated .counter-value { animation: pulseGlow 0.9s ease; }
+
+  /* Integrate / code example */
+  .code-tabs { display: flex; gap: 6px; margin-bottom: 0; }
+  .code-tab {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    padding: 8px 16px;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+  .code-tab[aria-selected="true"] {
+    background: #0a0c10;
+    color: var(--accent);
+    border-color: var(--accent-dim);
+  }
+  .code-panel { display: none; }
+  .code-panel[data-active="true"] { display: block; }
+  .code-panel pre { border-top-left-radius: 0; margin-top: 0; }
+
+  /* FAQ */
+  details.faq {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 0;
+  }
+  details.faq summary {
+    padding: 14px 18px;
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+    color: var(--fg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  details.faq summary::-webkit-details-marker { display: none; }
+  details.faq summary::after {
+    content: "+";
+    color: var(--accent);
+    font-size: 1.4rem;
+    line-height: 1;
+    transition: transform 0.2s ease;
+  }
+  details.faq[open] summary::after { transform: rotate(45deg); }
+  details.faq .faq-body {
+    padding: 0 18px 16px;
+    color: #c2c8d3;
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+  details.faq .faq-body p { margin: 0 0 8px; }
+  details.faq .faq-body code {
+    background: rgba(110,231,183,0.07);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
   /* Mobile */
   @media (max-width: 640px) {
     header.hero { padding: 48px 0 36px; }
     section { padding: 36px 0; }
     nav.top .links a { margin-left: 14px; }
+    .counter-row { grid-template-columns: 1fr; gap: 16px; }
+    .counter-cell:first-child .counter-value { font-size: 2rem; }
   }
 </style>
 </head>
@@ -272,9 +398,10 @@
     <div class="links">
       <a href="#what-it-catches">Patterns</a>
       <a href="#how-it-works">How</a>
+      <a href="#integrate">Integrate</a>
       <a href="#demo">Demo</a>
       <a href="#benchmark">Benchmark</a>
-      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
       <a href="https://github.com/your-org/spending-guard" target="_blank" rel="noopener">GitHub</a>
     </div>
   </div>
@@ -282,14 +409,37 @@
 
 <header class="hero">
   <div class="container">
-    <div class="status"><span class="dot"></span>v0.5.1-beta — hosted beta, invite-only</div>
+    <div class="status"><span class="dot"></span>v0.5.3-beta — hosted beta, invite-only</div>
     <h1>Loop detection and model stop-loss for paid AI agents.</h1>
     <p class="tagline"><strong>PQS checks the prompt. Agent Spend Guard checks the loop.</strong></p>
     <p class="sub">Detect stale retries, same-tool loops, and premium-model burn <em>before</em> the next expensive agent step. Provider-agnostic. Stateless core. One HTTP POST per check, ~5 ms median.</p>
+
+    <!-- Live savings counter — pulls from /v1/public/stats.
+         Falls back to the benchmark numbers if the API is unreachable. -->
+    <div class="counter-card">
+      <div class="counter-row">
+        <div class="counter-cell">
+          <div class="counter-label">Savings offered to date</div>
+          <div class="counter-value" data-counter="savings">$<span data-counter-num="savings">103.16</span></div>
+        </div>
+        <div class="counter-cell">
+          <div class="counter-label">Checks served</div>
+          <div class="counter-value"><span data-counter-num="checks">1,133</span></div>
+        </div>
+        <div class="counter-cell">
+          <div class="counter-label">Catches with savings</div>
+          <div class="counter-value"><span data-counter-num="catches">265</span></div>
+        </div>
+      </div>
+      <div class="counter-note" data-counter-source>
+        Live: pulled from <code>/v1/public/stats</code> · seeded by the 10-agent benchmark.
+      </div>
+    </div>
+
     <div class="cta-row">
       <a class="btn btn-primary" href="#beta">Get beta access</a>
       <a class="btn btn-secondary" href="https://github.com/your-org/spending-guard/blob/main/PARTNER_ONBOARDING.md" target="_blank" rel="noopener">View docs</a>
-      <a class="btn btn-secondary" href="#demo">Run demo</a>
+      <a class="btn btn-secondary" href="#integrate">5-line integration</a>
     </div>
   </div>
 </header>
@@ -354,9 +504,88 @@ Agent decides</pre>
   </div>
 </section>
 
+<section id="integrate">
+  <div class="container">
+    <h2><span class="num">04</span>Integrate in 5 lines</h2>
+    <p>Drop-in middleware. No new SDKs to learn, no DB, no dashboard, no SaaS account. Just an HTTP POST per expensive action.</p>
+    <div class="code-tabs" role="tablist">
+      <button class="code-tab" role="tab" aria-selected="true" data-tab="ts">TypeScript</button>
+      <button class="code-tab" role="tab" aria-selected="false" data-tab="py">Python</button>
+      <button class="code-tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
+    </div>
+    <div class="code-panel" data-panel="ts" data-active="true">
+<pre>import { SpendingGuard } from "spending-guard";
+
+const guard = new SpendingGuard({
+  baseUrl: "https://api.agentspendguard.com",
+  apiKey: process.env.ASG_KEY,
+  failureMode: "open",   // never takes your agent offline on guard outage
+});
+
+// Shadow mode for the first 7 days — log the decision, never block.
+const result = await guard.checkShadow(input);
+if (result.projected_savings) {
+  log.info({
+    saved_usd: result.projected_savings.amount_usd,
+    basis: result.projected_savings.basis,
+    pattern: result.pattern,
+  }, "guard caught a wasteful retry");
+}</pre>
+    </div>
+    <div class="code-panel" data-panel="py" data-active="false">
+<pre>from agent_spend_guard import AgentSpendGuard
+
+guard = AgentSpendGuard(
+    base_url="https://api.agentspendguard.com",
+    api_key=os.environ["ASG_KEY"],
+    failure_mode="open",   # never takes your agent offline on guard outage
+)
+
+# Shadow mode — log the decision, never block.
+result = guard.check_shadow(payload)
+ps = result.get("projected_savings")
+if ps:
+    log.info(
+        "guard caught a wasteful retry",
+        saved_usd=ps["amount_usd"],
+        basis=ps["basis"],
+        pattern=result["pattern"],
+    )</pre>
+    </div>
+    <div class="code-panel" data-panel="curl" data-active="false">
+<pre>curl -s -X POST https://api.agentspendguard.com/v1/check \
+  -H "Authorization: Bearer asg_v1_yourkey" \
+  -H "content-type: application/json" \
+  -d '{
+    "actor": { "type": "agent", "runtime": "claude-code" },
+    "objective": { "id": "obj_42", "goal": "fix failing test" },
+    "next_action": {
+      "type": "paid_llm_call",
+      "model": "claude-opus-4.5",
+      "estimated_cost": { "amount": 0.42, "currency": "USD" }
+    },
+    "history": {
+      "attempt_number": 7,
+      "paid_attempts_on_same_failure": 6,
+      "failure_signal_present": true,
+      "failure_fingerprint": "fp_v1_widget_fail",
+      "new_evidence_since_last_attempt": false
+    }
+  }' | jq '.decision, .projected_savings'
+
+# → "require_confirmation"
+# → { "amount_usd": 1.26, "basis": "projected_future_attempts",
+#     "explanation": "Stopping this stale_context_retry_storm avoids ..." }</pre>
+    </div>
+    <p style="margin-top: 18px; font-size: 0.93rem; color: var(--muted);">
+      Four SDK helpers: <code>check</code> · <code>checkShadow</code> · <code>checkOrConfirm</code> · <code>checkOrDowngrade</code>. <code>checkOrDowngrade</code> auto-applies <code>suggested_action.model_route.to</code> when premium-model burn is detected.
+    </p>
+  </div>
+</section>
+
 <section id="demo">
   <div class="container">
-    <h2><span class="num">04</span>Demo stories</h2>
+    <h2><span class="num">05</span>Demo stories</h2>
     <p>Live numbers from the self-trial against this very repo's Stage 0.5 build. Three identical-looking POSTs differing only in evidence annotation.</p>
     <table class="demo">
       <thead><tr><th>Scenario</th><th>Decision</th><th>Pattern</th><th>Why</th></tr></thead>
@@ -393,7 +622,7 @@ Agent decides</pre>
 
 <section id="benchmark">
   <div class="container">
-    <h2><span class="num">05</span>Benchmark</h2>
+    <h2><span class="num">06</span>Benchmark</h2>
     <p>We stress-tested v0.5.2-beta against ten realistic agent archetypes for one simulated workday each — 1,133 real <code>/v1/check</code> POSTs against a live hosted server, deterministic seeds, fully reproducible.</p>
     <div class="price-row" style="margin-top: 16px;">
       <div class="price-card">
@@ -430,7 +659,7 @@ Agent decides</pre>
 
 <section id="integrations">
   <div class="container">
-    <h2><span class="num">06</span>Integrations</h2>
+    <h2><span class="num">07</span>Integrations</h2>
     <div class="grid">
       <div class="pat">
         <div class="name">TypeScript SDK</div>
@@ -454,7 +683,7 @@ Agent decides</pre>
 
 <section id="pricing">
   <div class="container">
-    <h2><span class="num">07</span>Pricing</h2>
+    <h2><span class="num">08</span>Pricing</h2>
     <p>The honest version: <strong>everything below is anchor candidate, not committed</strong>. Real pricing waits for 7 days of partner logs.</p>
     <div class="price-row">
       <div class="price-card">
@@ -502,9 +731,95 @@ Agent decides</pre>
   </div>
 </section>
 
+<section id="faq">
+  <div class="container">
+    <h2><span class="num">09</span>FAQ</h2>
+
+    <details class="faq">
+      <summary>Will the guard slow down my agent?</summary>
+      <div class="faq-body">
+        <p>Median <code>/v1/check</code> latency is <strong>~5 ms</strong> against a steady-state hosted instance (4-8 ms is the typical range). At 95th percentile under benchmark load it stays under 20 ms. The SDK default timeout is 500 ms; if the guard is unreachable you fail open by default — a synthetic <code>allow</code> result is returned and your agent keeps running.</p>
+      </div>
+    </details>
+
+    <details class="faq">
+      <summary>What if the guard service is down?</summary>
+      <div class="faq-body">
+        <p>The SDK defaults to <code>failureMode: "open"</code> — transport-class errors (DNS, timeout, 5xx) are converted to a synthetic <code>allow</code> with <code>pattern: "guard_unavailable"</code>. Your agent never goes offline because of us. You can configure <code>"closed"</code> if you'd rather hard-stop on guard outage, or <code>"throw"</code> if you want to handle the error yourself.</p>
+        <p>Note: server-side 4xx (validation errors, bad keys) are NOT failed open — they propagate so you see your integration bug instead of silently getting <code>allow</code>. This is the Stage 0.4.1 / 0.4.2 contract.</p>
+      </div>
+    </details>
+
+    <details class="faq">
+      <summary>What data do you log?</summary>
+      <div class="faq-body">
+        <p>Hashes and counts only. No raw prompts, no source-file contents, no API keys, no test output bodies. The decision log line carries: <code>request_id</code>, <code>input_hash</code> (sha256-16 of canonical input), <code>api_key_hash</code> (sha256-16 of the bearer key — never the raw key), the partner-supplied <code>objective_id</code> / <code>actor_runtime</code> labels, the decision + pattern + matched rules, and the partner-supplied <code>next_action.estimated_cost</code> + computed <code>projected_savings</code>.</p>
+        <p>Full contract in <a href="https://github.com/your-org/spending-guard/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+      </div>
+    </details>
+
+    <details class="faq">
+      <summary>How is this different from PQS / Boundary Guard / x402station?</summary>
+      <div class="faq-body">
+        <p><strong>PQS</strong> scores one prompt at a time on an 8-dimension rubric — answer to <em>"is this single prompt worth paying for?"</em></p>
+        <p><strong>Boundary Guard</strong> validates outputs against schema / safety constraints — <em>"did the output pass?"</em></p>
+        <p><strong>x402station</strong> checks endpoint trust before payment — <em>"is this x402 endpoint safe to call?"</em></p>
+        <p><strong>Agent Spend Guard</strong> watches the <em>session loop</em> — <em>"is the agent already stuck in a paid retry pattern?"</em> Per-session history with universal evidence model. We compose with the others — a serious agent stack uses prompt-preflight → loop-detection → output-validation in sequence.</p>
+      </div>
+    </details>
+
+    <details class="faq">
+      <summary>How does the guard decide what's "stale"?</summary>
+      <div class="faq-body">
+        <p>The universal evidence model. Every action carries six annotations on the current attempt: <code>filesRead</code>, <code>testsRun</code>, <code>logsRead</code>, <code>gitDiffChanged</code>, <code>toolResultsChanged</code>, <code>contextSourceConfirmed</code>. Any one of them &gt; 0 / true counts as "the agent gathered new evidence between attempts."</p>
+        <p>Read-edit-rerun on the same failing test = <code>allow</code> (Stage 0.5.1 contract). Blind retry with zero annotations = <code>require_confirmation</code> with <code>projected_savings.basis = "projected_future_attempts"</code>.</p>
+      </div>
+    </details>
+
+    <details class="faq">
+      <summary>Can I tune the thresholds?</summary>
+      <div class="faq-body">
+        <p>Yes, per-request via <code>objective.detector_policy</code>. Four knobs: <code>same_tool_retry_threshold</code> (default 6), <code>premium_retry_without_evidence_threshold</code> (default 3), <code>expensive_action_usd_threshold</code> (default 0.10), <code>require_confirmation_after_repeats</code> (default 5). Type / default / min / recommended-range / description for each are exposed at <code>GET /v1/meta</code>.</p>
+        <p>For scraper agents costing $0.10+ per call, tighter thresholds make sense (e.g. <code>same_tool_retry_threshold: 3</code>). For coding agents at $0.02-0.05 per call, defaults are usually fine.</p>
+      </div>
+    </details>
+
+    <details class="faq">
+      <summary>What does the <code>projected_savings</code> number mean exactly?</summary>
+      <div class="faq-body">
+        <p>It's the dollar amount <em>offered</em> by the guard — what you save <em>if you heed the recommendation</em>. The guard can't know whether you actually did. Three computation bases:</p>
+        <p>• <code>next_attempt_avoided</code> — single attempt cost. Used when the decision is warn / req_confirm / block on a non-storm pattern.</p>
+        <p>• <code>projected_future_attempts</code> — <code>cost × min(3, paid_attempts_on_same_failure)</code>. Used on <code>stale_context_retry_storm</code> to look forward at the loop's likely tail.</p>
+        <p>• <code>model_downgrade_delta</code> — <code>primary_cost − secondary_cost</code>. Used when a <code>model_route.to</code> is set. Falls back to a conservative 60% reduction when <code>estimatedCostUsd</code> on the secondary isn't declared (labeled as such in the explanation).</p>
+      </div>
+    </details>
+
+    <details class="faq">
+      <summary>Do you support models I'm using? GPT? Gemini? Local?</summary>
+      <div class="faq-body">
+        <p>Provider-agnostic. The guard never calls a model — it judges <em>your</em> next call. Send any provider / model name in <code>next_action.provider</code> / <code>next_action.model</code> and it works. The <code>DEFAULT_DOWNGRADE_MAP</code> at <code>/v1/meta</code> has heuristic entries for Anthropic / OpenAI premium tiers; for everything else declare your own <code>model_policy.secondaryModel</code> with <code>estimatedCostUsd</code> and the guard will route to it precisely.</p>
+      </div>
+    </details>
+
+    <details class="faq">
+      <summary>What's the pricing eventually?</summary>
+      <div class="faq-body">
+        <p>Beta is free for the first 3-5 partners in exchange for a 7-day usefulness review. After that, the anchor — <em>not a commitment, pending real data</em> — is sub-cent per <code>/v1/check</code> via x402 (target <code>$0.001–$0.005</code> USDC). Must stay well below the cost of the LLM/tool call the guard is protecting, otherwise we'd be a tax instead of a service.</p>
+      </div>
+    </details>
+
+    <details class="faq">
+      <summary>Is the source open?</summary>
+      <div class="faq-body">
+        <p>Docs, SDK, examples, and the simulation harness are open. The hosted production service is closed-beta until the wedge is validated. Run your own instance from the repo any time — <a href="https://github.com/your-org/spending-guard/blob/main/DEPLOYMENT.md">DEPLOYMENT.md</a> has Render / Fly / Railway / Caddy-VPS recipes.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
 <section id="beta">
   <div class="container">
-    <h2><span class="num">08</span>Get beta access</h2>
+    <h2><span class="num">10</span>Get beta access</h2>
     <p>Closed beta — first 3–5 partners. The fit is paid coding agents, scraper / search agents, premium-model wrappers, or anyone routing $&gt;0.05 per agent action.</p>
     <form class="access" action="mailto:beta@agentspendguard.example?subject=Agent%20Spend%20Guard%20beta%20access" method="post">
       <input type="email" name="email" placeholder="you@company.com" required />
@@ -528,6 +843,113 @@ Agent decides</pre>
     </div>
   </div>
 </footer>
+
+<script>
+(function () {
+  // ── Config ──────────────────────────────────────────────────────────
+  // Set this to your hosted API origin (no trailing slash). The counter
+  // falls back to the benchmark numbers if the API is unreachable, so it's
+  // safe to leave pointing at localhost during development.
+  var API_BASE =
+    (window.AGENT_SPEND_GUARD_API_BASE) ||
+    (location.hostname === "localhost" || location.hostname === "127.0.0.1"
+      ? "http://localhost:8080"
+      : "https://api.agentspendguard.com");
+
+  // ── Counter widget ──────────────────────────────────────────────────
+  function fmtMoney(n) {
+    return "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtInt(n) { return Number(n).toLocaleString("en-US"); }
+
+  function animateNumber(el, from, to, formatter, duration) {
+    duration = duration || 900;
+    var start = performance.now();
+    function tick(now) {
+      var t = Math.min(1, (now - start) / duration);
+      // ease-out cubic
+      var k = 1 - Math.pow(1 - t, 3);
+      var v = from + (to - from) * k;
+      el.textContent = formatter(v);
+      if (t < 1) requestAnimationFrame(tick);
+      else el.textContent = formatter(to);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function updateCounter() {
+    var savingsEl = document.querySelector('[data-counter-num="savings"]');
+    var checksEl  = document.querySelector('[data-counter-num="checks"]');
+    var catchesEl = document.querySelector('[data-counter-num="catches"]');
+    var noteEl    = document.querySelector('[data-counter-source]');
+    var card      = document.querySelector('.counter-card');
+    if (!savingsEl || !checksEl || !catchesEl) return;
+
+    // Parse current displayed values as "from".
+    var fromSavings = parseFloat((savingsEl.textContent || "0").replace(/[,$]/g, "")) || 0;
+    var fromChecks  = parseFloat((checksEl.textContent  || "0").replace(/,/g, "")) || 0;
+    var fromCatches = parseFloat((catchesEl.textContent || "0").replace(/,/g, "")) || 0;
+
+    var url = API_BASE + "/v1/public/stats";
+    fetch(url, { method: "GET", mode: "cors", credentials: "omit" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (stats) {
+        var savings = Number(stats.total_savings_offered_usd || 0);
+        var checks  = Number(stats.total_checks || 0);
+        var catches = Number(stats.events_with_savings || 0);
+        if (checks <= 0) {
+          // Server has empty log — keep the benchmark seed visible.
+          if (noteEl) noteEl.innerHTML = "Seeded by the 10-agent benchmark — hosted server logs are empty so far.";
+          return;
+        }
+        animateNumber(savingsEl, fromSavings, savings, fmtMoney);
+        animateNumber(checksEl,  fromChecks,  checks,  fmtInt);
+        animateNumber(catchesEl, fromCatches, catches, fmtInt);
+        if (card) {
+          card.classList.remove("updated");
+          // Force reflow so the animation re-runs.
+          void card.offsetWidth;
+          card.classList.add("updated");
+        }
+        if (noteEl) {
+          noteEl.innerHTML =
+            'Live: pulled from <code>/v1/public/stats</code> at ' +
+            new Date().toLocaleTimeString() + '. Aggregated from benchmark + beta logs.';
+        }
+      })
+      .catch(function () {
+        // Network/CORS error — leave the seeded benchmark numbers visible.
+        if (noteEl) {
+          noteEl.innerHTML =
+            'Showing 10-agent benchmark numbers (live API at <code>' + API_BASE + '</code> unreachable from this page).';
+        }
+      });
+  }
+
+  // Update on load + every 60 seconds.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", updateCounter);
+  } else {
+    updateCounter();
+  }
+  setInterval(updateCounter, 60_000);
+
+  // ── Code-example tab switcher ───────────────────────────────────────
+  var tabs = document.querySelectorAll(".code-tab");
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      var target = tab.getAttribute("data-tab");
+      tabs.forEach(function (t) { t.setAttribute("aria-selected", t === tab ? "true" : "false"); });
+      document.querySelectorAll(".code-panel").forEach(function (panel) {
+        panel.setAttribute("data-active", panel.getAttribute("data-panel") === target ? "true" : "false");
+      });
+    });
+  });
+})();
+</script>
 
 </body>
 </html>

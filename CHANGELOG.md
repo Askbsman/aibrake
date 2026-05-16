@@ -6,6 +6,77 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.3-beta — Public stats endpoint + site polish
+
+**Tag:** `spending-guard-v0.5.3-beta`
+**Base:** `spending-guard-v0.5.2-beta`
+**Goal:** make the savings visible *outside* the partner integration — a live public counter on the landing page, fed by a real endpoint, plus the site polish needed to actually show this to a blogger.
+
+### Added
+
+- **`GET /v1/public/stats`** — new unauthenticated, CORS-friendly read-only endpoint that returns aggregated statistics from the JSONL decision log:
+  ```jsonc
+  {
+    "service": "agent-spend-guard",
+    "version": "0.5.3-beta",
+    "total_checks": 1133,
+    "total_savings_offered_usd": 103.16,
+    "total_cost_observed_usd": 99.30,
+    "events_with_savings": 265,
+    "decisions": { "allow": 868, "warn": 0, "require_confirmation": 237, "block": 28, "delay": 0, "uncertain": 0 },
+    "savings_by_pattern": { "stale_context_retry_storm": 101.08, "objective_drift": 2.08 },
+    "savings_by_basis":   { "projected_future_attempts": 101.08, "next_attempt_avoided": 2.08 },
+    "generated_at": "2026-05-16T20:34:00.458Z",
+    "log_present": true
+  }
+  ```
+  - **No per-partner data** in the response. No `request_id`, no `api_key_hash`, no `objective_id`, no `actor_runtime`. Only patterns / bases / aggregates. Pinned by test PS08.
+  - In-process 30s TTL cache + file-mtime fast path so the endpoint stays cheap even under landing-page traffic.
+  - CORS: `access-control-allow-origin: *` plus an `OPTIONS` preflight handler returning 204.
+  - `cache-control: public, max-age=30` so a CDN in front of the API can absorb most of the load.
+- **`/v1/meta.endpoints.public_stats`** advertised for discoverability.
+- **Landing page (`web/index.html`)** got a substantial pass:
+  - **Live savings counter** in the hero — animated, fetches `/v1/public/stats` on load + every 60 s, falls back to the 10-agent benchmark numbers if the API is unreachable (no broken zero state). Re-flow animation on each successful update.
+  - **§04 Integrate** — tabbed code example (TypeScript / Python / curl) with the actual 5-line integration. Real fields, real expected output.
+  - **§09 FAQ** — 10 questions covering latency, fail-open semantics, what's logged, vs PQS / Boundary Guard / x402station, evidence model, threshold tuning, savings semantics, model coverage, pricing, source-open posture.
+  - **Favicon** — inline SVG, no extra request.
+  - **OG / Twitter meta** — title, description, type, site_name, summary_large_image card.
+  - **Canonical URL** + `theme-color`.
+  - Section numbers renumbered to fit Integrate and FAQ in.
+
+### Changed
+
+- Bumped `0.5.2-beta → 0.5.3-beta` / `0.5.2b0 → 0.5.3b0` in `package.json`, `src/config/env.ts`, `tests/routes.test.ts`, `tests/stage-03-hosting.test.ts`, `python/pyproject.toml`, `python/agent_spend_guard/__init__.py`, and the README banner.
+
+### Tests
+
+- New: `tests/stage-05-3-public-stats.test.ts` — **10 tests** (PS01–PS10):
+  - PS01: empty-log case returns valid shape with `log_present: false`.
+  - PS02: unauthenticated even in `auth=required` mode (the protected endpoints still 401).
+  - PS03: CORS headers (`access-control-allow-origin: *`, `cache-control: max-age=30`).
+  - PS04: OPTIONS preflight returns 204 with CORS headers.
+  - PS05: aggregates total_checks, decisions histogram, total cost.
+  - PS06: sums savings into total + by-pattern + by-basis (exact math).
+  - PS07: ignores malformed lines and unrelated event_types.
+  - PS08: **does not leak** `request_id` / `api_key_hash` / `objective_id` / `actor_runtime` / `input_hash` (asserted against the response body text directly).
+  - PS09: serves cached response on rapid re-calls.
+  - PS10: `/v1/meta.endpoints.public_stats === "/v1/public/stats"`.
+- TS unit: **198 / 198** (was 188, +10). Typecheck clean.
+- Python: **35 / 35** on Python 3.14.5 — unchanged, version bump only.
+
+### Not changed (deliberately)
+
+- No new detectors. No paid `/x402/v1/check`. No new adapters.
+- The public stats endpoint exposes ONLY aggregates. Per-partner / per-objective dashboards stay deferred until there's real volume.
+
+### Verification
+
+- `/health`: returns `version: "0.5.3-beta"`.
+- `/v1/public/stats`: returns the live `$103.16 / 1133 / 265` triple seeded by the 10-agent benchmark log.
+- Landing page counter: animates from seed → live values when API reachable; falls back to seed values cleanly when unreachable.
+
+---
+
 ## 0.5.2-beta — Savings Visibility
 
 **Tag:** `spending-guard-v0.5.2-beta`
