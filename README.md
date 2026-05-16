@@ -1,5 +1,9 @@
 # Agent Spend Guard
 
+<p align="center">
+  <img src="./web/og-card.svg" alt="Agent Spend Guard — loop detection and model stop-loss for paid AI agents" width="720" />
+</p>
+
 > **Loop detection and model stop-loss for paid AI agents.**
 >
 > **PQS checks the prompt. Agent Spend Guard checks the loop.**

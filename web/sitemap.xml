@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Agent Spend Guard sitemap.
+
+  One-page landing for the closed beta. Anchor links inside index.html
+  are deliberately NOT enumerated here — sitemaps list URLs, not anchors.
+  Replace the host before deploy; everything else stays the same until the
+  site grows beyond a single page.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://agentspendguard.example.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
