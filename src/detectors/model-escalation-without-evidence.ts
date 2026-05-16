@@ -10,7 +10,44 @@ import type {
 } from "../core/types.js";
 
 const NAME = "model_escalation_without_evidence";
-const VERSION = `${NAME}@0.2.0`;
+const VERSION = `${NAME}@0.3.0`;
+
+// Stage 0.5.2: default downgrade map used ONLY when the operator did NOT
+// declare `objective.model_policy.secondaryModel`. The map is a heuristic and
+// will go stale as providers re-price; partners who care about precision
+// should declare their own `secondaryModel` with `estimatedCostUsd`.
+//
+// Exported so /v1/meta can advertise it for discoverability.
+export const DEFAULT_DOWNGRADE_MAP: ReadonlyArray<{
+  matches: RegExp;
+  to: { provider?: string; model: string; tier: "standard" | "cheap"; estimatedCostUsd?: number };
+}> = [
+  // Anthropic premium → cheaper tier
+  { matches: /opus/i,        to: { provider: "anthropic", model: "claude-sonnet-4.5", tier: "standard", estimatedCostUsd: 0.05 } },
+  { matches: /sonnet-?4\.5/i, to: { provider: "anthropic", model: "claude-haiku",      tier: "cheap",    estimatedCostUsd: 0.01 } },
+  { matches: /sonnet-?4/i,    to: { provider: "anthropic", model: "claude-haiku",      tier: "cheap",    estimatedCostUsd: 0.01 } },
+  { matches: /claude-?4\.\d/i, to: { provider: "anthropic", model: "claude-sonnet",    tier: "standard", estimatedCostUsd: 0.03 } },
+  // OpenAI premium → cheaper tier
+  { matches: /gpt-?5/i,       to: { provider: "openai",    model: "gpt-4o-mini",       tier: "cheap",    estimatedCostUsd: 0.01 } },
+  { matches: /gpt-?4o/i,      to: { provider: "openai",    model: "gpt-4o-mini",       tier: "cheap",    estimatedCostUsd: 0.01 } },
+  { matches: /gpt-?4/i,       to: { provider: "openai",    model: "gpt-4o-mini",       tier: "cheap",    estimatedCostUsd: 0.01 } },
+  { matches: /^o[1-9]/i,      to: { provider: "openai",    model: "gpt-4o-mini",       tier: "cheap",    estimatedCostUsd: 0.01 } },
+  // Generic "ultra" tier → unknown cheaper
+  { matches: /ultra/i,        to: { provider: undefined,   model: "standard-tier",     tier: "standard" } },
+];
+
+function lookupDefaultDowngrade(model: string | undefined): {
+  provider?: string;
+  model: string;
+  tier: "standard" | "cheap";
+  estimatedCostUsd?: number;
+} | undefined {
+  if (!model) return undefined;
+  for (const entry of DEFAULT_DOWNGRADE_MAP) {
+    if (entry.matches.test(model)) return entry.to;
+  }
+  return undefined;
+}
 
 // Heuristic for "expensive" when no explicit model_policy or model_role/tier
 // is provided. Used as a fallback so existing 0.1.x callers keep working.
@@ -124,10 +161,29 @@ export const modelEscalationWithoutEvidenceDetector: DetectorDefinition = {
     if (matched.length === 1) return null;
 
     // 0.2-minimal: when an operator-supplied secondary model exists, recommend
-    // a structured switch to it instead of leaving the SDK to guess what
-    // "downgrade" means.
-    const secondary = policy?.secondaryModel;
-    const route: ModelRoute | undefined = secondary
+    // a structured switch to it.
+    // 0.5.2: when no secondary is declared, fall back to DEFAULT_DOWNGRADE_MAP
+    //   so partners who haven't yet declared model_policy still get an
+    //   actionable target (marked as "default" in route.reason so they know
+    //   it's heuristic, not their own choice).
+    const declaredSecondary = policy?.secondaryModel;
+    const defaultTarget = declaredSecondary
+      ? undefined
+      : lookupDefaultDowngrade(input.next_action.model);
+
+    const routeTarget: ModelRef | undefined = declaredSecondary ?? (defaultTarget
+      ? {
+          ...(defaultTarget.provider !== undefined ? { provider: defaultTarget.provider } : {}),
+          model: defaultTarget.model,
+          role: "secondary" as const,
+          tier: defaultTarget.tier,
+          ...(defaultTarget.estimatedCostUsd !== undefined
+            ? { estimatedCostUsd: defaultTarget.estimatedCostUsd }
+            : {}),
+        }
+      : undefined);
+
+    const route: ModelRoute | undefined = routeTarget
       ? {
           from: {
             ...(input.next_action.provider !== undefined
@@ -143,9 +199,10 @@ export const modelEscalationWithoutEvidenceDetector: DetectorDefinition = {
               ? { tier: input.next_action.model_tier }
               : {}),
           },
-          to: secondary,
-          reason:
-            "Secondary model is safer for summary / audit while the primary model is stuck without new evidence.",
+          to: routeTarget,
+          reason: declaredSecondary
+            ? "Secondary model is safer for summary / audit while the primary model is stuck without new evidence."
+            : "Default downgrade target (no objective.model_policy.secondaryModel declared). Override by declaring your own secondaryModel for precise routing.",
         }
       : undefined;
 
@@ -189,7 +246,8 @@ export const modelEscalationWithoutEvidenceDetector: DetectorDefinition = {
         model: input.next_action.model ?? null,
         expensive_reason: reasonTag,
         has_model_policy: Boolean(policy),
-        has_secondary_model: Boolean(secondary),
+        has_secondary_model: Boolean(declaredSecondary),
+        used_default_downgrade: Boolean(defaultTarget) && !declaredSecondary,
         reason,
       },
     };

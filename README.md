@@ -4,14 +4,14 @@
 >
 > **PQS checks the prompt. Agent Spend Guard checks the loop.**
 
-> **Status:** Stage 0.5.1 — Adapter evidence-window calibration
-> **Version:** `0.5.1-beta`
-> **Base:** `spending-guard-v0.5.0-beta`
-> **Tag:** `spending-guard-v0.5.1-beta`
-> **Primary value:** loop detection + model stop-loss for paid AI agents
+> **Status:** Stage 0.5.2 — Savings Visibility
+> **Version:** `0.5.2-beta`
+> **Base:** `spending-guard-v0.5.1-beta`
+> **Tag:** `spending-guard-v0.5.2-beta`
+> **Primary value:** loop detection + model stop-loss + **$-denominated projected savings** on every catch
 > **Mode:** hosted beta / shadow-first
-> **Tests:** 172 TS unit + 14 audit + 36 harness actions; **35 Python tests passing** (19 unit + 4 integration + 12 Stage 0.5) on Python 3.14
-> **Latest fix:** self-trial Finding 1 — `CodingAgentAdapter` now folds current-attempt evidence (filesRead / testsRun / gitDiffChanged / toolResultsChanged / contextSourceConfirmed) into the "since last attempt" evidence window. Closes the false-positive on the read-edit-rerun pattern surfaced by `SELF_TRIAL_CLAUDE_CODE_REPORT.md`.
+> **Tests:** 188 TS unit + 14 audit + 36 harness actions; **35 Python tests passing** on Python 3.14
+> **Latest:** every non-`allow` response now carries `projected_savings.amount_usd` with one of three explainable bases (`model_downgrade_delta` / `projected_future_attempts` / `next_attempt_avoided`). `/v1/meta` advertises a `DEFAULT_DOWNGRADE_MAP` so partners without a declared `secondaryModel` still get an actionable route. `npm run logs:summary` now sums "savings offered" by pattern and by basis.
 > **SDKs:** TypeScript (`spending-guard`) + Python (`python/agent_spend_guard`)
 > **Next step:** real partner integration → 7 days of logs → useful-warning review → pricing/x402 decision (see [`INTEGRATION_GUIDE.md`](./INTEGRATION_GUIDE.md), [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md), [`PYTHON_SDK.md`](./PYTHON_SDK.md), [`CODING_AGENT_ADAPTER.md`](./CODING_AGENT_ADAPTER.md), [`DEPLOYMENT.md`](./DEPLOYMENT.md))
 > **npm package name:** `spending-guard` (historical; product brand is "Agent Spend Guard" — see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))

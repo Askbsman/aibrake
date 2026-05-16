@@ -79,4 +79,4 @@ __all__ = [
     "KIND_UNKNOWN",
 ]
 
-__version__ = "0.5.1b0"
+__version__ = "0.5.2b0"

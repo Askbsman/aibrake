@@ -6,6 +6,89 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.2-beta — Savings Visibility
+
+**Tag:** `spending-guard-v0.5.2-beta`
+**Base:** `spending-guard-v0.5.1-beta`
+**Goal:** turn every catch into a $-denominated decision. Three additions, no new detectors, no new adapters, no x402 payment integration.
+
+### Added
+
+- **`projected_savings` on every non-`allow` /v1/check response.** New optional field on `SpendingGuardCheckOutput`:
+  ```jsonc
+  "projected_savings": {
+    "amount_usd": 1.26,
+    "currency": "USD",
+    "basis": "projected_future_attempts",          // or "model_downgrade_delta" / "next_attempt_avoided"
+    "explanation": "Stopping this stale_context_retry_storm avoids an estimated 3 more paid attempt(s) at $0.42 each ($1.26 total) until the agent gathers new evidence."
+  }
+  ```
+  Three explainable computation paths, picked deterministically:
+  - **`model_downgrade_delta`** — `suggested_action.model_route.to.estimatedCostUsd` is set → savings = primary cost − secondary cost. If no explicit cost on the target, fall back to a 60% reduction estimate (labeled as such in the explanation).
+  - **`projected_future_attempts`** — `pattern === "stale_context_retry_storm"` with `paid_attempts_on_same_failure >= 1` → savings = `next_action.estimated_cost × min(3, repeats)`. The "3" cap is deliberate — past three attempts we're guessing.
+  - **`next_attempt_avoided`** — every other warn / require_confirmation / delay / block → savings = single next attempt cost. Conservative default.
+  - `allow` always omits the field. `uncertain` omits it (low confidence; not promising a number we can't defend).
+  - Zero-cost actions also omit the field (avoid nonsense).
+- **`/v1/meta.default_downgrade_map`** advertises the heuristic downgrade table consulted by `model_escalation_without_evidence@0.3.0` when the partner has not declared `objective.model_policy.secondaryModel`. Nine entries covering Anthropic premium / OpenAI premium / generic "ultra" tier. Each entry exposes `matches` (regex source), `flags`, and `to: { provider, model, tier, estimatedCostUsd }` so partners can audit before relying on it.
+- **`model_route` with default target** — the detector now emits a `switch_model` suggestion with a default route when no `secondaryModel` is declared but the model matches the map. `route.reason` explicitly flags it as `"Default downgrade target (no objective.model_policy.secondaryModel declared)"` so partners know it's heuristic. `result.metadata.used_default_downgrade: true` for log audit.
+- **`logs:summary` savings aggregation.** The CLI now sums `projected_savings_usd` from the JSONL log into:
+  ```
+  savings_offered: $X.XX total ($X.XX avg per event)
+  savings_by_pattern: { stale_context_retry_storm: $X.XX, model_escalation: $X.XX, ... }
+  savings_by_basis:   { projected_future_attempts: $X.XX, model_downgrade_delta: $X.XX, ... }
+  cost_observed:      $X.XX total across N events
+  ```
+- **`ModelRef.estimatedCostUsd`** — optional field on `ModelRef`. Set on `secondaryModel` to get a precise `model_downgrade_delta` instead of the 60% fallback.
+- **Decision log fields** — JSONL log line now includes `next_action_cost_usd`, `projected_savings_usd`, `projected_savings_basis` so the CLI can aggregate without re-running detectors.
+
+### Changed
+
+- **`model_escalation_without_evidence` bumped `@0.2.0 → @0.3.0`** — default downgrade map fallback added. Old behavior (plain `downgrade_model` suggestion with no `model_route` when no secondary declared) is gone — operators always get an actionable target now, marked as default when it came from the map.
+- **`policy_version` stays `policy@0.1.0`** — aggregation and decision policy unchanged.
+- Two pre-existing tests pinned the old 0.2-era "plain downgrade_model" suggestion. Updated to assert the new contract:
+  - `tests/model-policy.test.ts` § 06 → now asserts `switch_model` + default route + `used_default_downgrade: true`. Added § 06b pinning that the OLD behavior (plain `downgrade_model`, no route) still applies when the model name matches no entry in the default map.
+  - `tests/stage-03-1-calibration.test.ts` § 05 → asserts `switch_model` with `claude-opus → claude-sonnet-4.5` from the default map.
+
+### Tests
+
+- New: `tests/stage-05-2-savings-visibility.test.ts` — **15 tests** covering S1-S15:
+  - S1: cold-start allow has NO `projected_savings`
+  - S2: stale-context fires `projected_future_attempts`, exact math `cost × min(3, repeats)`
+  - S3: explicit secondary with `estimatedCostUsd` → precise `model_downgrade_delta`
+  - S4: secondary without cost → conservative 60% estimate (labeled)
+  - S5: deterministic block (objective_drift) → `next_attempt_avoided`
+  - S6: cents rounding
+  - S7: zero-cost action → no savings field
+  - S8-S11: `/v1/meta.default_downgrade_map` shape; detector consumes it; metadata flags
+  - S12: `logs:summary` aggregates savings across events
+  - S13: malformed log lines skipped
+  - S14-S15: backwards compat — `allow` response shape unchanged; non-allow carries both structured savings AND original `suggested_action`
+- TS unit: **188 / 188** (was 172, +16). Typecheck clean.
+- Python: **35 / 35** on Python 3.14.5. No Python-side changes — the SDK already returns the dict whole, so `result["projected_savings"]` is available without code changes.
+- Audit + harness: unchanged, still 14 / 14 + 36 / 36.
+
+### Not changed (deliberately)
+
+- No new detectors. The `wasteful_repeated_work` detector (E3/E8 self-trial gap) stays deferred until real partner data.
+- No paid `/x402/v1/check` endpoint. The savings number is itself the unlock — partners can decide if guard is worth paying for after seeing 7 days of `npm run logs:summary` output.
+- No adaptive thresholds. Static per-objective overrides via `detector_policy` remain the only knob.
+
+### Honesty disclosure
+
+The 60% fallback ratio in `model_downgrade_delta` is a heuristic anchored on typical premium-vs-cheap pricing (opus/sonnet → haiku, gpt-4 → gpt-4o-mini ≈ 5-10x cheaper). It is **labeled as conservative** in the explanation string. Partners who care about precise numbers should declare `estimatedCostUsd` on their `secondaryModel` — the detector will use it verbatim.
+
+The `DEFAULT_DOWNGRADE_MAP` itself will go stale as providers re-price. It is exposed via `/v1/meta` precisely so partners can audit and override. Treat it as discovery, not authoritative routing.
+
+### Verification
+
+- `/health`: returns `version: "0.5.2-beta"`.
+- `/v1/meta.default_downgrade_map`: 9 entries advertised.
+- `/v1/check` on a stale-context retry storm with $0.42 cost + 6 paid repeats: returns `projected_savings: { amount_usd: 1.26, basis: "projected_future_attempts", ... }` (verified live).
+- TS suite: 188 / 188; typecheck clean.
+- Python suite: 35 / 35 on Python 3.14.5.
+
+---
+
 ## 0.5.1-beta — Adapter evidence-window calibration
 
 **Tag:** `spending-guard-v0.5.1-beta`

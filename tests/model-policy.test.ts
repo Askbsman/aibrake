@@ -166,13 +166,40 @@ describe("Stage 0.2-minimal — model_policy enrichment", () => {
     expect(out.suggested_action.model_route?.to?.model).toBe("claude-sonnet");
   });
 
-  it("06. omits model_route when no secondaryModel is configured (falls back to plain downgrade_model)", () => {
+  it("06. Stage 0.5.2 — falls back to DEFAULT_DOWNGRADE_MAP when no secondaryModel is declared", () => {
+    // Stage 0.5.2 contract change: when no operator-supplied secondaryModel
+    // exists, the detector now consults DEFAULT_DOWNGRADE_MAP and emits
+    // switch_model with a default route. The route.reason explicitly flags
+    // it as a default so partners know it's heuristic, not their own choice.
+    // (Previous 0.2 behavior — plain downgrade_model with no model_route —
+    // is gone; partners get an actionable target out of the box.)
     const input = premiumRetryInput();
     input.objective!.model_policy = { primaryModel: policy.primaryModel };
     const result = modelEscalationWithoutEvidenceDetector.evaluate(input);
     expect(result).not.toBeNull();
+    // claude-4.7 matches /claude-?4\.\d/i → default downgrade to claude-sonnet
+    expect(result?.suggestedActions[0]?.type).toBe("switch_model");
+    const route = result?.suggestedActions[0]?.model_route;
+    expect(route).toBeDefined();
+    expect(route?.to?.model).toBe("claude-sonnet");
+    expect(route?.reason).toMatch(/Default downgrade target/);
+    expect(result?.metadata.used_default_downgrade).toBe(true);
+    expect(result?.metadata.has_secondary_model).toBe(false);
+  });
+
+  it("06b. Stage 0.5.2 — detector still emits plain downgrade_model when DEFAULT_DOWNGRADE_MAP has no match", () => {
+    // For a model the regex map doesn't recognize, behavior is unchanged.
+    // We construct a payload where premium is explicit (model_tier) but the
+    // model name doesn't match any default map entry — falls back to
+    // generic downgrade_model with no route.
+    const input = premiumRetryInput();
+    input.objective!.model_policy = { primaryModel: policy.primaryModel };
+    input.next_action.model = "custom-exotic-model-name-that-matches-no-regex";
+    const result = modelEscalationWithoutEvidenceDetector.evaluate(input);
+    expect(result).not.toBeNull();
     expect(result?.suggestedActions[0]?.type).toBe("downgrade_model");
     expect(result?.suggestedActions[0]?.model_route).toBeUndefined();
+    expect(result?.metadata.used_default_downgrade).toBe(false);
   });
 
   it("07. detector reason text names both the primary and secondary model when route is present", () => {

@@ -68,6 +68,12 @@ export interface ModelRef {
   model?: string;
   role?: ModelRole;
   tier?: ModelTier;
+  // Stage 0.5.2: optional per-attempt cost. When set on `secondaryModel`, the
+  // model_escalation detector's `model_route.to` carries this value through so
+  // the Core can compute a precise `projected_savings.amount_usd` (delta of
+  // primary vs secondary). Omit for "I don't have a number" — the Core falls
+  // back to a conservative 60% reduction heuristic and labels it accordingly.
+  estimatedCostUsd?: number;
 }
 
 export interface ModelPolicy {
@@ -232,6 +238,31 @@ export interface DetectorDefinition {
   evaluate(input: SpendingGuardCheckInput): DetectorResult | null;
 }
 
+// Stage 0.5.2: $-denominated savings estimate. Optional on every response.
+// Present when the decision implies the operator will skip / downgrade /
+// pause the action. Absent on plain allow.
+//
+// The number is *projected savings if the operator heeds the recommendation*
+// — it is not a refund, not a debit, not a paid quantity. It exists so the
+// partner can answer "did the guard save me money this week" without doing
+// their own math against the decision log.
+export type ProjectedSavingsBasis =
+  // The single next paid attempt would not fire.
+  | "next_attempt_avoided"
+  // The retry pattern is likely to repeat N more times at current burn rate.
+  | "projected_future_attempts"
+  // Switching to the recommended cheaper model saves the cost delta.
+  | "model_downgrade_delta";
+
+export interface ProjectedSavings {
+  amount_usd: number;
+  currency: "USD";
+  basis: ProjectedSavingsBasis;
+  // Human-readable explanation, e.g. "Stopping this stale_context_retry_storm
+  // avoids the next paid_llm_call ($0.42)."
+  explanation: string;
+}
+
 export interface SpendingGuardCheckOutput {
   decision: SpendingGuardDecision;
   risk_score: number;
@@ -247,6 +278,11 @@ export interface SpendingGuardCheckOutput {
   metadata: Record<string, unknown>;
   detector_version: string;
   policy_version: string;
+  // Stage 0.5.2: $-savings the operator captures by heeding the recommendation.
+  // Omitted on plain `allow`. Present whenever decision is warn /
+  // require_confirmation / delay / block, or when suggested_action.type
+  // indicates a downgrade / context_refresh / stop_action.
+  projected_savings?: ProjectedSavings;
   alternative_actions?: SuggestedAction[];
   error?: {
     code: string;

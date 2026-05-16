@@ -146,7 +146,14 @@ describe("Stage 0.3.1 — no allow + downgrade dissonance (Partner B reproductio
     expect(out.pattern).toBe("model_escalation_without_evidence");
     expect(out.decision).toBe("warn");
     expect(out.recommended_policy).toBe("downgrade");
-    expect(out.suggested_action.type).toBe("downgrade_model");
+    // Stage 0.5.2: detector now consults DEFAULT_DOWNGRADE_MAP when no
+    // operator-supplied secondaryModel exists. opus → sonnet-4.5 by default,
+    // so suggested_action.type is now `switch_model` (with route) instead
+    // of the old plain `downgrade_model`. Both are "downgrade-class"
+    // suggestions; § 06 below pins that property.
+    expect(out.suggested_action.type).toBe("switch_model");
+    expect(out.suggested_action.model_route?.to?.model).toBe("claude-sonnet-4.5");
+    expect(out.suggested_action.model_route?.reason).toMatch(/Default downgrade target/);
   });
 
   it("06. response must never have decision: allow + a downgrade-class suggestion", () => {

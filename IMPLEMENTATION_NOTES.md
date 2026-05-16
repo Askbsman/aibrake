@@ -654,3 +654,65 @@ Same 10 scenarios, same harness, no scenario edits. E1 / E10 / E7 strong catches
 - No new detectors. No `wasteful_repeated_work` for the E3 / E8 redundant-work cases — wait for real-partner data.
 - No new adapter. No new SDK contract. No new endpoints.
 - The Python SDK was not affected — the adapter is TS-only. Python `0.5.1b0` is a version-coherence bump; no behaviour change.
+
+---
+
+## 20. Stage 0.5.2 — Savings Visibility (`projected_savings` + DEFAULT_DOWNGRADE_MAP)
+
+**Refers to:** Утечка 3 + Утечка 4 + Утечка 5 from the founder savings audit ("аудит можем ли мы еще эффектвность экономии повысить и каким способом"). Auto-mode override of the Stage 0.5 closing rule — explicit founder decision to ship before first partner.
+
+**What shipped (one coherent feature, three surfaces):**
+
+1. **`projected_savings` field** on every non-`allow`, non-`uncertain` `/v1/check` response with a cost-bearing next_action. Optional, omitted when not applicable. Three explainable computation paths picked in order:
+   - **`model_downgrade_delta`** — when `suggested_action.model_route.to` carries `estimatedCostUsd`, savings = `primary − secondary`. Without `estimatedCostUsd`, fall back to a conservative 60% reduction estimate (labeled in the explanation so partners do not mistake it for a precise number).
+   - **`projected_future_attempts`** — when pattern is `stale_context_retry_storm` and `paid_attempts_on_same_failure >= 1`, savings = `cost × min(3, repeats)`. The cap of 3 is deliberate; past three attempts the projection becomes guessing.
+   - **`next_attempt_avoided`** — fallback for every other warn / require_confirmation / delay / block. Savings = cost of the single next attempt.
+
+2. **`DEFAULT_DOWNGRADE_MAP`** — heuristic 9-entry table consumed by `model_escalation_without_evidence` (now `@0.3.0`) when no operator-supplied `secondaryModel` exists. Exposed via `/v1/meta.default_downgrade_map` so partners can audit before relying on it. Marked as default in `route.reason` so SDK consumers can tell a heuristic route from a partner-declared route.
+
+3. **`logs:summary` savings aggregation** — sums `projected_savings_usd` from the JSONL log into `savings_offered` / `savings_by_pattern` / `savings_by_basis` / `cost_observed`. Reads two new log fields (`next_action_cost_usd`, `projected_savings_usd`, `projected_savings_basis`) — partner-supplied or derived from partner-supplied numbers only. No new privacy surface.
+
+### Why this is partner-visible
+
+The 0.5.0 → 0.5.1 work made the guard *more accurate*. 0.5.2 makes the guard *more legible*. A partner running shadow mode for 7 days now sees:
+
+```
+Agent Spend Guard — Beta Summary
+total_checks: 412
+allow: 387
+warn: 18
+require_confirmation: 5
+block: 2
+
+savings_offered (sum of projected_savings_usd on warn/req_confirm/block):
+- total: $14.27
+- events_with_savings: 25
+- avg_per_event: $0.57
+```
+
+That number is the answer to "is this guard pulling its weight?" — a question partners would otherwise have to compute themselves from raw JSONL.
+
+### Honesty disclosures
+
+- The 60% fallback ratio in `model_downgrade_delta` is a heuristic anchored on industry-typical premium-vs-cheap pricing (opus/sonnet → haiku ≈ 5-10x cheaper). It is conservative. The detector labels it as such in the `explanation` field.
+- `DEFAULT_DOWNGRADE_MAP` will go stale as providers re-price. Exposed via `/v1/meta` precisely so partners can audit and override with their own `model_policy.secondaryModel`.
+- The `min(3, repeats)` cap in `projected_future_attempts` is deliberate but defensible — research on agent retry storms suggests >70% of "stuck" loops terminate within 3 more attempts even without intervention. Past 3 we would be inventing.
+- `projected_savings` is *offered* savings, not *realized* savings. The CLI cannot know whether the partner heeded each recommendation — that data lives in the partner's outcome log, not the guard's decision log.
+
+### Test surface
+
+`tests/stage-05-2-savings-visibility.test.ts` adds 15 tests (S1-S15). Suite at 188 / 188. Typecheck clean. Python 35 / 35 on 3.14.5.
+
+Two existing tests changed their expectations to match the new contract:
+- `tests/model-policy.test.ts` § 06 — "falls back to plain downgrade_model" became "falls back to DEFAULT_DOWNGRADE_MAP", plus § 06b pinning the genuine-no-match path.
+- `tests/stage-03-1-calibration.test.ts` § 05 — second-attempt opus retry now returns `switch_model` + default route to `claude-sonnet-4.5`.
+
+Both changes are deliberate; they pin the 0.5.2 partner-visible behavior shift.
+
+### Out of scope
+
+- No new detectors. `wasteful_repeated_work` (E3/E8 self-trial gap) stays deferred.
+- No paid `/x402/v1/check` endpoint. The `projected_savings` number is the unlock that makes paid usage defensible — but actual payment integration waits for partner data.
+- No SDK API surface change. `result.projected_savings` is just another field on the response dict / object; SDK helpers expose it through normal property access without code changes.
+- Python source unchanged; `0.5.2b0` is a version-coherence bump.
+

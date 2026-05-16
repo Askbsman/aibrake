@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { EnvConfig } from "../config/env.js";
 import { POLICY_VERSION } from "../core/types.js";
+import { DEFAULT_DOWNGRADE_MAP } from "../detectors/model-escalation-without-evidence.js";
 
 // Stage 0.5: discoverable detector_policy schema. Partners need to know which
 // knobs they can tune without grepping the source tree. This block is
@@ -78,6 +79,16 @@ export async function registerMetaRoute(
         supported_fields: DETECTOR_POLICY_SUPPORTED_FIELDS,
         example: DETECTOR_POLICY_EXAMPLE,
       },
+      // Stage 0.5.2: default downgrade map (heuristic). Used by
+      // model_escalation_without_evidence ONLY when the partner did NOT
+      // declare `objective.model_policy.secondaryModel`. Expose here so
+      // partners can audit the heuristic and override with their own
+      // model_policy if they disagree.
+      default_downgrade_map: DEFAULT_DOWNGRADE_MAP.map((e) => ({
+        matches: e.matches.source,
+        flags: e.matches.flags,
+        to: e.to,
+      })),
       ...(config.publicUrl ? { public_url: config.publicUrl } : {}),
     };
   });

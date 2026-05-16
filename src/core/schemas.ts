@@ -40,6 +40,9 @@ const modelRefSchema = z
     model: z.string().optional(),
     role: modelRoleSchema.optional(),
     tier: modelTierSchema.optional(),
+    // Stage 0.5.2: optional per-attempt cost on the model ref. When set on
+    // `secondaryModel`, downstream computes precise savings delta.
+    estimatedCostUsd: z.number().finite().nonnegative().optional(),
   })
   .strict();
 
