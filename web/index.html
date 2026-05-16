@@ -273,6 +273,7 @@
       <a href="#what-it-catches">Patterns</a>
       <a href="#how-it-works">How</a>
       <a href="#demo">Demo</a>
+      <a href="#benchmark">Benchmark</a>
       <a href="#pricing">Pricing</a>
       <a href="https://github.com/your-org/spending-guard" target="_blank" rel="noopener">GitHub</a>
     </div>
@@ -390,9 +391,46 @@ Agent decides</pre>
   </div>
 </section>
 
+<section id="benchmark">
+  <div class="container">
+    <h2><span class="num">05</span>Benchmark</h2>
+    <p>We stress-tested v0.5.2-beta against ten realistic agent archetypes for one simulated workday each — 1,133 real <code>/v1/check</code> POSTs against a live hosted server, deterministic seeds, fully reproducible.</p>
+    <div class="price-row" style="margin-top: 16px;">
+      <div class="price-card">
+        <h3>Calls observed</h3>
+        <div class="price" style="font-size: 1.9rem;">1,133</div>
+        <p class="note">10 distinct agent profiles · 28-320 calls each</p>
+      </div>
+      <div class="price-card">
+        <h3>Spend observed</h3>
+        <div class="price" style="font-size: 1.9rem;">$99.30</div>
+        <p class="note">simulated agent spend, conservative per-call costs</p>
+      </div>
+      <div class="price-card">
+        <h3>Savings offered</h3>
+        <div class="price" style="font-size: 1.9rem;">$103.16</div>
+        <p class="note">sum of <code>projected_savings</code> across 265 catches</p>
+      </div>
+      <div class="price-card">
+        <h3>Median latency</h3>
+        <div class="price" style="font-size: 1.9rem;">~5 ms</div>
+        <p class="note">per <code>/v1/check</code> POST at this volume</p>
+      </div>
+    </div>
+    <p style="margin-top: 22px; font-size: 0.95rem;">
+      The premium-heavy profile (always-opus, $0.42/call) saw a <strong>165%</strong> savings-to-spend ratio.
+      The disciplined profile rarely tripped the guard — by design.
+      <strong>No false-positive warns</strong> on healthy debug cycles (Stage 0.5.1 adapter calibration held).
+    </p>
+    <p style="font-size: 0.9rem; color: var(--muted); margin-top: 14px;">
+      <strong>Honest framing:</strong> simulated workloads, not paying customers. Numbers are <em>offered</em> savings — realized depends on team heed rate (typically 40-80%). Full methodology + reproduction command in <a href="https://github.com/your-org/spending-guard/blob/main/BENCHMARK_10_AGENTS.md">BENCHMARK_10_AGENTS.md</a>. The simulation harness is open: <code>npx tsx scripts/simulate-10-partners.ts</code>.
+    </p>
+  </div>
+</section>
+
 <section id="integrations">
   <div class="container">
-    <h2><span class="num">05</span>Integrations</h2>
+    <h2><span class="num">06</span>Integrations</h2>
     <div class="grid">
       <div class="pat">
         <div class="name">TypeScript SDK</div>
@@ -416,7 +454,7 @@ Agent decides</pre>
 
 <section id="pricing">
   <div class="container">
-    <h2><span class="num">06</span>Pricing</h2>
+    <h2><span class="num">07</span>Pricing</h2>
     <p>The honest version: <strong>everything below is anchor candidate, not committed</strong>. Real pricing waits for 7 days of partner logs.</p>
     <div class="price-row">
       <div class="price-card">
@@ -466,7 +504,7 @@ Agent decides</pre>
 
 <section id="beta">
   <div class="container">
-    <h2><span class="num">07</span>Get beta access</h2>
+    <h2><span class="num">08</span>Get beta access</h2>
     <p>Closed beta — first 3–5 partners. The fit is paid coding agents, scraper / search agents, premium-model wrappers, or anyone routing $&gt;0.05 per agent action.</p>
     <form class="access" action="mailto:beta@agentspendguard.example?subject=Agent%20Spend%20Guard%20beta%20access" method="post">
       <input type="email" name="email" placeholder="you@company.com" required />
