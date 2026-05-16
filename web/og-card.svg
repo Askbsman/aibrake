@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <!--
+    OpenGraph / Twitter share card. 1200×630 is the OG canonical aspect.
+    Dark canvas, mark on the left, wordmark + tagline on the right.
+
+    Important note for deployment: most social crawlers (Twitter, Facebook,
+    LinkedIn) do NOT render SVG as og:image — they want PNG or JPG. Convert
+    this file to og-card.png before going live. One-liner:
+      npx svg2png-cli web/og-card.svg --output web/og-card.png --width 1200 --height 630
+    or use any svg→png conversion service.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0d10"/>
+      <stop offset="1" stop-color="#13161b"/>
+    </linearGradient>
+    <linearGradient id="accent-fade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6ee7b7" stop-opacity="0.06"/>
+      <stop offset="1" stop-color="#6ee7b7" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Canvas -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="600" height="630" fill="url(#accent-fade)"/>
+
+  <!-- Subtle 1px frame -->
+  <rect x="0.5" y="0.5" width="1199" height="629" fill="none" stroke="#1c1f26" stroke-width="1"/>
+
+  <!-- Status pill, top-left -->
+  <g transform="translate(72 70)">
+    <rect width="220" height="36" rx="18" fill="rgba(110,231,183,0.06)" stroke="#1f4339" stroke-width="1"/>
+    <circle cx="20" cy="18" r="4" fill="#6ee7b7"/>
+    <text x="36" y="23" font-family="-apple-system, 'Segoe UI', Inter, sans-serif" font-size="13" font-weight="600" fill="#6ee7b7" letter-spacing="0.5">v0.5.3-beta · hosted beta</text>
+  </g>
+
+  <!-- Logo, left side, large -->
+  <g transform="translate(96 195) scale(4.8)">
+    <g fill="none" stroke="#6ee7b7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
+      <path d="M 44 36 A 12 12 0 1 0 38 22" />
+    </g>
+    <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
+    <circle cx="44" cy="36" r="2.4" fill="#6ee7b7" />
+  </g>
+
+  <!-- Wordmark + tagline, right side -->
+  <g transform="translate(490 220)" fill="#e7e9ee" font-family="-apple-system, 'Segoe UI', Inter, sans-serif">
+    <text x="0" y="0" font-size="68" font-weight="700" letter-spacing="-1.5">Agent Spend Guard</text>
+    <text x="0" y="70" font-size="32" font-weight="500" fill="#98a0ad" letter-spacing="-0.3">Loop detection and model</text>
+    <text x="0" y="112" font-size="32" font-weight="500" fill="#98a0ad" letter-spacing="-0.3">stop-loss for paid AI agents.</text>
+
+    <!-- Positioning line -->
+    <text x="0" y="190" font-size="22" font-weight="600" fill="#6ee7b7" letter-spacing="-0.2">PQS checks the prompt.</text>
+    <text x="0" y="222" font-size="22" font-weight="600" fill="#6ee7b7" letter-spacing="-0.2">Agent Spend Guard checks the loop.</text>
+  </g>
+
+  <!-- Stats strip, bottom -->
+  <g transform="translate(72 540)" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace">
+    <text x="0" y="0" font-size="14" font-weight="600" fill="#98a0ad" letter-spacing="0.6" text-transform="uppercase">BENCHMARK · 10 agent archetypes · 1 simulated workday</text>
+    <g transform="translate(0 26)" font-family="-apple-system, 'Segoe UI', Inter, sans-serif">
+      <text x="0" y="0" font-size="28" font-weight="700" fill="#6ee7b7">$103.16</text>
+      <text x="115" y="0" font-size="14" font-weight="500" fill="#98a0ad">savings offered</text>
+
+      <text x="280" y="0" font-size="28" font-weight="700" fill="#e7e9ee">1,133</text>
+      <text x="370" y="0" font-size="14" font-weight="500" fill="#98a0ad">checks served</text>
+
+      <text x="500" y="0" font-size="28" font-weight="700" fill="#e7e9ee">~5ms</text>
+      <text x="585" y="0" font-size="14" font-weight="500" fill="#98a0ad">median latency</text>
+
+      <text x="730" y="0" font-size="28" font-weight="700" fill="#e7e9ee">265</text>
+      <text x="785" y="0" font-size="14" font-weight="500" fill="#98a0ad">catches with $-value</text>
+    </g>
+  </g>
+</svg>

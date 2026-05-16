@@ -6,17 +6,29 @@
 <title>Agent Spend Guard — Loop detection and model stop-loss for paid AI agents</title>
 <meta name="description" content="PQS checks the prompt. Agent Spend Guard checks the loop. Detect stale retries, same-tool loops, and premium model burn before the next expensive agent step. ~5ms per check." />
 <link rel="canonical" href="https://agentspendguard.example.com/" />
-<!-- Favicon: inline SVG, no extra request -->
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='12' fill='%230b0d10'/><path d='M32 8 L52 18 L52 32 C52 44 42 54 32 58 C22 54 12 44 12 32 L12 18 Z' fill='none' stroke='%236ee7b7' stroke-width='3'/><circle cx='32' cy='32' r='6' fill='%236ee7b7'/></svg>" />
+<!-- Favicon (SVG, with rounded-square dark background for legibility in light/dark browser chrome) -->
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<!-- Apple touch icon (180×180 SVG; iOS applies the rounded mask) -->
+<link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
 <!-- OpenGraph + Twitter -->
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://agentspendguard.example.com/" />
 <meta property="og:title" content="Agent Spend Guard — loop detection for paid AI agents" />
 <meta property="og:description" content="PQS checks the prompt. Agent Spend Guard checks the loop. Catch stale retries and premium-model burn before the next expensive agent step." />
 <meta property="og:site_name" content="Agent Spend Guard" />
+<!--
+  NOTE: most social crawlers don't render SVG as og:image — convert
+  web/og-card.svg → web/og-card.png (1200×630) before going public.
+  Until then, og:image points at the SVG (renders cleanly in some viewers,
+  fails gracefully in others, never breaks the share).
+-->
+<meta property="og:image" content="https://agentspendguard.example.com/og-card.svg" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Agent Spend Guard" />
 <meta name="twitter:description" content="Loop detection and model stop-loss for paid AI agents. ~5ms per check. Stage 0.5.3-beta." />
+<meta name="twitter:image" content="https://agentspendguard.example.com/og-card.svg" />
 <meta name="theme-color" content="#0b0d10" />
 <style>
   :root {
@@ -65,10 +77,23 @@
     position: sticky; top: 0; z-index: 10;
   }
   nav.top .container { display: flex; align-items: center; justify-content: space-between; }
-  nav.top .brand { font-weight: 700; letter-spacing: -0.01em; }
+  nav.top .brand {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--fg);
+  }
+  nav.top .brand:hover { text-decoration: none; }
+  nav.top .brand svg { display: block; width: 26px; height: 26px; flex: 0 0 auto; }
   nav.top .brand .dot { color: var(--accent); }
   nav.top .links a { margin-left: 22px; color: var(--muted); font-size: 0.95em; }
   nav.top .links a:hover { color: var(--fg); text-decoration: none; }
+  @media (max-width: 760px) {
+    nav.top .brand .brand-text { display: none; }
+    nav.top .links a { margin-left: 12px; font-size: 0.9em; }
+  }
 
   /* Hero */
   header.hero { padding: 96px 0 64px; }
@@ -266,6 +291,24 @@
   }
   form.access input[type="email"]:focus { outline: none; border-color: var(--accent); }
 
+  /* Hero — relative so the watermark mark can absolutely position behind */
+  header.hero { position: relative; overflow: hidden; }
+  .hero-watermark {
+    position: absolute;
+    top: 60px;
+    right: -120px;
+    width: 520px;
+    height: 520px;
+    opacity: 0.05;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+  }
+  header.hero .container { position: relative; z-index: 1; }
+  @media (max-width: 760px) {
+    .hero-watermark { display: none; }
+  }
+
   /* Live savings counter (hero) */
   .counter-card {
     background: linear-gradient(135deg, rgba(110,231,183,0.06), rgba(110,231,183,0.02));
@@ -274,6 +317,8 @@
     padding: 22px 24px;
     margin: 28px 0 28px;
     max-width: 760px;
+    position: relative;
+    z-index: 1;
   }
   .counter-row {
     display: grid;
@@ -394,7 +439,17 @@
 
 <nav class="top">
   <div class="container">
-    <div class="brand">agent spend guard<span class="dot">.</span></div>
+    <a class="brand" href="#" aria-label="Agent Spend Guard — home">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <g fill="none" stroke="#6ee7b7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
+          <path d="M 44 36 A 12 12 0 1 0 38 22" />
+        </g>
+        <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
+        <circle cx="44" cy="36" r="2.6" fill="#6ee7b7" />
+      </svg>
+      <span class="brand-text">agent spend guard<span class="dot">.</span></span>
+    </a>
     <div class="links">
       <a href="#what-it-catches">Patterns</a>
       <a href="#how-it-works">How</a>
@@ -408,6 +463,15 @@
 </nav>
 
 <header class="hero">
+  <!-- Decorative watermark of the brand mark, fades into the background -->
+  <svg class="hero-watermark" viewBox="0 0 64 64" aria-hidden="true">
+    <g fill="none" stroke="#6ee7b7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
+      <path d="M 44 36 A 12 12 0 1 0 38 22" />
+    </g>
+    <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
+    <circle cx="44" cy="36" r="2.4" fill="#6ee7b7" />
+  </svg>
   <div class="container">
     <div class="status"><span class="dot"></span>v0.5.3-beta — hosted beta, invite-only</div>
     <h1>Loop detection and model stop-loss for paid AI agents.</h1>
@@ -831,9 +895,19 @@ if ps:
 
 <footer>
   <div class="container">
-    <div>
-      <div style="margin-bottom: 6px;"><strong>Agent Spend Guard</strong> · v0.5.1-beta</div>
-      <div>Loop detection and model stop-loss for paid AI agents.</div>
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <svg viewBox="0 0 64 64" aria-hidden="true" style="width: 32px; height: 32px; flex: 0 0 auto;">
+        <g fill="none" stroke="#6ee7b7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
+          <path d="M 44 36 A 12 12 0 1 0 38 22" />
+        </g>
+        <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
+        <circle cx="44" cy="36" r="2.6" fill="#6ee7b7" />
+      </svg>
+      <div>
+        <div style="margin-bottom: 4px;"><strong>Agent Spend Guard</strong> · v0.5.3-beta</div>
+        <div>Loop detection and model stop-loss for paid AI agents.</div>
+      </div>
     </div>
     <div>
       <a href="https://github.com/your-org/spending-guard">GitHub</a> ·

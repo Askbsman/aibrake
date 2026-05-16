@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <!--
+    Apple touch icon, 180×180. Full bleed, rounded corners drawn by iOS.
+    The mark is scaled to ~70% of the canvas with comfortable padding so the
+    iOS mask never clips it.
+  -->
+  <rect width="180" height="180" fill="#0b0d10"/>
+  <g transform="translate(36 36) scale(1.6875)">
+    <g fill="none" stroke="#6ee7b7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
+      <path d="M 44 36 A 12 12 0 1 0 38 22" />
+    </g>
+    <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
+    <circle cx="44" cy="36" r="2.4" fill="#6ee7b7" />
+  </g>
+</svg>
