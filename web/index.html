@@ -484,19 +484,19 @@
       <div class="counter-row">
         <div class="counter-cell">
           <div class="counter-label">Savings offered to date</div>
-          <div class="counter-value" data-counter="savings">$<span data-counter-num="savings">103.16</span></div>
+          <div class="counter-value" data-counter="savings">$<span data-counter-num="savings">6,883.44</span></div>
         </div>
         <div class="counter-cell">
           <div class="counter-label">Checks served</div>
-          <div class="counter-value"><span data-counter-num="checks">1,133</span></div>
+          <div class="counter-value"><span data-counter-num="checks">73,765</span></div>
         </div>
         <div class="counter-cell">
           <div class="counter-label">Catches with savings</div>
-          <div class="counter-value"><span data-counter-num="catches">265</span></div>
+          <div class="counter-value"><span data-counter-num="catches">17,978</span></div>
         </div>
       </div>
       <div class="counter-note" data-counter-source>
-        Live: pulled from <code>/v1/public/stats</code> · seeded by the 10-agent benchmark.
+        Live: pulled from <code>/v1/public/stats</code> · seeded by the 100-partner × 7-day benchmark.
       </div>
     </div>
 
@@ -687,22 +687,22 @@ if ps:
 <section id="benchmark">
   <div class="container">
     <h2><span class="num">06</span>Benchmark</h2>
-    <p>We stress-tested v0.5.2-beta against ten realistic agent archetypes for one simulated workday each — 1,133 real <code>/v1/check</code> POSTs against a live hosted server, deterministic seeds, fully reproducible.</p>
+    <p>We stress-tested AIBrake against 100 synthetic partners across 10 realistic archetypes over 7 simulated workdays — <strong>73,765 real <code>/v1/check</code> POSTs</strong> against a live hosted server, deterministic seeds, fully reproducible.</p>
     <div class="price-row" style="margin-top: 16px;">
       <div class="price-card">
         <h3>Calls observed</h3>
-        <div class="price" style="font-size: 1.9rem;">1,133</div>
-        <p class="note">10 distinct agent profiles · 28-320 calls each</p>
+        <div class="price" style="font-size: 1.9rem;">73,765</div>
+        <p class="note">100 partners × 7 days · 10 archetypes · ~138/partner/day</p>
       </div>
       <div class="price-card">
         <h3>Spend observed</h3>
-        <div class="price" style="font-size: 1.9rem;">$99.30</div>
-        <p class="note">simulated agent spend, conservative per-call costs</p>
+        <div class="price" style="font-size: 1.9rem;">$6,450.83</div>
+        <p class="note">simulated agent spend across the week</p>
       </div>
       <div class="price-card">
         <h3>Savings offered</h3>
-        <div class="price" style="font-size: 1.9rem;">$103.16</div>
-        <p class="note">sum of <code>projected_savings</code> across 265 catches</p>
+        <div class="price" style="font-size: 1.9rem;">$6,883.44</div>
+        <p class="note">sum of <code>projected_savings</code> across 17,978 catches (~107% of spend)</p>
       </div>
       <div class="price-card">
         <h3>Median latency</h3>
@@ -711,12 +711,12 @@ if ps:
       </div>
     </div>
     <p style="margin-top: 22px; font-size: 0.95rem;">
-      The premium-heavy profile (always-opus, $0.42/call) saw a <strong>165%</strong> savings-to-spend ratio.
-      The disciplined profile rarely tripped the guard — by design.
-      <strong>No false-positive warns</strong> on healthy debug cycles (Stage 0.5.1 adapter calibration held).
+      The premium-heavy archetype (always-opus, $0.42/call) saw <strong>169%</strong> savings-to-spend.
+      The disciplined archetype rarely tripped — by design, 44% ratio.
+      <strong>No false-positive warns</strong> on healthy debug cycles. Weekend dip (~30%) visible in day-by-day breakdown.
     </p>
     <p style="font-size: 0.9rem; color: var(--muted); margin-top: 14px;">
-      <strong>Honest framing:</strong> simulated workloads, not paying customers. Numbers are <em>offered</em> savings — realized depends on team heed rate (typically 40-80%). Full methodology + reproduction command in <a href="https://github.com/Askbsman/aibrake/blob/main/BENCHMARK_10_AGENTS.md">BENCHMARK_10_AGENTS.md</a>. The simulation harness is open: <code>npx tsx scripts/simulate-10-partners.ts</code>.
+      <strong>Honest framing:</strong> simulated workloads, not paying customers. Numbers are <em>offered</em> savings — realized depends on team heed rate (typically 40-80%). Full methodology + reproduction command in <a href="https://github.com/Askbsman/aibrake/blob/main/SIMULATION_100_PARTNERS_WEEK_REPORT.md">SIMULATION_100_PARTNERS_WEEK_REPORT.md</a>. The simulation harness is open: <code>PARTNERS=100 DAYS=7 npx tsx scripts/simulate-100-partners-week.ts</code>.
     </p>
   </div>
 </section>
@@ -976,7 +976,7 @@ if ps:
         var catches = Number(stats.events_with_savings || 0);
         if (checks <= 0) {
           // Server has empty log — keep the benchmark seed visible.
-          if (noteEl) noteEl.innerHTML = "Seeded by the 10-agent benchmark — hosted server logs are empty so far.";
+          if (noteEl) noteEl.innerHTML = "Seeded by the 100-partner × 7-day benchmark — hosted server logs are empty so far.";
           return;
         }
         animateNumber(savingsEl, fromSavings, savings, fmtMoney);
@@ -998,7 +998,7 @@ if ps:
         // Network/CORS error — leave the seeded benchmark numbers visible.
         if (noteEl) {
           noteEl.innerHTML =
-            'Showing 10-agent benchmark numbers (live API at <code>' + API_BASE + '</code> unreachable from this page).';
+            'Showing 100-partner × 7-day benchmark numbers (live API at <code>' + API_BASE + '</code> unreachable from this page).';
         }
       });
   }
