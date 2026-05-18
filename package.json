@@ -29,7 +29,8 @@
     "logs:summary": "tsx src/cli/logs-summary.ts",
     "render:og": "node scripts/render-og-card.mjs",
     "preflight": "node scripts/preflight.mjs",
-    "configure": "node scripts/configure-for-deploy.mjs"
+    "configure": "node scripts/configure-for-deploy.mjs",
+    "check:domains": "node scripts/check-domains.mjs"
   },
   "dependencies": {
     "fastify": "^4.28.1",
