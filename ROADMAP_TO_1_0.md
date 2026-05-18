@@ -111,7 +111,7 @@ So the path to 1.0 is mostly **operational + sales**, with a tiny amount of engi
 ### C3. Public GitHub repo
 - Currently the repo has no `git remote`
 - Public docs + private hosted service is the published posture
-- Replace all `github.com/your-username/aibrake` placeholders with real URL once decided
+- Replace all `github.com/Askbsman/aibrake` placeholders with real URL once decided
 
 ### C4. OG card as PNG
 - `web/og-card.svg` exists; needs PNG rasterization for Twitter/Facebook crawlers

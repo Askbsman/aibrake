@@ -19,7 +19,7 @@ Founder bought `aibrake.dev` on Cloudflare. Domain dictates the brand. The curre
 ### Changed
 
 - **User-facing brand name:** `Agent Spend Guard` → `AIBrake` (39 files updated)
-- **Domain placeholders:** `agentspendguard.com` / `agentspendguard.example` / `hello@agentspendguard.example` / `your-org/spending-guard` swapped to `aibrake.dev` / `api.aibrake.dev` / `hello@aibrake.dev` / `your-username/aibrake` (11 files)
+- **Domain placeholders:** `agentspendguard.com` / `agentspendguard.example` / `hello@agentspendguard.example` / `your-org/spending-guard` swapped to `aibrake.dev` / `api.aibrake.dev` / `hello@aibrake.dev` / `Askbsman/aibrake` (11 files)
 - **`/v1/meta.name`** now returns `"AIBrake"` (was `"Agent Spend Guard"`)
 - **Tagline:** *"PQS checks the prompt. AIBrake checks the loop."* (single-word brand fits the cadence better)
 - **Landing copy, FAQ, partner docs, README, CLAUDE.md** — all user-facing surfaces refreshed

@@ -32,8 +32,8 @@ dev = [
 ]
 
 [project.urls]
-"Source" = "https://github.com/your-username/aibrake"
-"Issues" = "https://github.com/your-username/aibrake/issues"
+"Source" = "https://github.com/Askbsman/aibrake"
+"Issues" = "https://github.com/Askbsman/aibrake/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]

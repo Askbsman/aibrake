@@ -58,7 +58,7 @@ const swaps = [
   ["agentspendguard.example.com",      "aibrake.dev"],
   ["agentspendguard.example",          "aibrake.dev"],
   ["agentspendguard.com",              "aibrake.dev"],
-  ["your-org/spending-guard",          "your-username/aibrake"],
+  ["your-org/spending-guard",          "Askbsman/aibrake"],
 ];
 
 const allFiles = walk(repoRoot);

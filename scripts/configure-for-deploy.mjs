@@ -20,7 +20,7 @@
 //   aibrake.dev          → <DOMAIN>
 //   aibrake.dev              → <DOMAIN>           (in landing meta)
 //   api.aibrake.dev          → <API_SUBDOMAIN>
-//   your-username/aibrake          → <GITHUB_REPO>
+//   Askbsman/aibrake          → <GITHUB_REPO>
 //   hello@aibrake.dev    → <CONTACT_EMAIL>
 //   beta@aibrake.dev     → beta@<DOMAIN>
 //
@@ -115,7 +115,7 @@ async function main() {
     ["aibrake.dev", domain],
     ["aibrake.dev", domain],
     ["aibrake.dev", domain],
-    ["your-username/aibrake", githubRepo],
+    ["Askbsman/aibrake", githubRepo],
   ];
   for (const [from, to] of swaps) {
     if (from === to) continue;
