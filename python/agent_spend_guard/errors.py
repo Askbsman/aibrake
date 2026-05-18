@@ -1,4 +1,4 @@
-"""Exceptions raised by the Agent Spend Guard Python client.
+"""Exceptions raised by the AIBrake Python client.
 
 Stage 0.5 — every error exposes the same structured attributes the
 TypeScript SDK exposes on `err.details`:
@@ -34,7 +34,7 @@ KIND_UNKNOWN = "unknown"
 
 
 class SpendingGuardError(Exception):
-    """Base class for all Agent Spend Guard SDK errors.
+    """Base class for all AIBrake SDK errors.
 
     Exposes three structured attributes — `kind`, `status_code`, `retryable`
     — that mirror `err.details.{kind,statusCode,retryable}` on the TS SDK.

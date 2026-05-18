@@ -29,7 +29,7 @@ function arg(name, def) {
 }
 
 const DEFAULT_NAMES = [
-  // Direction A — keep "Agent Spend Guard", shorter domain
+  // Direction A — keep "AIBrake", shorter domain
   "spendguard", "agentguard", "asg", "aspend", "nospend",
   // Direction B — invented / one-word rebrand
   "halt", "loopkit", "loopless", "reroute", "veer", "cinch", "vet",

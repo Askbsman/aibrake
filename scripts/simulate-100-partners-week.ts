@@ -1,4 +1,4 @@
-// 100-partner × 7-day simulation against Agent Spend Guard 0.5.3-beta in
+// 100-partner × 7-day simulation against AIBrake 0.5.3-beta in
 // shadow mode. Each "partner" is one realistic agent archetype with its own
 // day-by-day workload; each call is a real /v1/check POST against the live
 // hosted server.
@@ -591,7 +591,7 @@ function buildReport(tallies: readonly PartnerTally[]): string {
   lines.push("");
   lines.push("## Methodology");
   lines.push("");
-  lines.push(`This simulation runs ${TOTAL_PARTNERS} synthetic partners over ${DAYS} simulated calendar days against a live Agent Spend Guard hosted server at \`${GUARD_URL.replace("/v1/check", "")}\`. Every \`/v1/check\` POST is real; every response is captured; \`projected_savings.amount_usd\` is read directly from the server's reply, not estimated by the simulator.`);
+  lines.push(`This simulation runs ${TOTAL_PARTNERS} synthetic partners over ${DAYS} simulated calendar days against a live AIBrake hosted server at \`${GUARD_URL.replace("/v1/check", "")}\`. Every \`/v1/check\` POST is real; every response is captured; \`projected_savings.amount_usd\` is read directly from the server's reply, not estimated by the simulator.`);
   lines.push("");
   lines.push(`Each partner is sampled from one of 10 realistic agent archetypes (coding agents, scrapers, browser automation, image gen, search aggregation, opus-only wrappers, etc.) with per-partner parameter jitter (±20% on call volume, ±15% on per-call cost). Each day applies a multiplier: weekdays ${(0.85).toFixed(2)}-${(1.15).toFixed(2)}, weekends ${(0.70).toFixed(2)}-${(0.85).toFixed(2)}, simulating real-world workload dips.`);
   lines.push("");

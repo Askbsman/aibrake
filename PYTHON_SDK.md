@@ -1,10 +1,10 @@
-# PYTHON_SDK.md — Agent Spend Guard Python Client
+# PYTHON_SDK.md — AIBrake Python Client
 
 > **Status:** Stage 0.4 beta.
 > **Source:** `python/` in this repo.
 > **Discipline:** thin HTTP client mirroring the TypeScript SDK; not a feature-parity SDK.
 
-This document is for Python operators integrating Agent Spend Guard into their LangChain / CrewAI / AutoGen / scraper / research-agent workflows. The TS SDK is in `src/sdk/`; both share the same surface (`check`, `check_shadow`, `check_or_confirm`, `check_or_downgrade`).
+This document is for Python operators integrating AIBrake into their LangChain / CrewAI / AutoGen / scraper / research-agent workflows. The TS SDK is in `src/sdk/`; both share the same surface (`check`, `check_shadow`, `check_or_confirm`, `check_or_downgrade`).
 
 ---
 

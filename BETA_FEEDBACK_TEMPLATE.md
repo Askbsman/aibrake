@@ -1,4 +1,4 @@
-# Agent Spend Guard Beta Feedback
+# AIBrake Beta Feedback
 
 > Fill this in after **7 days** of `checkShadow` usage against a real paid agent workflow. Honest answers help us tune the product. Soft-yes answers help less than a clear "no, here's why."
 

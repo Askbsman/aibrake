@@ -30,7 +30,7 @@ So the path to 1.0 is mostly **operational + sales**, with a tiny amount of engi
 - **Status: 0 partners. Single biggest gap to 1.0.**
 
 ### A2. Public hosted API
-- `https://api.agentspendguard.com/v1/check` (or your real domain) reachable from the internet
+- `https://api.aibrake.dev/v1/check` (or your real domain) reachable from the internet
 - Auto-TLS via Render / Fly / Caddy
 - `/health` + uptime monitor (UptimeRobot 5-min check)
 - Persistent volume for `/var/data/decisions.jsonl`
@@ -111,7 +111,7 @@ So the path to 1.0 is mostly **operational + sales**, with a tiny amount of engi
 ### C3. Public GitHub repo
 - Currently the repo has no `git remote`
 - Public docs + private hosted service is the published posture
-- Replace all `github.com/your-org/spending-guard` placeholders with real URL once decided
+- Replace all `github.com/your-username/aibrake` placeholders with real URL once decided
 
 ### C4. OG card as PNG
 - `web/og-card.svg` exists; needs PNG rasterization for Twitter/Facebook crawlers

@@ -143,7 +143,7 @@ async function smokeTest(baseUrl, apiKey) {
 }
 
 async function main() {
-  console.log("Agent Spend Guard — preflight\n");
+  console.log("AIBrake — preflight\n");
 
   // 1. Typecheck
   run("1. TypeScript typecheck", "npm", ["run", "typecheck"]);

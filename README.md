@@ -1,12 +1,12 @@
-# Agent Spend Guard
+# AIBrake
 
 <p align="center">
-  <img src="./web/og-card.svg" alt="Agent Spend Guard — loop detection and model stop-loss for paid AI agents" width="720" />
+  <img src="./web/og-card.svg" alt="AIBrake — loop detection and model stop-loss for paid AI agents" width="720" />
 </p>
 
 > **Loop detection and model stop-loss for paid AI agents.**
 >
-> **PQS checks the prompt. Agent Spend Guard checks the loop.**
+> **PQS checks the prompt. AIBrake checks the loop.**
 
 > **Status:** Stage 0.5.3 — Public stats endpoint + site polish
 > **Version:** `0.5.3-beta`
@@ -18,7 +18,7 @@
 > **Latest:** new `GET /v1/public/stats` endpoint (no auth, CORS, 30s cache) returns aggregate savings + decisions + cost across the decision log. The landing page (`web/index.html`) now has an animated live counter pulling from this endpoint, a tabbed 5-line integration example (TS / Python / curl), a 10-item FAQ, and proper OG / Twitter / favicon meta.
 > **SDKs:** TypeScript (`spending-guard`) + Python (`python/agent_spend_guard`)
 > **Next step:** real partner integration → 7 days of logs → useful-warning review → pricing/x402 decision (see [`INTEGRATION_GUIDE.md`](./INTEGRATION_GUIDE.md), [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md), [`PYTHON_SDK.md`](./PYTHON_SDK.md), [`CODING_AGENT_ADAPTER.md`](./CODING_AGENT_ADAPTER.md), [`DEPLOYMENT.md`](./DEPLOYMENT.md))
-> **npm package name:** `spending-guard` (historical; product brand is "Agent Spend Guard" — see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
+> **npm package name:** `spending-guard` (historical; product brand is "AIBrake" — see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
 
 Spending Guard is a provider-agnostic, x402-ready pre-flight judgment middleware for expensive AI agent actions. It checks paid LLM calls, tool retries, model escalations and objective drift **before** execution and tells the operator whether to allow, warn, ask for confirmation, downgrade, delay or block.
 

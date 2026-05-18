@@ -1,9 +1,9 @@
 # Branding candidates — what to ask before buying the domain
 
-> Working name today: **Agent Spend Guard** (`spending-guard` on npm).
-> Working domain we keep typing: `agentspendguard.com` — 17 characters, three concepts, hard to say fast over a call.
+> Working name today: **AIBrake** (`spending-guard` on npm).
+> Working domain we keep typing: `aibrake.dev` — 17 characters, three concepts, hard to say fast over a call.
 >
-> The rename is not mandatory. The product can ship 1.0 as Agent Spend Guard. But if you're at the registrar anyway, this is the right moment to consider sharper alternatives.
+> The rename is not mandatory. The product can ship 1.0 as AIBrake. But if you're at the registrar anyway, this is the right moment to consider sharper alternatives.
 
 ---
 
@@ -11,7 +11,7 @@
 
 Looking at the names that actually stuck in our peer group — Sentry, Vercel, Linear, Resend, Stripe, Modal, Pulumi, Anchor, Cursor, Render, Fly:
 
-| Criterion | Why it matters | "Agent Spend Guard" score |
+| Criterion | Why it matters | "AIBrake" score |
 | --- | --- | --- |
 | **Short** (1-2 syllables, 4-8 letters) | Easier to type, fits in a tab title, looks good in `import { X } from "x"` | ❌ three words / 17 chars |
 | **Pronounceable** in EN and any non-EN | Founders + partners pronounce it the same way | ✅ |
@@ -19,7 +19,7 @@ Looking at the names that actually stuck in our peer group — Sentry, Vercel, L
 | **Available on `.com` / `.dev` / `.ai`** | Don't ship on `.xyz` or hyphenated for an infra product | ❌ `.com` likely taken or expensive |
 | **Doesn't over-claim the category** | Leaves room to expand. "Sentry" isn't "ErrorReporter" | ⚠️ "Spend Guard" pins us to one use case |
 | **Has a visual hook** | A logo can grow around a strong word (lighthouse, anchor, stripe) | ⚠️ no obvious visual |
-| **Domain root matches product** | `vercel.com → Vercel`; not `vercel-app.com → Vercel App` | ❌ npm is `spending-guard`, would-be domain `agentspendguard.com` |
+| **Domain root matches product** | `vercel.com → Vercel`; not `vercel-app.com → Vercel App` | ❌ npm is `spending-guard`, would-be domain `aibrake.dev` |
 
 Net: room for improvement, especially on length and domain root.
 
@@ -29,7 +29,7 @@ Net: room for improvement, especially on length and domain root.
 
 ### Direction A — keep the name, get a shorter domain
 
-Lowest-effort: keep "Agent Spend Guard" as the user-facing name, but acquire a tighter domain.
+Lowest-effort: keep "AIBrake" as the user-facing name, but acquire a tighter domain.
 
 | Candidate | Reads as | Likely status |
 | --- | --- | --- |
@@ -42,7 +42,7 @@ Lowest-effort: keep "Agent Spend Guard" as the user-facing name, but acquire a t
 | `aspend.dev` | a-spend | check, weird-but-coined |
 | `nospend.dev` | clear negation | check |
 
-**Tradeoff:** product name stays "Agent Spend Guard" — three words, still long in conversation. But the technical surface (domain, npm package eventually) gets cleaner.
+**Tradeoff:** product name stays "AIBrake" — three words, still long in conversation. But the technical surface (domain, npm package eventually) gets cleaner.
 
 ### Direction B — invented / one-word rebrand
 
@@ -111,7 +111,7 @@ If I were buying the domain today, in order of preference:
 - Risk: too generic, may not differentiate
 - Almost certain `.com` is taken; `.dev` worth checking
 
-### If you want to keep Agent Spend Guard: `spendguard.dev`
+### If you want to keep AIBrake: `spendguard.dev`
 
 - Drops "Agent" (which doesn't add information)
 - Keeps the product name intact in marketing
@@ -156,7 +156,7 @@ Don't overthink. Spend 30 minutes here, not 30 hours.
 6. Do NOT optimize for the perfect name — names matter less than shipping
 ```
 
-The product is `spending-guard@0.5.3-beta` whether the domain is `agentspendguard.com` or `loopkit.dev`. A good name compounds over years; a perfect name compounds the same way. Pick something defensible and move.
+The product is `spending-guard@0.5.3-beta` whether the domain is `aibrake.dev` or `loopkit.dev`. A good name compounds over years; a perfect name compounds the same way. Pick something defensible and move.
 
 ---
 
@@ -164,9 +164,9 @@ The product is `spending-guard@0.5.3-beta` whether the domain is `agentspendguar
 
 If after 30 minutes no name feels right:
 
-1. **Keep "Agent Spend Guard" as the product**
+1. **Keep "AIBrake" as the product**
 2. **Buy `spendguard.com` if available (or `spendguard.dev`)**
-3. **Redirect www.agentspendguard.com → spendguard.com** later if you find the better one
+3. **Redirect www.aibrake.dev → spendguard.com** later if you find the better one
 4. **Move on to deployment**
 
 The cost of a wrong name is "buy a second domain in 6 months." The cost of a 3-week naming detour is real partners going elsewhere.

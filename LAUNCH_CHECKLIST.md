@@ -1,7 +1,7 @@
 # Launch Checklist — first hosted beta partner
 
 > **Stage:** post-`spending-guard-v0.5.1-beta`
-> **Goal:** first real partner integrating against a publicly-reachable Agent Spend Guard endpoint
+> **Goal:** first real partner integrating against a publicly-reachable AIBrake endpoint
 > **Discipline:** no new engineering until that partner reports back with 7 days of usefulness data
 > **Source:** founder GTM plan (10 items), filtered through the Stage 0.5 "do not continue engineering until real partner feedback" contract
 
@@ -34,7 +34,7 @@
 | --- | --- |
 | Status | 🟡 ready (deploy decision is yours) |
 | What's in repo | Dockerfile + `DEPLOYMENT.md` updated with Render / Fly / Railway recipes |
-| What's not | Live `https://api.agentspendguard.com` URL — that's an ops decision (cost, region, TLS, DNS) |
+| What's not | Live `https://api.aibrake.dev` URL — that's an ops decision (cost, region, TLS, DNS) |
 | Required env | `PORT=8080`, `AGENT_SPEND_GUARD_AUTH_MODE=required`, `AGENT_SPEND_GUARD_API_KEYS=<csv>`, `AGENT_SPEND_GUARD_LOG_SINK=jsonl` |
 | Minimum hosting tier | Any Node 20 container with 256 MB RAM. The guard is stateless and CPU-light. |
 

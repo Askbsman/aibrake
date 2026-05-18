@@ -43,8 +43,8 @@ describe("Stage 0.3 — /v1/meta and /health", () => {
     const res = await app.inject({ method: "GET", url: "/v1/meta" });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.name).toBe("Agent Spend Guard");
-    expect(body.version).toBe("0.5.3-beta");
+    expect(body.name).toBe("AIBrake");
+    expect(body.version).toBe("0.5.4-beta");
     expect(body.policy_version).toBe("policy@0.1.0");
     expect(body.modes).toEqual(["check", "shadow", "confirm", "downgrade"]);
     expect(body.supported_patterns).toContain("stale_context_retry_storm");
@@ -335,7 +335,7 @@ describe("Stage 0.3 — logs:summary aggregator", () => {
     expect(out.aggregates.requireConfirmationCount).toBe(2);
     expect(out.aggregates.blockCount).toBe(0);
     expect(out.aggregates.byPattern.stale_context_retry_storm).toBe(2);
-    expect(out.text).toContain("Agent Spend Guard — Beta Summary");
+    expect(out.text).toContain("AIBrake — Beta Summary");
     expect(out.text).toContain("total_checks: 5");
   });
 });

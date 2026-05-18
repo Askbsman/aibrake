@@ -1,10 +1,10 @@
-# Agent Spend Guard — Product
+# AIBrake — Product
 
 > **Status:** Stage 0.3 Hosted Beta Candidate
 > **Tag:** `spending-guard-v0.3.0-beta`
 > **Primary detector:** `stale_context_retry_storm`
 > **Primary demo:** The $40 TypeScript Retry Storm
-> **Brand vs. package:** npm package is `spending-guard`; product brand is **Agent Spend Guard** (see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
+> **Brand vs. package:** npm package is `spending-guard`; product brand is **AIBrake** (see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
 > **Next step:** hosted beta — see [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md)
 
 ## Positioning

@@ -308,15 +308,15 @@ Until any of those signals arrive from a real integration, 0.2-minimal is the co
 
 ## 13. Brand vs package identity (Stage 0.3)
 
-The product is consumer-facing branded as **Agent Spend Guard**. The npm package and repository identifier remain `spending-guard` so existing imports, tag history, and prior commits do not break. The two namings are deliberately kept distinct and pinned here so future work does not silently rename everything for "consistency".
+The product is consumer-facing branded as **AIBrake**. The npm package and repository identifier remain `spending-guard` so existing imports, tag history, and prior commits do not break. The two namings are deliberately kept distinct and pinned here so future work does not silently rename everything for "consistency".
 
 | Surface | Value | Why |
 | --- | --- | --- |
 | npm package name | `spending-guard` | preserves `import { ... } from "spending-guard"` for harness and partners |
 | Repository | `sbbuilder` (local) → `spending-guard` (when published) | tag history `spending-guard-v0.1.1-rc` … intact |
-| Product brand (README, listing, marketing, partner-facing copy) | **Agent Spend Guard** | what partners see |
+| Product brand (README, listing, marketing, partner-facing copy) | **AIBrake** | what partners see |
 | `GET /health` `service` field | `"agent-spend-guard"` (kebab-case) | matches the brand they recognize |
-| `GET /v1/meta` `name` field | `"Agent Spend Guard"` (title case) | display string |
+| `GET /v1/meta` `name` field | `"AIBrake"` (title case) | display string |
 | Log event `event_type` prefix | `agent_spend_guard.*` (underscore-case) | structured-log convention |
 | Env variable prefix | `AGENT_SPEND_GUARD_*` (uppercase) | shell convention |
 | Tag name | `spending-guard-v0.3.0-beta` | preserves history; do not rename the tag chain |
@@ -380,10 +380,10 @@ Do **not** rename the package, the imports, or the existing tag chain. If a futu
 
 ```json
 {
-  "name": "Agent Spend Guard",
+  "name": "AIBrake",
   "version": "0.3.0-beta",
   "description": "Loop detection and model stop-loss for paid AI agents.",
-  "positioning": "PQS checks the prompt. Agent Spend Guard checks the loop.",
+  "positioning": "PQS checks the prompt. AIBrake checks the loop.",
   "endpoints": { "check": "/v1/check", "check_deep": "/v1/check-deep" },
   "supported_patterns": [
     "stale_context_retry_storm",
@@ -677,7 +677,7 @@ Same 10 scenarios, same harness, no scenario edits. E1 / E10 / E7 strong catches
 The 0.5.0 → 0.5.1 work made the guard *more accurate*. 0.5.2 makes the guard *more legible*. A partner running shadow mode for 7 days now sees:
 
 ```
-Agent Spend Guard — Beta Summary
+AIBrake — Beta Summary
 total_checks: 412
 allow: 387
 warn: 18

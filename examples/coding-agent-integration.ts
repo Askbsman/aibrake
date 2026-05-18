@@ -1,7 +1,7 @@
 // Coding-agent integration example (Stage 0.4).
 //
 // Shows how to wire ANY coding-agent runtime — Claude Code, Codex, Cursor,
-// custom wrapper — into Agent Spend Guard's shadow mode in two steps:
+// custom wrapper — into AIBrake's shadow mode in two steps:
 //
 //   1. Translate the runtime's lifecycle events into AgentActionTelemetry.
 //   2. Feed events into CodingAgentAdapter; call SpendingGuard.checkShadow()

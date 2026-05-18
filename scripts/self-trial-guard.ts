@@ -1,4 +1,4 @@
-// Self-trial harness: dogfood Agent Spend Guard against real coding-agent
+// Self-trial harness: dogfood AIBrake against real coding-agent
 // retries from this Claude Code session.
 //
 // Usage:
@@ -785,7 +785,7 @@ async function callGuard(
 function initLog(): void {
   const header = `# SELF_TRIAL_CLAUDE_CODE_LOG.md
 
-> **Trial:** Self-trial of Agent Spend Guard v0.5.0-beta — Claude Code as the partner
+> **Trial:** Self-trial of AIBrake v0.5.0-beta — Claude Code as the partner
 > **Mode:** shadow only (\`/v1/check\` POSTs; never enforced)
 > **Server:** http://localhost:8080 — \`Bearer asg_v1_demo\` — \`0.5.0-beta\`
 > **Started:** ${new Date().toISOString()}

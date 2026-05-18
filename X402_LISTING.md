@@ -1,4 +1,4 @@
-# Agent Spend Guard — x402 Marketplace Listing Draft
+# AIBrake — x402 Marketplace Listing Draft
 
 **Status:** draft listing copy for `agentic.market` (and other x402 marketplaces). Not yet published — listing is held until first partner reports back from hosted beta.
 **Category:** Infra
@@ -9,24 +9,24 @@
 
 ## Listing — short form
 
-> **Agent Spend Guard**
+> **AIBrake**
 > Loop detection and model stop-loss for paid AI agents.
 
 **Lead (use this verbatim on the marketplace card):**
 
 > Prompt preflight is not enough. Agents fail in loops.
 >
-> Agent Spend Guard detects repeated failures, stale context, same-tool loops, and premium-model burn across the agent run.
+> AIBrake detects repeated failures, stale context, same-tool loops, and premium-model burn across the agent run.
 
 **Explicit positioning vs the closest competitor:**
 
-> **PQS checks the prompt. Agent Spend Guard checks the session loop.**
+> **PQS checks the prompt. AIBrake checks the session loop.**
 
 Do NOT claim "first preflight." There are existing services in this category — see § "Why this differs" below.
 
 **One-paragraph description (use on the longer listing page):**
 
-> Agent Spend Guard is a pre-flight risk check for paid AI agent actions. It detects wasteful retry loops, stale-context failures, same-tool loops, objective drift, and premium-model burn before the next expensive step. Unlike prompt-quality preflight tools, Agent Spend Guard uses action history, objective state, evidence signals, and model policy to decide whether the next paid action is real progress — or another costly retry.
+> AIBrake is a pre-flight risk check for paid AI agent actions. It detects wasteful retry loops, stale-context failures, same-tool loops, objective drift, and premium-model burn before the next expensive step. Unlike prompt-quality preflight tools, AIBrake uses action history, objective state, evidence signals, and model policy to decide whether the next paid action is real progress — or another costly retry.
 
 ---
 
@@ -41,7 +41,7 @@ x402station      → Is this x402 endpoint trustworthy?         (endpoint risk)
 Fia Signals      → Is this token / contract safe?             (onchain risk)
 AzurSafe / etc.  → Is this wallet / domain safe?              (security risk)
 
-Agent Spend Guard → Is the agent already stuck in a paid retry loop?
+AIBrake → Is the agent already stuck in a paid retry loop?
                     Is the same failure repeating without new evidence?
                     Is the operator about to burn the premium model
                     when a configured secondary would do?
@@ -49,7 +49,7 @@ Agent Spend Guard → Is the agent already stuck in a paid retry loop?
 
 > **Prompt preflight is not enough. Agents fail in loops.**
 >
-> **PQS checks the prompt. Agent Spend Guard checks the loop.**
+> **PQS checks the prompt. AIBrake checks the loop.**
 
 History-based loop detection + structured `primary → secondary` model routing are not in any other listing. That gap is the wedge.
 
@@ -155,7 +155,7 @@ Three integration patterns; each is one method call.
 - Provide a dashboard, accounts, billing, or analytics UI.
 - Block the agent globally — `checkShadow` is the integration entry point; hard block fires only on deterministic budget breach or explicit policy violation.
 
-Agent Spend Guard composes with all of the above. A serious agent stack will use 2–3 preflight services in sequence: prompt quality (PQS) → loop detection (Agent Spend Guard) → output validation (Boundary Guard). We are the middle step.
+AIBrake composes with all of the above. A serious agent stack will use 2–3 preflight services in sequence: prompt quality (PQS) → loop detection (AIBrake) → output validation (Boundary Guard). We are the middle step.
 
 ---
 

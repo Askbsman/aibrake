@@ -1,6 +1,6 @@
 # INTEGRATION_GUIDE.md
 
-> **For: anyone integrating Agent Spend Guard into a real paid agent workflow.**
+> **For: anyone integrating AIBrake into a real paid agent workflow.**
 >
 > This is the meta-document. It points you at the right runtime-specific guide and explains the integration model. For onboarding flow and "pick your path" tiles, see [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md).
 

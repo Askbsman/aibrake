@@ -1,6 +1,6 @@
 # agent-spend-guard (Python)
 
-> **Status:** Stage 0.4 beta — thin HTTP client for the Agent Spend Guard hosted API.
+> **Status:** Stage 0.4 beta — thin HTTP client for the AIBrake hosted API.
 >
 > **Not a feature-parity SDK.** Mirrors the four integration patterns of the TypeScript SDK; new server features land in the server first and only port to Python when partners ask.
 

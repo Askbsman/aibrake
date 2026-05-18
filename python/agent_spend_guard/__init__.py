@@ -1,4 +1,4 @@
-"""Agent Spend Guard — Python client.
+"""AIBrake — Python client.
 
 Loop detection and model stop-loss for paid AI agents.
 
@@ -79,4 +79,4 @@ __all__ = [
     "KIND_UNKNOWN",
 ]
 
-__version__ = "0.5.3b0"
+__version__ = "0.5.4b0"

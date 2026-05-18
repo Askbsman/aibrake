@@ -72,7 +72,7 @@ export function loadEnvConfig(
     logPath: env.AGENT_SPEND_GUARD_LOG_PATH ?? "./logs/decisions.jsonl",
 
     serviceName: env.AGENT_SPEND_GUARD_SERVICE_NAME ?? "agent-spend-guard",
-    serviceVersion: "0.5.3-beta",
+    serviceVersion: "0.5.4-beta",
     publicUrl: env.AGENT_SPEND_GUARD_PUBLIC_URL,
   };
 }

@@ -1,7 +1,7 @@
 # Security & Privacy
 
 > **Status:** Stage 0.5.1-beta
-> **Scope:** what the hosted Agent Spend Guard beta records, what it deliberately does not, how API keys are handled, and how to report security issues.
+> **Scope:** what the hosted AIBrake beta records, what it deliberately does not, how API keys are handled, and how to report security issues.
 
 ## TL;DR
 
@@ -36,7 +36,7 @@ The Core schema deliberately does not include and the server actively rejects (Z
 - **Source-file contents.** Only `filesRead.length` is counted, never the bytes.
 - **Test output bodies, log lines, stack traces.** Only counts and the categorical `failure_signal_type`.
 - **Stdout / stderr of the underlying tool.** Same.
-- **API keys, OAuth tokens, secrets, credentials.** Any field that smells like one is the partner's bug — Agent Spend Guard has no slot for them.
+- **API keys, OAuth tokens, secrets, credentials.** Any field that smells like one is the partner's bug — AIBrake has no slot for them.
 - **PII / user content / customer messages.** None of these are in the input schema.
 
 If a partner stuffs raw content into a string field that the schema accepts (e.g. `objective.goal`), it will be stored as-is in the request payload. **Don't.** The contract is fingerprints and counts, not free-text dumps.

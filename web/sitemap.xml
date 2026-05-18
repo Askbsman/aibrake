@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Agent Spend Guard sitemap.
+  AIBrake sitemap.
 
   One-page landing for the closed beta. Anchor links inside index.html
   are deliberately NOT enumerated here — sitemaps list URLs, not anchors.
@@ -9,7 +9,7 @@
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://agentspendguard.example.com/</loc>
+    <loc>https://aibrake.dev/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

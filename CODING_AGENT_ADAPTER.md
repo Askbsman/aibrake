@@ -1,6 +1,6 @@
 # CODING_AGENT_ADAPTER.md
 
-> **For: operators integrating Agent Spend Guard into Claude Code, Codex, Cursor, or any coding-agent runtime.**
+> **For: operators integrating AIBrake into Claude Code, Codex, Cursor, or any coding-agent runtime.**
 
 The coding-agent adapter is `src/adapters/coding-agent/`. It is intentionally a thin re-export of `OpenClawAdapter` (the Stage 0.1 reference adapter) — the universal evidence model means the adapter logic is the same across coding-agent runtimes. **What differs between runtimes is the event translator**, not the adapter.
 

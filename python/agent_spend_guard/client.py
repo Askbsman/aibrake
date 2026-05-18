@@ -47,7 +47,7 @@ _POLICY_VERSION = "policy@0.1.0"
 
 
 class AgentSpendGuard:
-    """Synchronous HTTP client for the Agent Spend Guard API."""
+    """Synchronous HTTP client for the AIBrake API."""
 
     def __init__(
         self,

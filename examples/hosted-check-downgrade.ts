@@ -24,7 +24,7 @@ const guard = new SpendingGuard({
 
 async function main(): Promise<void> {
   // eslint-disable-next-line no-console
-  console.log(`Agent Spend Guard hosted downgrade demo @ ${baseUrl}`);
+  console.log(`AIBrake hosted downgrade demo @ ${baseUrl}`);
 
   try {
     const { action, result } = await guard.checkOrDowngrade(

@@ -1,5 +1,5 @@
 // Simulate a full day of agent activity for 10 different partner profiles
-// running through Agent Spend Guard 0.5.2-beta in shadow mode. Reports
+// running through AIBrake 0.5.2-beta in shadow mode. Reports
 // per-partner and grand-total $-denominated projected savings.
 //
 // All telemetry is generated programmatically with deterministic seeded

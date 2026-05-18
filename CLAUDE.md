@@ -1,4 +1,4 @@
-# CLAUDE.md — Agent Spend Guard project contract
+# CLAUDE.md — AIBrake project contract
 
 This file is the contract between the founder and any AI assistant (including Claude Code) working in this repository. If anything anywhere contradicts this file — **this file wins**.
 
@@ -8,16 +8,16 @@ This is not the AIVID CLAUDE.md. That's a separate project at `C:\Users\777\Desk
 
 ## 1. What this project is
 
-**Agent Spend Guard** — pre-flight loop detection and model stop-loss for paid AI agents.
+**AIBrake** — pre-flight loop detection and model stop-loss for paid AI agents.
 
 - npm package: `spending-guard`
 - Python package: `agent-spend-guard`
 - Service brand: `agent-spend-guard`
 - Env prefix: `AGENT_SPEND_GUARD_*`
 
-The historical name `spending-guard` is preserved on the npm package (it predates the rename); the user-facing product name everywhere else is **Agent Spend Guard**.
+The historical name `spending-guard` is preserved on the npm package (it predates the rename); the user-facing product name everywhere else is **AIBrake**.
 
-**The wedge in one line:** *PQS checks the prompt. Agent Spend Guard checks the loop.*
+**The wedge in one line:** *PQS checks the prompt. AIBrake checks the loop.*
 
 **Not a budget counter.** A judgment layer. Catches:
 - Retry storms on the same deterministic failure with no new evidence
@@ -293,7 +293,7 @@ When real partner data shows these are needed — they leave this list.
 ### 6.3. The agentic.market / x402 listing rule
 
 `X402_LISTING.md` content is ready. **The listing is held until** either:
-- Real `https://api.agentspendguard.com/x402/v1/check` exists and is being paid for, OR
+- Real `https://api.aibrake.dev/x402/v1/check` exists and is being paid for, OR
 - The founder explicitly chooses to list the free beta as discovery
 
 Do NOT submit the listing speculatively. An empty listing is noise.

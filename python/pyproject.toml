@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agent-spend-guard"
-version = "0.5.3b0"
+version = "0.5.4b0"
 description = "Loop detection and model stop-loss for paid AI agents — Python client."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "UNLICENSED" }
-authors = [{ name = "Agent Spend Guard maintainers" }]
+authors = [{ name = "AIBrake maintainers" }]
 keywords = ["ai-agents", "spending-guard", "preflight", "loop-detection", "x402"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -32,8 +32,8 @@ dev = [
 ]
 
 [project.urls]
-"Source" = "https://github.com/your-org/spending-guard"
-"Issues" = "https://github.com/your-org/spending-guard/issues"
+"Source" = "https://github.com/your-username/aibrake"
+"Issues" = "https://github.com/your-username/aibrake/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -46,5 +46,5 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --strict-markers"
 markers = [
-    "integration: requires a running Agent Spend Guard server (skipped by default in CI without env)",
+    "integration: requires a running AIBrake server (skipped by default in CI without env)",
 ]

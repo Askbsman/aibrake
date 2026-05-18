@@ -46,13 +46,13 @@
 
   <!-- Wordmark + tagline, right side -->
   <g transform="translate(490 220)" fill="#e7e9ee" font-family="-apple-system, 'Segoe UI', Inter, sans-serif">
-    <text x="0" y="0" font-size="68" font-weight="700" letter-spacing="-1.5">Agent Spend Guard</text>
+    <text x="0" y="0" font-size="68" font-weight="700" letter-spacing="-1.5">AIBrake</text>
     <text x="0" y="70" font-size="32" font-weight="500" fill="#98a0ad" letter-spacing="-0.3">Loop detection and model</text>
     <text x="0" y="112" font-size="32" font-weight="500" fill="#98a0ad" letter-spacing="-0.3">stop-loss for paid AI agents.</text>
 
     <!-- Positioning line -->
     <text x="0" y="190" font-size="22" font-weight="600" fill="#6ee7b7" letter-spacing="-0.2">PQS checks the prompt.</text>
-    <text x="0" y="222" font-size="22" font-weight="600" fill="#6ee7b7" letter-spacing="-0.2">Agent Spend Guard checks the loop.</text>
+    <text x="0" y="222" font-size="22" font-weight="600" fill="#6ee7b7" letter-spacing="-0.2">AIBrake checks the loop.</text>
   </g>
 
   <!-- Stats strip, bottom -->

@@ -3,32 +3,32 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Agent Spend Guard — Loop detection and model stop-loss for paid AI agents</title>
-<meta name="description" content="PQS checks the prompt. Agent Spend Guard checks the loop. Detect stale retries, same-tool loops, and premium model burn before the next expensive agent step. ~5ms per check." />
-<link rel="canonical" href="https://agentspendguard.example.com/" />
+<title>AIBrake — Loop detection and model stop-loss for paid AI agents</title>
+<meta name="description" content="PQS checks the prompt. AIBrake checks the loop. Detect stale retries, same-tool loops, and premium model burn before the next expensive agent step. ~5ms per check." />
+<link rel="canonical" href="https://aibrake.dev/" />
 <!-- Favicon (SVG, with rounded-square dark background for legibility in light/dark browser chrome) -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <!-- Apple touch icon (180×180 SVG; iOS applies the rounded mask) -->
 <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
 <!-- OpenGraph + Twitter -->
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://agentspendguard.example.com/" />
-<meta property="og:title" content="Agent Spend Guard — loop detection for paid AI agents" />
-<meta property="og:description" content="PQS checks the prompt. Agent Spend Guard checks the loop. Catch stale retries and premium-model burn before the next expensive agent step." />
-<meta property="og:site_name" content="Agent Spend Guard" />
+<meta property="og:url" content="https://aibrake.dev/" />
+<meta property="og:title" content="AIBrake — loop detection for paid AI agents" />
+<meta property="og:description" content="PQS checks the prompt. AIBrake checks the loop. Catch stale retries and premium-model burn before the next expensive agent step." />
+<meta property="og:site_name" content="AIBrake" />
 <!--
   NOTE: most social crawlers don't render SVG as og:image — convert
   web/og-card.svg → web/og-card.png (1200×630) before going public.
   Until then, og:image points at the SVG (renders cleanly in some viewers,
   fails gracefully in others, never breaks the share).
 -->
-<meta property="og:image" content="https://agentspendguard.example.com/og-card.svg" />
+<meta property="og:image" content="https://aibrake.dev/og-card.svg" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Agent Spend Guard" />
+<meta name="twitter:title" content="AIBrake" />
 <meta name="twitter:description" content="Loop detection and model stop-loss for paid AI agents. ~5ms per check. Stage 0.5.3-beta." />
-<meta name="twitter:image" content="https://agentspendguard.example.com/og-card.svg" />
+<meta name="twitter:image" content="https://aibrake.dev/og-card.svg" />
 <meta name="theme-color" content="#0b0d10" />
 <style>
   :root {
@@ -439,7 +439,7 @@
 
 <nav class="top">
   <div class="container">
-    <a class="brand" href="#" aria-label="Agent Spend Guard — home">
+    <a class="brand" href="#" aria-label="AIBrake — home">
       <svg viewBox="0 0 64 64" aria-hidden="true">
         <g fill="none" stroke="#6ee7b7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
@@ -448,7 +448,7 @@
         <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
         <circle cx="44" cy="36" r="2.6" fill="#6ee7b7" />
       </svg>
-      <span class="brand-text">agent spend guard<span class="dot">.</span></span>
+      <span class="brand-text">aibrake<span class="dot">.</span></span>
     </a>
     <div class="links">
       <a href="#what-it-catches">Patterns</a>
@@ -457,7 +457,7 @@
       <a href="#demo">Demo</a>
       <a href="#benchmark">Benchmark</a>
       <a href="#faq">FAQ</a>
-      <a href="https://github.com/your-org/spending-guard" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/your-username/aibrake" target="_blank" rel="noopener">GitHub</a>
     </div>
   </div>
 </nav>
@@ -475,7 +475,7 @@
   <div class="container">
     <div class="status"><span class="dot"></span>v0.5.3-beta — hosted beta, invite-only</div>
     <h1>Loop detection and model stop-loss for paid AI agents.</h1>
-    <p class="tagline"><strong>PQS checks the prompt. Agent Spend Guard checks the loop.</strong></p>
+    <p class="tagline"><strong>PQS checks the prompt. AIBrake checks the loop.</strong></p>
     <p class="sub">Detect stale retries, same-tool loops, and premium-model burn <em>before</em> the next expensive agent step. Provider-agnostic. Stateless core. One HTTP POST per check, ~5 ms median.</p>
 
     <!-- Live savings counter — pulls from /v1/public/stats.
@@ -502,7 +502,7 @@
 
     <div class="cta-row">
       <a class="btn btn-primary" href="#beta">Get beta access</a>
-      <a class="btn btn-secondary" href="https://github.com/your-org/spending-guard/blob/main/PARTNER_ONBOARDING.md" target="_blank" rel="noopener">View docs</a>
+      <a class="btn btn-secondary" href="https://github.com/your-username/aibrake/blob/main/PARTNER_ONBOARDING.md" target="_blank" rel="noopener">View docs</a>
       <a class="btn btn-secondary" href="#integrate">5-line integration</a>
     </div>
   </div>
@@ -512,7 +512,7 @@
   <div class="container">
     <h2><span class="num">01</span>Problem</h2>
     <p class="lead">AI agents burn money when they retry the same failed task without new evidence.</p>
-    <p>The 7th paid retry on the same <code>TS2307</code> error rarely produces a different answer. The 4th opus call after a sonnet got stuck rarely teaches the model something it didn't already see. Most operators discover this in the monthly invoice — not before the call fires. Agent Spend Guard makes that decision <em>before</em> you pay.</p>
+    <p>The 7th paid retry on the same <code>TS2307</code> error rarely produces a different answer. The 4th opus call after a sonnet got stuck rarely teaches the model something it didn't already see. Most operators discover this in the monthly invoice — not before the call fires. AIBrake makes that decision <em>before</em> you pay.</p>
   </div>
 </section>
 
@@ -556,7 +556,7 @@
 CodingAgentAdapter
     │
     ▼  POST /v1/check  (Bearer asg_v1_…)
-Agent Spend Guard
+AIBrake
     │
     ▼  decision + recommended_policy + suggested_action (+ model_route)
 SDK helper
@@ -581,7 +581,7 @@ Agent decides</pre>
 <pre>import { SpendingGuard } from "spending-guard";
 
 const guard = new SpendingGuard({
-  baseUrl: "https://api.agentspendguard.com",
+  baseUrl: "https://api.aibrake.dev",
   apiKey: process.env.ASG_KEY,
   failureMode: "open",   // never takes your agent offline on guard outage
 });
@@ -600,7 +600,7 @@ if (result.projected_savings) {
 <pre>from agent_spend_guard import AgentSpendGuard
 
 guard = AgentSpendGuard(
-    base_url="https://api.agentspendguard.com",
+    base_url="https://api.aibrake.dev",
     api_key=os.environ["ASG_KEY"],
     failure_mode="open",   # never takes your agent offline on guard outage
 )
@@ -617,7 +617,7 @@ if ps:
     )</pre>
     </div>
     <div class="code-panel" data-panel="curl" data-active="false">
-<pre>curl -s -X POST https://api.agentspendguard.com/v1/check \
+<pre>curl -s -X POST https://api.aibrake.dev/v1/check \
   -H "Authorization: Bearer asg_v1_yourkey" \
   -H "content-type: application/json" \
   -d '{
@@ -716,7 +716,7 @@ if ps:
       <strong>No false-positive warns</strong> on healthy debug cycles (Stage 0.5.1 adapter calibration held).
     </p>
     <p style="font-size: 0.9rem; color: var(--muted); margin-top: 14px;">
-      <strong>Honest framing:</strong> simulated workloads, not paying customers. Numbers are <em>offered</em> savings — realized depends on team heed rate (typically 40-80%). Full methodology + reproduction command in <a href="https://github.com/your-org/spending-guard/blob/main/BENCHMARK_10_AGENTS.md">BENCHMARK_10_AGENTS.md</a>. The simulation harness is open: <code>npx tsx scripts/simulate-10-partners.ts</code>.
+      <strong>Honest framing:</strong> simulated workloads, not paying customers. Numbers are <em>offered</em> savings — realized depends on team heed rate (typically 40-80%). Full methodology + reproduction command in <a href="https://github.com/your-username/aibrake/blob/main/BENCHMARK_10_AGENTS.md">BENCHMARK_10_AGENTS.md</a>. The simulation harness is open: <code>npx tsx scripts/simulate-10-partners.ts</code>.
     </p>
   </div>
 </section>
@@ -818,7 +818,7 @@ if ps:
       <summary>What data do you log?</summary>
       <div class="faq-body">
         <p>Hashes and counts only. No raw prompts, no source-file contents, no API keys, no test output bodies. The decision log line carries: <code>request_id</code>, <code>input_hash</code> (sha256-16 of canonical input), <code>api_key_hash</code> (sha256-16 of the bearer key — never the raw key), the partner-supplied <code>objective_id</code> / <code>actor_runtime</code> labels, the decision + pattern + matched rules, and the partner-supplied <code>next_action.estimated_cost</code> + computed <code>projected_savings</code>.</p>
-        <p>Full contract in <a href="https://github.com/your-org/spending-guard/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+        <p>Full contract in <a href="https://github.com/your-username/aibrake/blob/main/SECURITY.md">SECURITY.md</a>.</p>
       </div>
     </details>
 
@@ -828,7 +828,7 @@ if ps:
         <p><strong>PQS</strong> scores one prompt at a time on an 8-dimension rubric — answer to <em>"is this single prompt worth paying for?"</em></p>
         <p><strong>Boundary Guard</strong> validates outputs against schema / safety constraints — <em>"did the output pass?"</em></p>
         <p><strong>x402station</strong> checks endpoint trust before payment — <em>"is this x402 endpoint safe to call?"</em></p>
-        <p><strong>Agent Spend Guard</strong> watches the <em>session loop</em> — <em>"is the agent already stuck in a paid retry pattern?"</em> Per-session history with universal evidence model. We compose with the others — a serious agent stack uses prompt-preflight → loop-detection → output-validation in sequence.</p>
+        <p><strong>AIBrake</strong> watches the <em>session loop</em> — <em>"is the agent already stuck in a paid retry pattern?"</em> Per-session history with universal evidence model. We compose with the others — a serious agent stack uses prompt-preflight → loop-detection → output-validation in sequence.</p>
       </div>
     </details>
 
@@ -875,7 +875,7 @@ if ps:
     <details class="faq">
       <summary>Is the source open?</summary>
       <div class="faq-body">
-        <p>Docs, SDK, examples, and the simulation harness are open. The hosted production service is closed-beta until the wedge is validated. Run your own instance from the repo any time — <a href="https://github.com/your-org/spending-guard/blob/main/DEPLOYMENT.md">DEPLOYMENT.md</a> has Render / Fly / Railway / Caddy-VPS recipes.</p>
+        <p>Docs, SDK, examples, and the simulation harness are open. The hosted production service is closed-beta until the wedge is validated. Run your own instance from the repo any time — <a href="https://github.com/your-username/aibrake/blob/main/DEPLOYMENT.md">DEPLOYMENT.md</a> has Render / Fly / Railway / Caddy-VPS recipes.</p>
       </div>
     </details>
   </div>
@@ -885,11 +885,11 @@ if ps:
   <div class="container">
     <h2><span class="num">10</span>Get beta access</h2>
     <p>Closed beta — first 3–5 partners. The fit is paid coding agents, scraper / search agents, premium-model wrappers, or anyone routing $&gt;0.05 per agent action.</p>
-    <form class="access" action="mailto:beta@agentspendguard.example?subject=Agent%20Spend%20Guard%20beta%20access" method="post">
+    <form class="access" action="mailto:beta@aibrake.dev?subject=Agent%20Spend%20Guard%20beta%20access" method="post">
       <input type="email" name="email" placeholder="you@company.com" required />
       <button class="btn btn-primary" type="submit">Request invite</button>
     </form>
-    <p style="margin-top: 12px; font-size: 0.88rem; color: var(--muted);">Or read the contract first: <a href="https://github.com/your-org/spending-guard/blob/main/PARTNER_ONBOARDING.md">PARTNER_ONBOARDING.md</a> · <a href="https://github.com/your-org/spending-guard/blob/main/SECURITY.md">SECURITY.md</a> · <a href="https://github.com/your-org/spending-guard/blob/main/CHANGELOG.md">CHANGELOG.md</a></p>
+    <p style="margin-top: 12px; font-size: 0.88rem; color: var(--muted);">Or read the contract first: <a href="https://github.com/your-username/aibrake/blob/main/PARTNER_ONBOARDING.md">PARTNER_ONBOARDING.md</a> · <a href="https://github.com/your-username/aibrake/blob/main/SECURITY.md">SECURITY.md</a> · <a href="https://github.com/your-username/aibrake/blob/main/CHANGELOG.md">CHANGELOG.md</a></p>
   </div>
 </section>
 
@@ -905,15 +905,15 @@ if ps:
         <circle cx="44" cy="36" r="2.6" fill="#6ee7b7" />
       </svg>
       <div>
-        <div style="margin-bottom: 4px;"><strong>Agent Spend Guard</strong> · v0.5.3-beta</div>
+        <div style="margin-bottom: 4px;"><strong>AIBrake</strong> · v0.5.3-beta</div>
         <div>Loop detection and model stop-loss for paid AI agents.</div>
       </div>
     </div>
     <div>
-      <a href="https://github.com/your-org/spending-guard">GitHub</a> ·
-      <a href="https://github.com/your-org/spending-guard/blob/main/CHANGELOG.md">Changelog</a> ·
-      <a href="https://github.com/your-org/spending-guard/blob/main/SECURITY.md">Security</a> ·
-      <a href="mailto:hello@agentspendguard.example">Contact</a>
+      <a href="https://github.com/your-username/aibrake">GitHub</a> ·
+      <a href="https://github.com/your-username/aibrake/blob/main/CHANGELOG.md">Changelog</a> ·
+      <a href="https://github.com/your-username/aibrake/blob/main/SECURITY.md">Security</a> ·
+      <a href="mailto:hello@aibrake.dev">Contact</a>
     </div>
   </div>
 </footer>
@@ -928,7 +928,7 @@ if ps:
     (window.AGENT_SPEND_GUARD_API_BASE) ||
     (location.hostname === "localhost" || location.hostname === "127.0.0.1"
       ? "http://localhost:8080"
-      : "https://api.agentspendguard.com");
+      : "https://api.aibrake.dev");
 
   // ── Counter widget ──────────────────────────────────────────────────
   function fmtMoney(n) {

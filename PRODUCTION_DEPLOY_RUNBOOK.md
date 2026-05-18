@@ -15,7 +15,7 @@ Pick one. Buy from Namecheap / Porkbun / Cloudflare Registrar (~$10-50/year):
 
 | TLD | Vibe | Notes |
 | --- | --- | --- |
-| `agentspendguard.com` | classic | safest if available |
+| `aibrake.dev` | classic | safest if available |
 | `agentspendguard.io` | dev-tool tier | classic for infra brands |
 | `agentspendguard.dev` | dev-tool tier | Google-owned, HTTPS-only by default |
 | `agentspendguard.ai` | AI-company tier | ~$60-100/year, signal-heavy |
@@ -26,9 +26,9 @@ Pick one. Buy from Namecheap / Porkbun / Cloudflare Registrar (~$10-50/year):
 
 Recommended pattern (industry standard):
 ```
-agentspendguard.com         → landing (Vercel/Netlify/Cloudflare Pages)
-api.agentspendguard.com     → API (Render/Fly/Railway)
-docs.agentspendguard.com    → eventually, redirects to GitHub docs for now
+aibrake.dev         → landing (Vercel/Netlify/Cloudflare Pages)
+api.aibrake.dev     → API (Render/Fly/Railway)
+docs.aibrake.dev    → eventually, redirects to GitHub docs for now
 ```
 
 The landing page JS expects `window.AGENT_SPEND_GUARD_API_BASE = "https://api.<domain>"`. If you change the pattern, tell me — I update the placeholder.
@@ -71,12 +71,12 @@ The sbbuilder folder is currently a LOCAL git repo with no remote. Decide:
 
 ### D5. Contact email
 
-Currently `hello@agentspendguard.example` and `beta@agentspendguard.example` in:
+Currently `hello@aibrake.dev` and `beta@aibrake.dev` in:
 - Landing page `mailto:` button
 - FAQ section
 - Footer
 
-Decide: real address on your new domain (e.g. `hello@agentspendguard.com` via Cloudflare Email Routing — free), or temp Gmail / Fastmail.
+Decide: real address on your new domain (e.g. `hello@aibrake.dev` via Cloudflare Email Routing — free), or temp Gmail / Fastmail.
 
 ### D6. Initial API key list
 
@@ -98,7 +98,7 @@ While you're buying the domain and signing up for Render, I can prepare:
 ### P1. A `scripts/configure-for-deploy.mjs` tool
 
 Interactive CLI that takes:
-- `DOMAIN` (e.g. `agentspendguard.com`)
+- `DOMAIN` (e.g. `aibrake.dev`)
 - `API_SUBDOMAIN` (default `api.<DOMAIN>`)
 - `GITHUB_REPO` (e.g. `your-username/agent-spend-guard`)
 - `CONTACT_EMAIL` (e.g. `hello@<DOMAIN>`)
@@ -289,10 +289,10 @@ I'll commit them and tell you when ready. Then you come back with your 4 placeho
 A single message:
 
 ```
-domain:        agentspendguard.com   (or whatever you got)
-api subdomain: api.agentspendguard.com
+domain:        aibrake.dev   (or whatever you got)
+api subdomain: api.aibrake.dev
 github repo:   github.com/your-username/agent-spend-guard
-contact email: hello@agentspendguard.com
+contact email: hello@aibrake.dev
 hosting api:   render | fly | railway | vps
 hosting site:  vercel | netlify | cloudflare-pages | github-pages
 ```

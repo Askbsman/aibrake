@@ -1,8 +1,8 @@
-# Agent Spend Guard — marketing site
+# AIBrake — marketing site
 
 # We want everything indexable for now (closed beta, but public site).
 User-agent: *
 Allow: /
 
 # Stage 0.5.3-beta sitemap. Replace the host before going live.
-Sitemap: https://agentspendguard.example.com/sitemap.xml
+Sitemap: https://aibrake.dev/sitemap.xml

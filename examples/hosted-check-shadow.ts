@@ -23,7 +23,7 @@ const guard = new SpendingGuard({
 
 async function main(): Promise<void> {
   // eslint-disable-next-line no-console
-  console.log(`Agent Spend Guard hosted shadow-mode demo @ ${baseUrl}`);
+  console.log(`AIBrake hosted shadow-mode demo @ ${baseUrl}`);
   // eslint-disable-next-line no-console
   console.log(`API key configured: ${apiKey ? "yes" : "no (anonymous)"}`);
 

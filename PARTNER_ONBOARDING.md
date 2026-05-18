@@ -1,12 +1,12 @@
-# Partner Onboarding — Agent Spend Guard Hosted Beta
+# Partner Onboarding — AIBrake Hosted Beta
 
-Welcome. You are one of 2–3 first partners trying Agent Spend Guard against a real paid agent workflow. The whole onboarding is designed to take **under 30 minutes** — if it takes longer, that is a bug in this document and we want to hear it.
+Welcome. You are one of 2–3 first partners trying AIBrake against a real paid agent workflow. The whole onboarding is designed to take **under 30 minutes** — if it takes longer, that is a bug in this document and we want to hear it.
 
 ---
 
 ## Pick your path
 
-Agent Spend Guard is **one product**, but the canonical demo and payload shape that will resonate fastest depend on what your agent actually does. Pick the tile that matches your stack — read that section first, the others are reference.
+AIBrake is **one product**, but the canonical demo and payload shape that will resonate fastest depend on what your agent actually does. Pick the tile that matches your stack — read that section first, the others are reference.
 
 ### 🛠️  Coding-agent operator
 
@@ -44,11 +44,11 @@ Agent Spend Guard is **one product**, but the canonical demo and payload shape t
 
 ---
 
-## What Agent Spend Guard does
+## What AIBrake does
 
 Pre-flight check for paid AI agent actions. Detects loops, stale-context retries, model escalation without evidence, and objective drift **before** the next expensive call.
 
-> **PQS checks the prompt. Agent Spend Guard checks the loop.**
+> **PQS checks the prompt. AIBrake checks the loop.**
 
 It does not score one prompt. It looks at the action history, the failure fingerprint, the evidence signals between attempts, and the operator's model policy.
 
@@ -95,7 +95,7 @@ If you get anything else, ping the maintainer before going further.
 npm install spending-guard
 ```
 
-The npm package is named `spending-guard` (historical); the product brand is **Agent Spend Guard**. See `IMPLEMENTATION_NOTES.md § 13` for why.
+The npm package is named `spending-guard` (historical); the product brand is **AIBrake**. See `IMPLEMENTATION_NOTES.md § 13` for why.
 
 ### Step 3 (5 min) — first call
 
@@ -216,7 +216,7 @@ Full schema (`type`, `default`, `min`, `recommended_range`, `description` for ea
 
 ## SDK error behavior
 
-Agent Spend Guard SDKs **fail open only on transport / service-availability failures**. They do NOT fail open on:
+AIBrake SDKs **fail open only on transport / service-availability failures**. They do NOT fail open on:
 
 - malformed payloads (e.g. BigInt or circular reference passed to `JSON.stringify`)
 - JSON serialization errors
@@ -276,7 +276,7 @@ except SpendingGuardError as err:
 
 Open `BETA_FEEDBACK_TEMPLATE.md`, fill it in, send it to the maintainer. Three things matter most:
 
-1. **Did Agent Spend Guard catch a real loop you would have otherwise spent money on?** If yes, paste the situation.
+1. **Did AIBrake catch a real loop you would have otherwise spent money on?** If yes, paste the situation.
 2. **Did it warn about something that was actually fine?** If yes, paste it too — false positives are the most important early signal.
 3. **Would you keep it enabled past the beta?** Honest answers only. "Not yet" is a useful answer.
 
@@ -284,7 +284,7 @@ Open `BETA_FEEDBACK_TEMPLATE.md`, fill it in, send it to the maintainer. Three t
 
 ## Things you may safely ignore in Stage 0.3
 
-- The package name `spending-guard` vs. product name `Agent Spend Guard` — see § 13 of IMPLEMENTATION_NOTES if curious; doesn't affect integration.
+- The package name `spending-guard` vs. product name `AIBrake` — see § 13 of IMPLEMENTATION_NOTES if curious; doesn't affect integration.
 - `/v1/check-deep` — it's a documented stub. You will see `deep_check_used: false`. That's correct.
 - The `model_route` field in responses if you do not use `checkOrDowngrade` — read-only output, safe to ignore.
 - The `policy_version` and `detector_version` fields — pin them only if you care about deterministic behavior across server updates. We will announce any threshold change in `CHANGELOG.md`.

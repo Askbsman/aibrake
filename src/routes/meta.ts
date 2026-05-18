@@ -56,10 +56,10 @@ export async function registerMetaRoute(
 ): Promise<void> {
   app.get("/v1/meta", async () => {
     return {
-      name: "Agent Spend Guard",
+      name: "AIBrake",
       version: config.serviceVersion,
       description: "Loop detection and model stop-loss for paid AI agents.",
-      positioning: "PQS checks the prompt. Agent Spend Guard checks the loop.",
+      positioning: "PQS checks the prompt. AIBrake checks the loop.",
       endpoints: {
         check: "/v1/check",
         check_deep: "/v1/check-deep",

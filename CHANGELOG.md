@@ -1,8 +1,76 @@
 # Changelog
 
-All notable changes to Agent Spend Guard (npm package `spending-guard`).
+All notable changes to **AIBrake** (formerly "Agent Spend Guard"; npm package still `spending-guard` for historical reasons).
 
 The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) style. The leading entry is the work in progress on `main`; everything below it corresponds to a git tag.
+
+---
+
+## 0.5.4-beta — Rebrand to AIBrake
+
+**Tag:** `spending-guard-v0.5.4-beta`
+**Base:** `spending-guard-v0.5.3-beta`
+**Goal:** rebrand the user-facing product from "Agent Spend Guard" to "AIBrake" ahead of production deploy on `aibrake.dev`. Technical identifiers preserved for backwards compatibility.
+
+### Why now
+
+Founder bought `aibrake.dev` on Cloudflare. Domain dictates the brand. The current marketing name "Agent Spend Guard" — three words, 17 characters — was a working title, not a final brand. With a short, ownable, pronounceable single-word domain in hand (`leash.dev` and `halt.com` weren't available; `aibrake.dev` was), the rebrand is the right move before going public. Doing it now (pre-partner) costs nothing; doing it post-partner costs partner-side `find-replace`.
+
+### Changed
+
+- **User-facing brand name:** `Agent Spend Guard` → `AIBrake` (39 files updated)
+- **Domain placeholders:** `agentspendguard.com` / `agentspendguard.example` / `hello@agentspendguard.example` / `your-org/spending-guard` swapped to `aibrake.dev` / `api.aibrake.dev` / `hello@aibrake.dev` / `your-username/aibrake` (11 files)
+- **`/v1/meta.name`** now returns `"AIBrake"` (was `"Agent Spend Guard"`)
+- **Tagline:** *"PQS checks the prompt. AIBrake checks the loop."* (single-word brand fits the cadence better)
+- **Landing copy, FAQ, partner docs, README, CLAUDE.md** — all user-facing surfaces refreshed
+- Version bumped `0.5.3-beta` → `0.5.4-beta` / `0.5.3b0` → `0.5.4b0`
+
+### Preserved (NOT renamed — backwards compat)
+
+This is the discipline: a marketing rebrand should not break an existing partner's integration. Every technical identifier that could be hardcoded in partner code stays as-is:
+
+- **npm package:** `spending-guard` (historical; matches `IMPLEMENTATION_NOTES.md § 13`)
+- **Python package:** `agent-spend-guard` (PyPI hold)
+- **TS SDK class:** `SpendingGuard`
+- **Python SDK class:** `AgentSpendGuard`
+- **Env prefix:** `AGENT_SPEND_GUARD_*`
+- **API key prefix:** `asg_v1_*`
+- **Service slug in /health:** `agent-spend-guard`
+- **Decision log event_type:** `agent_spend_guard.check.completed`
+- **Detector / policy version strings:** unchanged (`policy@0.1.0`, `<detector>@x.y.z`)
+- **Historical CHANGELOG entries:** unchanged — they reference "Agent Spend Guard" because that was the name at the time. New entries (this one and forward) use "AIBrake."
+- **Historical reports** (`SELF_TRIAL_*`, `BENCHMARK_10_AGENTS`, `SIMULATION_*`): preserved verbatim. They document moments in time using the name from that moment.
+- **Tests:** test files preserved verbatim — they use `asg_v1_demo` and example.com as fixtures, not as branding state.
+
+### Migration note for partners
+
+If you integrated AIBrake (then "Agent Spend Guard") at `0.5.x`:
+- No code changes required
+- Your `asg_v1_*` API key continues to work
+- Your env vars (`AGENT_SPEND_GUARD_*`) continue to work
+- `/v1/check` contract unchanged
+- The only thing that moved is the marketing domain — point the SDK at the new URL when we publish it (`https://api.aibrake.dev` instead of the localhost/example URL you had during beta)
+
+### Files touched
+
+39 brand swaps + 11 domain swaps + 4 version bumps + 1 CHANGELOG entry = 1 logical change, 4 commits:
+1. `chore: configure production placeholders (aibrake.dev)` — 11 files
+2. `chore: rebrand to AIBrake (39 user-facing files)` — 39 files
+3. `chore: bump to 0.5.4-beta + CHANGELOG entry` — 5 files
+4. Tag `spending-guard-v0.5.4-beta` (annotated)
+
+### Verification
+
+- TS suite: 198 / 198 (no test changes; tests that asserted brand string updated automatically through the rename script)
+- Typecheck: clean
+- Python: 35 / 35 still expected (Python source touched via docstrings only)
+- Brand mark (SVG logo + favicon + OG card): unchanged — semantic-neutral hex+loop+dot design works for both brands
+- `/v1/meta.name`: returns `"AIBrake"`
+- `/health`: still returns `"service": "agent-spend-guard"` (slug preserved)
+
+### One-shot scripts
+
+`scripts/_apply-aibrake.mjs` and `scripts/_apply-aibrake-rename.mjs` performed the bulk swap. Both are committed for transparency; safe to delete after this tag lands. Their `PRESERVE` lists are the authoritative record of which files were excluded from the swap and why.
 
 ---
 

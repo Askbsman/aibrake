@@ -17,12 +17,12 @@
 //   - node_modules / dist / .git / validation-log / logs
 //
 // Placeholders swapped:
-//   agentspendguard.example          → <DOMAIN>
-//   agentspendguard.com              → <DOMAIN>           (in landing meta)
-//   api.agentspendguard.com          → <API_SUBDOMAIN>
-//   your-org/spending-guard          → <GITHUB_REPO>
-//   hello@agentspendguard.example    → <CONTACT_EMAIL>
-//   beta@agentspendguard.example     → beta@<DOMAIN>
+//   aibrake.dev          → <DOMAIN>
+//   aibrake.dev              → <DOMAIN>           (in landing meta)
+//   api.aibrake.dev          → <API_SUBDOMAIN>
+//   your-username/aibrake          → <GITHUB_REPO>
+//   hello@aibrake.dev    → <CONTACT_EMAIL>
+//   beta@aibrake.dev     → beta@<DOMAIN>
 //
 // Safety:
 //   - Does not touch git history
@@ -85,12 +85,12 @@ async function main() {
 
   console.log("");
   console.log("─".repeat(72));
-  console.log("Agent Spend Guard — Production deploy configuration");
+  console.log("AIBrake — Production deploy configuration");
   console.log("─".repeat(72));
   console.log("Answer 4 questions. Nothing is written until you confirm.");
   console.log("");
 
-  const domain = await ask(rl, "Domain (e.g. agentspendguard.com)", "");
+  const domain = await ask(rl, "Domain (e.g. aibrake.dev)", "");
   if (!domain || !domain.includes(".")) {
     console.error("Need a real domain. Aborting.");
     rl.close();
@@ -108,14 +108,14 @@ async function main() {
   console.log("─".repeat(72));
   const swaps = [
     // Order matters: longer/more-specific strings first to avoid partial matches.
-    ["api.agentspendguard.com", apiSubdomain],
-    ["api.agentspendguard.example.com", apiSubdomain],
-    ["beta@agentspendguard.example", betaEmail],
-    ["hello@agentspendguard.example", contactEmail],
-    ["agentspendguard.example.com", domain],
-    ["agentspendguard.example", domain],
-    ["agentspendguard.com", domain],
-    ["your-org/spending-guard", githubRepo],
+    ["api.aibrake.dev", apiSubdomain],
+    ["api.aibrake.dev", apiSubdomain],
+    ["beta@aibrake.dev", betaEmail],
+    ["hello@aibrake.dev", contactEmail],
+    ["aibrake.dev", domain],
+    ["aibrake.dev", domain],
+    ["aibrake.dev", domain],
+    ["your-username/aibrake", githubRepo],
   ];
   for (const [from, to] of swaps) {
     if (from === to) continue;

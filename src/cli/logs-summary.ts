@@ -127,7 +127,7 @@ export function summarize(lines: readonly string[]): SummaryOutput {
   const avgCost =
     a.costSampleCount > 0 ? a.totalNextActionCostUsd / a.costSampleCount : 0;
   const text =
-    `Agent Spend Guard — Beta Summary\n\n` +
+    `AIBrake — Beta Summary\n\n` +
     `total_checks: ${a.total}\n` +
     `allow: ${a.byDecision.allow ?? 0}\n` +
     `warn: ${a.warnCount}\n` +

@@ -1,8 +1,8 @@
-# DEPLOYMENT — Agent Spend Guard Hosted Beta
+# DEPLOYMENT — AIBrake Hosted Beta
 
 > Status: Stage 0.3 hosted-beta candidate. Single-instance deployment, no horizontal scaling, no managed database. If you need more than that, you are past Stage 0.3 — open an issue.
 
-This document is what a partner integrating Agent Spend Guard into their own infrastructure (or a vendor hosting it for a small beta cohort) needs to ship it.
+This document is what a partner integrating AIBrake into their own infrastructure (or a vendor hosting it for a small beta cohort) needs to ship it.
 
 ---
 
