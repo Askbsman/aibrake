@@ -1,0 +1,20 @@
+# Netlify / Cloudflare Pages headers config.
+# Vercel: use vercel.json instead (provided separately).
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Cache SVG assets aggressively — they don't change without a deploy
+/*.svg
+  Cache-Control: public, max-age=86400, must-revalidate
+
+# Don't cache the HTML (we want counter / version to refresh)
+/index.html
+  Cache-Control: public, max-age=300, must-revalidate
+
+/
+  Cache-Control: public, max-age=300, must-revalidate

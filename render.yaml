@@ -1,0 +1,66 @@
+# Agent Spend Guard — Render Blueprint
+#
+# Usage:
+#   1. Push repo to GitHub
+#   2. Render Dashboard → New → Blueprint → connect GitHub repo
+#   3. Render reads this file, prompts for the secret env values
+#   4. Click "Apply"
+#
+# What you'll need to enter at deploy time (Render's UI will ask):
+#   AGENT_SPEND_GUARD_API_KEYS — comma-separated partner keys (asg_v1_owner_xxx,...)
+#
+# Optional but recommended:
+#   - Attach a custom domain (api.yourdomain.com) after first deploy
+#   - Add Render Notify (Slack/email) for service health
+#
+# Cost on Render (as of Stage 0.5.3-beta):
+#   Web service "starter":  $7/mo  (sleeps after 15min idle on free; not for prod)
+#   Web service "standard": $25/mo (always-on, 2GB RAM)
+#   Disk 1GB:               $1/mo
+#
+# We recommend "starter" for the initial beta — partners won't notice the
+# cold start on first call (~3s) and the cost difference funds 3 months of
+# beta usage. Upgrade to "standard" once a partner reports the cold start
+# as a real issue.
+
+services:
+  - type: web
+    name: agent-spend-guard
+    runtime: node
+    plan: starter           # change to "standard" for always-on
+    region: oregon          # change to your preferred region (oregon | virginia | frankfurt | singapore)
+    branch: main
+    rootDir: .
+    buildCommand: npm install --no-audit --no-fund && npm run build
+    startCommand: node dist/server.js
+    healthCheckPath: /health
+    autoDeploy: true        # auto-redeploy on git push to main
+
+    # Persistent disk for the JSONL decision log.
+    # 1 GB ≈ ~5 million decision events. Plenty for the beta.
+    disk:
+      name: asg-data
+      mountPath: /var/data
+      sizeGB: 1
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8080
+      - key: AGENT_SPEND_GUARD_AUTH_MODE
+        value: required
+      - key: AGENT_SPEND_GUARD_LOG_SINK
+        value: jsonl
+      - key: AGENT_SPEND_GUARD_LOG_PATH
+        value: /var/data/decisions.jsonl
+      - key: AGENT_SPEND_GUARD_RATE_LIMIT_PER_KEY_PER_MIN
+        value: 600
+      - key: AGENT_SPEND_GUARD_SERVICE_NAME
+        value: agent-spend-guard
+      # Render reveals this prompt at deploy time. Paste your CSV of keys.
+      - key: AGENT_SPEND_GUARD_API_KEYS
+        sync: false
+      # Optional — only set if you want partners to see the public URL in /v1/meta
+      - key: AGENT_SPEND_GUARD_PUBLIC_URL
+        sync: false

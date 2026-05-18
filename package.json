@@ -27,7 +27,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "logs:summary": "tsx src/cli/logs-summary.ts",
-    "render:og": "node scripts/render-og-card.mjs"
+    "render:og": "node scripts/render-og-card.mjs",
+    "preflight": "node scripts/preflight.mjs",
+    "configure": "node scripts/configure-for-deploy.mjs"
   },
   "dependencies": {
     "fastify": "^4.28.1",
