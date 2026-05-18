@@ -1,13 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
   <!--
-    OpenGraph / Twitter share card. 1200×630 is the OG canonical aspect.
+    OpenGraph / Twitter share card. 1200x630 canonical OG aspect.
     Dark canvas, mark on the left, wordmark + tagline on the right.
 
-    Important note for deployment: most social crawlers (Twitter, Facebook,
-    LinkedIn) do NOT render SVG as og:image — they want PNG or JPG. Convert
-    this file to og-card.png before going live. One-liner:
-      npx svg2png-cli web/og-card.svg --output web/og-card.png --width 1200 --height 630
-    or use any svg→png conversion service.
+    Note: most social crawlers do NOT render SVG as og:image.
+    Convert this file to og-card.png before going live (see
+    scripts/render-og-card.mjs).
   -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
