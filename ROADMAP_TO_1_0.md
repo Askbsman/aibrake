@@ -101,7 +101,7 @@ So the path to 1.0 is mostly **operational + sales**, with a tiny amount of engi
 ### C1. x402 paid endpoint
 - `POST /x402/v1/check` with USDC settlement via facilitator
 - Target price `$0.001–0.005` (anchored in `BENCHMARK_10_AGENTS.md`, validated by `SIMULATION_100_PARTNERS_WEEK_REPORT.md`)
-- **Status: stubbed in `src/payments/`, not implemented. Deferred until partner data justifies it.**
+- **Status: stubbed in `src/payments/`, not implemented. Deferred per `CLAUDE.md § 6.3` until at least one partner has completed a 7-day shadow integration and reported usefulness. This is a monetization mechanism, not a savings-detection gap — see the 7-leak savings audit in `IMPLEMENTATION_NOTES.md § 20` if you're looking for the detection-side roadmap.**
 
 ### C2. agentic.market listing
 - Listing copy ready in `X402_LISTING.md`
