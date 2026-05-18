@@ -31,7 +31,11 @@ services:
     region: oregon          # change to your preferred region (oregon | virginia | frankfurt | singapore)
     branch: main
     rootDir: .
-    buildCommand: npm install --no-audit --no-fund && npm run build
+    # NOTE: --include=dev is required because Render sets NODE_ENV=production
+    # in the build phase, which makes `npm install` skip devDependencies — but
+    # we need `typescript` (a devDep) for `npm run build` to invoke `tsc`.
+    # Without --include=dev the build fails with `sh: tsc: not found`.
+    buildCommand: npm install --include=dev --no-audit --no-fund && npm run build
     startCommand: node dist/server.js
     healthCheckPath: /health
     autoDeploy: true        # auto-redeploy on git push to main
