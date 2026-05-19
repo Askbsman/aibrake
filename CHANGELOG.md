@@ -6,6 +6,85 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.9-beta — New detector: `unverified_success_assertion`
+
+**Tag:** `aibrake-v0.5.9-beta`
+**Base:** `aibrake-v0.5.8-beta`
+**Goal:** catch the agent failure mode that 0.5.5–0.5.8's detectors do
+NOT cover — agents confidently claiming success on operational outcomes
+(deploy / install / restart / fix) without running any verification.
+
+### Why now
+
+Observed 2026-05-19: an agent ran `npm install aibrake@beta`, added
+`import "aibrake/auto"` to a production Node entrypoint, ran `pm2
+restart`, and reported "✅ deployed successfully" — on a package version
+that didn't yet have the `aibrake/auto` export. The Node process was in
+a crash loop, the agent had never `pm2 status`-ed or curled the endpoint.
+
+Existing detectors (stale_context_retry_storm, same_tool_retry_loop,
+model_escalation_without_evidence, objective_drift, task_budget_breach)
+all reason about **paid LLM call** patterns. They can't see this — the
+failure isn't a loop of LLM calls, it's a single confident wrong claim
+about an operational action.
+
+### Added
+
+- **`src/detectors/unverified-success-assertion.ts`** — new detector,
+  registered in `DEFAULT_DETECTORS` and re-exported from
+  `aibrake/index.ts`.
+
+  Fires when `next_action.type` is one of:
+  ```
+  success_assertion | deployment_assertion | install_assertion |
+  restart_assertion | fix_assertion | claim_success | task_complete
+  ```
+  AND `history.evidence_signals` shows zero or one verification step
+  among: `health_check_run`, `endpoint_curled`, `process_status_checked`,
+  `logs_read_after_action`, `tests_run_after_action`,
+  `file_re_read_after_edit`, `git_diff_verified`, `smoke_test_passed`.
+
+  Decisions:
+  - **2+ verifications** → detector returns `null` (lets the assertion pass)
+  - **1 verification** → score ~40 → `warn`
+  - **0 verifications** → score 75-95 → `require_confirmation`
+  - **0 verifications + deployment_assertion or restart_assertion** →
+    deterministic `block` (operational-stakes case)
+
+  Reason text names the specific missing verifications so the agent
+  gets actionable feedback ("Recommended: process_status_checked,
+  endpoint_curled, logs_read_after_action").
+
+- **`tests/detectors/unverified-success-assertion.test.ts`** — 7 tests
+  covering the deterministic block, the soft warn, the pass case, and
+  the don't-fire-on-paid_llm_call cross-category isolation check.
+
+### Telemetry contract for partners
+
+Partners using `aibrake/auto` get this detector for free on
+`paid_llm_call` actions that include success-assertion-shaped reasons
+(future enhancement — 0.5.9 only handles explicit `*_assertion` action
+types). Partners writing manual integrations should:
+
+1. Emit a check with `next_action.type = "deployment_assertion"` (or
+   one of the other recognised types) right before their agent declares
+   the task done.
+2. Populate `history.evidence_signals` with whichever verifications
+   the agent actually ran — e.g.
+   `{ process_status_checked: true, endpoint_curled: true }`.
+
+The detector trusts your telemetry. Honesty about what was/wasn't
+verified is the entire mechanism.
+
+### Verified
+
+- 218/218 TS tests green (was 211 → +7 new tests on the detector).
+- No changes to the existing detectors, so no risk of regression on
+  the retry-storm / budget / drift catches that were calibrated against
+  the simulation runs.
+
+---
+
 ## 0.5.8-beta — `aibrake/auto`: one-line install for OpenAI + Anthropic
 
 **Tag:** `aibrake-v0.5.8-beta`

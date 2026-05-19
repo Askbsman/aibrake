@@ -4,6 +4,7 @@ import { taskBudgetBreachDetector } from "./task-budget-breach.js";
 import { sameToolRetryLoopDetector } from "./same-tool-retry-loop.js";
 import { modelEscalationWithoutEvidenceDetector } from "./model-escalation-without-evidence.js";
 import { objectiveDriftDetector } from "./objective-drift.js";
+import { unverifiedSuccessAssertionDetector } from "./unverified-success-assertion.js";
 
 export const DEFAULT_DETECTORS: DetectorDefinition[] = [
   taskBudgetBreachDetector,
@@ -11,6 +12,7 @@ export const DEFAULT_DETECTORS: DetectorDefinition[] = [
   sameToolRetryLoopDetector,
   modelEscalationWithoutEvidenceDetector,
   objectiveDriftDetector,
+  unverifiedSuccessAssertionDetector,
 ];
 
 export function selectDetectors(enabled?: string[]): DetectorDefinition[] {
@@ -25,4 +27,5 @@ export {
   sameToolRetryLoopDetector,
   modelEscalationWithoutEvidenceDetector,
   objectiveDriftDetector,
+  unverifiedSuccessAssertionDetector,
 };

@@ -44,6 +44,7 @@ export {
   sameToolRetryLoopDetector,
   modelEscalationWithoutEvidenceDetector,
   objectiveDriftDetector,
+  unverifiedSuccessAssertionDetector,
 } from "./detectors/index.js";
 
 // NOTE: buildServer moved to a separate entry point in 0.5.7-beta to
