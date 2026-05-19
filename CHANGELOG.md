@@ -6,6 +6,43 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.13-beta — Pricing table + model name freshness
+
+**Tag:** `aibrake-v0.5.13-beta`
+**Base:** `aibrake-v0.5.12-beta`
+**Goal:** keep example model names and the auto-patch pricing table in
+sync with what Anthropic actually ships as of May 2026.
+
+### Changed
+
+- `src/auto/pricing.ts` PRICING_PER_1K_TOKENS_USD — added current
+  Anthropic model SKUs so the auto-patch cost estimator stops
+  defaulting to the unknown-model fallback ($0.005):
+  - `claude-opus-4.6`, `claude-opus-4.7` ($0.015/1k)
+  - `claude-sonnet-4.6`, `claude-sonnet-4.7` ($0.003/1k)
+  - `claude-haiku-4.5` ($0.00025/1k)
+- `src/cli/mcp.ts` `aibrake_check` tool description example bumped
+  `claude-opus-4.5` → `claude-opus-4.7`. Steers agent-side argument
+  selection toward a model that actually exists.
+- `examples/openclaw-quickstart.ts` toolArgs.model bumped 4.5 → 4.7.
+- `CASE_STUDIES.md` all 4 `claude-opus-4.5` references bumped to 4.7.
+
+### Intentionally NOT changed
+
+Test fixtures and simulation scripts keep `claude-opus-4.5` because
+they're frozen — the simulation outputs ($6,883 savings / 73,765
+checks / 17,978 catches / ~5ms median) are baked into the landing
+page, OG card, and X402_LISTING. Re-running with a different model
+would invalidate those numbers across the public surface.
+
+### Verified
+
+- 218/218 TS tests green.
+- `node scripts/check-version-strings.mjs` all 3 hardcoded locations
+  agree on `0.5.13-beta`.
+
+---
+
 ## 0.5.12-beta — Cleanup + critical fixes from project audit
 
 **Tag:** `aibrake-v0.5.12-beta`
