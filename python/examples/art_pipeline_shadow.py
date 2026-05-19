@@ -1,16 +1,14 @@
 """Art-generation pipeline — AIBrake shadow-mode integration template.
 
 Drop-in template for projects that generate art via paid APIs (OpenAI
-DALL-E, MidJourney, Stable Diffusion paid endpoints, etc.). Designed
-around the pattern that drove this template into existence: OurTrace's
-weekly pipeline (`monday_manifest.py` and friends) that fans out art
-prompts and historically had no protection against:
+DALL-E, MidJourney, Stable Diffusion paid endpoints, etc.) and want
+protection against:
 
-  - prompt-loop storms: same prompt regenerated 6 times because the
-    quality check kept failing, no context refresh between attempts
-  - model escalation: silently falling back from dall-e-3 to
-    midjourney-v6 mid-loop without anyone noticing the cost delta
-  - budget drift: weekly art budget burned in one bad pipeline run
+  - prompt-loop storms: same prompt regenerated 6 times because a
+    quality check keeps failing, no context refresh between attempts
+  - model escalation: silently falling back from a cheaper model to
+    a premium one mid-loop without anyone noticing the cost delta
+  - budget drift: a weekly art budget burned in one bad pipeline run
 
 This template runs in SHADOW MODE — it OBSERVES every art-gen call and
 LOGS the decision, but never blocks. After 7 days of shadow logs, you
@@ -27,14 +25,13 @@ Setup:
 
 What to do with it:
 
-  1. Copy this file into your OurTrace repo (or any art pipeline).
+  1. Copy this file into your art-pipeline repo.
   2. Replace `your_art_generation_call(...)` with whatever you actually
-     call to generate art (the OpenAI client, the MidJourney REST call,
+     call to generate art (the OpenAI client, a MidJourney REST call,
      `aiohttp.post(...)`, whatever it is).
   3. Wrap that call with `guard_art_gen(...)` from below.
-  4. Let it run for a week. Check the AIBrake decision log:
-     https://api.aibrake.dev/v1/public/stats  ← shows aggregate counts
-     Your own decisions live in your hosted AIBrake instance log.
+  4. Let it run for a week. Check the AIBrake decision log on your
+     hosted instance.
   5. When you see useful catches: switch `failure_mode="open"` to
      `failure_mode="closed"` and change `check_shadow` to `check` —
      AIBrake starts actually pausing the bad runs.
@@ -62,8 +59,8 @@ guard = AgentSpendGuard(
 # ─────────────────────────────────────────────────────────────────────────
 # Tiny per-session history. In production you'd persist this to a DB
 # (per pipeline run, per art brief, per user — whatever your unit of work
-# is). For a weekly cron like monday_manifest.py, a simple in-memory dict
-# scoped to one run is enough.
+# is). For a periodic cron, a simple in-memory dict scoped to one run is
+# enough.
 # ─────────────────────────────────────────────────────────────────────────
 class ArtSession:
     def __init__(self, objective_id: str, goal: str, budget_usd: float):
@@ -127,7 +124,7 @@ def guard_art_gen(
         "actor": {
             "type": "agent",
             "runtime": "art_pipeline",
-            "id": "ourtrace_monday_manifest",
+            "id": "art_pipeline_worker",
         },
         "objective": {
             "id": session.objective_id,
@@ -232,8 +229,8 @@ def generate_art_with_guard(session: ArtSession, prompt: str, model: str) -> Opt
 # ─────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     session = ArtSession(
-        objective_id="ourtrace_2026_w20_hero",
-        goal="Generate hero art for OurTrace 2026 week 20 manifest",
+        objective_id="weekly_hero_2026_w20",
+        goal="Generate hero art for the weekly manifest",
         budget_usd=2.00,
     )
 
