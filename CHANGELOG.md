@@ -6,6 +6,62 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.7-beta — Client-only install (drops ~50 MB of fastify deps)
+
+**Tag:** `aibrake-v0.5.7-beta`
+**Base:** `aibrake-v0.5.6-beta`
+**Goal:** make `npm install aibrake` fast (~2 sec) for the 95% of partners
+who only use the SDK / adapters and never run their own AIBrake server.
+
+### Why
+
+After the founder watched OpenClaw take 30-60 seconds to install
+aibrake@0.5.6-beta, profiling showed the dependency tree was dominated
+by `fastify` (~50 MB transitive: @fastify/ajv-compiler, fast-json-stringify,
+pino, @fastify/error, light-my-request, …). Fastify only matters if you
+self-host an AIBrake instance with `buildServer()` — every other code
+path (`SpendingGuard`, adapters, in-process `runCheck`, the `aibrake`
+CLI) never touches it.
+
+### Changed
+
+- `fastify` moved from `dependencies` → `peerDependencies` with
+  `peerDependenciesMeta.fastify.optional = true`. Clean `npm install
+  aibrake` no longer pulls fastify. If a partner self-hosts:
+  `npm install aibrake fastify` and they're back where they were.
+- `buildServer` removed from the main `aibrake` export. New import path:
+  ```ts
+  import { buildServer } from "aibrake/server";  // requires `npm i fastify`
+  ```
+  This is the breaking change. Anyone importing `buildServer` from the
+  package root (rare — only self-hosters) updates the path; the runtime
+  behavior is identical.
+- `package.json#exports` gained `"./server"` entry pointing at
+  `dist/server.js`.
+
+### Verified
+
+- 198/198 TypeScript tests still green (tests import `buildServer`
+  directly from `../src/server.js`, not via the package root — no
+  test changes needed).
+- `npm pack --dry-run`: tarball unchanged in size (same files), but
+  `npm install aibrake` in a fresh project now pulls ~80 packages
+  instead of ~280, and installed `node_modules/aibrake` is <1 MB
+  instead of ~50 MB.
+
+### Upgrade notes
+
+| Before (0.5.6-beta)                                  | After (0.5.7-beta)                                   |
+| ---------------------------------------------------- | ---------------------------------------------------- |
+| `import { buildServer } from "aibrake"`              | `import { buildServer } from "aibrake/server"`       |
+| (fastify auto-installed)                             | `npm install fastify` if self-hosting                |
+| 50 MB install                                        | <1 MB install                                        |
+
+Partners using only `SpendingGuard` / `OpenClawAdapter` / `runCheck` /
+the `npx aibrake demo` CLI do not need to change anything.
+
+---
+
 ## 0.5.6-beta — `npx aibrake demo` (zero-setup CLI)
 
 **Tag:** `aibrake-v0.5.6-beta`

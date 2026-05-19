@@ -1,6 +1,6 @@
 {
   "name": "aibrake",
-  "version": "0.5.6-beta",
+  "version": "0.5.7-beta",
   "description": "Loop detection and model stop-loss for paid AI agents. Pre-flight judgment middleware: blocks retry storms, model escalation without evidence, objective drift, and budget breaches before they cost you.",
   "type": "module",
   "main": "dist/index.js",
@@ -24,6 +24,10 @@
     "./adapters/coding-agent": {
       "types": "./dist/adapters/coding-agent/index.d.ts",
       "import": "./dist/adapters/coding-agent/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
     }
   },
   "files": [
@@ -75,11 +79,19 @@
   },
   "license": "MIT",
   "dependencies": {
-    "fastify": "^4.28.1",
     "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "fastify": "^4.28.1 || ^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "fastify": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "fastify": "^4.28.1",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3",
     "vitest": "^1.6.0"

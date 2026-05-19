@@ -39,6 +39,8 @@ This is **not** a budget counter. The product value is judgment:
 npm install aibrake
 ```
 
+`<1 MB` install. No fastify, no transitive web-framework deps. Self-hosting your own AIBrake instance? Also `npm install fastify` (peer dep) and import from `aibrake/server`.
+
 ### Try it in 30 seconds (no API key, no setup)
 
 ```bash
