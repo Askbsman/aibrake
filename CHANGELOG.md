@@ -6,6 +6,49 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.6-beta — `npx aibrake demo` (zero-setup CLI)
+
+**Tag:** `aibrake-v0.5.6-beta`
+**Base:** `aibrake-v0.5.5-beta`
+**Goal:** make the first AIBrake interaction one command, not a code tour.
+
+### Why
+
+Founder feedback after the 0.5.5-beta publish: "you keep sending me code,
+how do I just run a test, nobody is going to bother." Fair. Partners
+shouldn't have to write a translator, set up an API key, or copy 30 lines
+of TypeScript just to see what AIBrake does.
+
+### Added
+
+- **`bin/aibrake`** — CLI entry point exposed via the `bin` field in
+  package.json. After `npm install aibrake`, partners can run:
+  ```bash
+  npx aibrake demo                # canonical retry-storm demo, no setup
+  npx aibrake check input.json    # run Core check against a JSON file
+  npx aibrake version
+  npx aibrake help
+  ```
+- `npx aibrake demo` runs the stateless Core (`runCheck`) in-process —
+  no API key, no network — and prints a formatted decision + projected
+  savings for the canonical "$40 retry storm" scenario. Total time from
+  `npm install` to seeing the decision: <30 seconds.
+
+### Changed
+
+- Version bumped 0.5.5-beta → 0.5.6-beta
+- README install snippet now leads with `npx aibrake demo` instead of
+  imports — the SDK example stays, but the first-touch story is the
+  one-command demo
+
+### Notes
+
+The CLI uses zero runtime deps beyond what's already in the package
+(no chalk, no commander) — raw ANSI codes + a tiny argv router. Keeps
+the `bin` script <300 lines and `npm install aibrake` fast.
+
+---
+
 ## 0.5.5-beta — npm publish: `aibrake`
 
 **Tag:** `aibrake-v0.5.5-beta`

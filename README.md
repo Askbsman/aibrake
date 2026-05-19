@@ -39,6 +39,16 @@ This is **not** a budget counter. The product value is judgment:
 npm install aibrake
 ```
 
+### Try it in 30 seconds (no API key, no setup)
+
+```bash
+npx aibrake demo
+```
+
+Runs the canonical "$40 retry storm" scenario through AIBrake's stateless Core in-process and prints the decision + projected savings. Zero auth, zero network. See exactly what AIBrake would say before you sign up for a hosted API key.
+
+### Use it in your agent
+
 ```ts
 import { SpendingGuard } from "aibrake/sdk";
 

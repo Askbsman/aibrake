@@ -1,10 +1,13 @@
 {
   "name": "aibrake",
-  "version": "0.5.5-beta",
+  "version": "0.5.6-beta",
   "description": "Loop detection and model stop-loss for paid AI agents. Pre-flight judgment middleware: blocks retry storms, model escalation without evidence, objective drift, and budget breaches before they cost you.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "aibrake": "dist/cli/aibrake.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
