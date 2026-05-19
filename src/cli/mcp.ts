@@ -68,7 +68,7 @@ const TOOLS = [
         model: {
           type: "string",
           description:
-            "For paid_llm_call: the model name (e.g. claude-opus-4.5, gpt-4o). " +
+            "For paid_llm_call: the model name (e.g. claude-opus-4.7, gpt-4o). " +
             "Used for cost estimation and escalation detection.",
         },
         estimated_cost_usd: {

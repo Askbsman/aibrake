@@ -38,7 +38,7 @@ const failingTask = {
   objectiveId: "fix-checkout-button",
   attemptId: "attempt-7",
   toolName: "model_call",
-  toolArgs: { model: "claude-opus-4.5" },
+  toolArgs: { model: "claude-opus-4.7" },
   estimatedCostUsd: 0.42,
   failureSignal: {
     type: "exception" as const,

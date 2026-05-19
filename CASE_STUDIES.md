@@ -45,7 +45,7 @@ mcp__aibrake__aibrake_check with arguments that reflect the situation
 honestly:
 
   action_type: "paid_llm_call"
-  model: "claude-opus-4.5"
+  model: "claude-opus-4.7"
   estimated_cost_usd: 0.42
   reason: "7th retry on the same TS2307 build error"
   prior_attempts_on_same_failure: 6
@@ -148,7 +148,7 @@ $0.42) — 5× more expensive — hoping a smarter model will figure it out.
 Before that escalation, invoke mcp__aibrake__aibrake_check with:
 
   action_type: "paid_llm_call"
-  model: "claude-opus-4.5"
+  model: "claude-opus-4.7"
   estimated_cost_usd: 0.42
   reason: "Sonnet failed on this task, escalating to Opus for more reasoning power"
   prior_attempts_on_same_failure: 1
@@ -196,7 +196,7 @@ Before making the call, invoke mcp__aibrake__aibrake_check with these
 arguments. Pay close attention to the budget fields:
 
   action_type: "paid_llm_call"
-  model: "claude-opus-4.5"
+  model: "claude-opus-4.7"
   estimated_cost_usd: 0.42
   reason: "next reasoning step on this task"
 
@@ -243,7 +243,7 @@ underlying failure, but this time with substantially refreshed
 context. Before doing it, invoke mcp__aibrake__aibrake_check with:
 
   action_type: "paid_llm_call"
-  model: "claude-opus-4.5"
+  model: "claude-opus-4.7"
   estimated_cost_usd: 0.42
   reason: "3rd attempt, but with refreshed context after reading 3 files and running the failing test"
   prior_attempts_on_same_failure: 2
