@@ -303,9 +303,12 @@
       0 24px 80px -20px rgba(0,0,0,0.6),
       0 0 80px -20px rgba(30, 193, 240, 0.15);
     display: grid;
-    grid-template-columns: 150px 1fr;
-    gap: var(--s-5);
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: var(--s-4);
     min-height: 420px;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
   }
   @media (max-width: 600px) {
     .dash-mockup { grid-template-columns: 1fr; min-height: auto; }
@@ -373,15 +376,15 @@
     background: currentColor; opacity: 0.5;
   }
   .dash-kpi-label {
-    display: flex; align-items: center; gap: 4px;
+    display: flex; align-items: center; gap: 6px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.58rem;
+    font-size: 0.66rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
     margin-bottom: var(--s-2);
     line-height: 1.2;
-    word-break: break-word;
+    white-space: nowrap;
   }
   .dash-kpi-label svg { flex: 0 0 auto; }
   .dash-kpi-value {
@@ -404,8 +407,9 @@
   .dash-kpi.confirm { color: var(--confirm); }
   .dash-kpi.block   { color: var(--block); }
 
-  .dash-bottom { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--s-4); }
+  .dash-bottom { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: var(--s-3); }
   @media (max-width: 760px) { .dash-bottom { grid-template-columns: 1fr; } }
+  .dash-bottom > * { min-width: 0; }
   .dash-panel {
     background: var(--bg-3);
     border: 1px solid var(--border-soft);
@@ -987,7 +991,7 @@
             <div class="dash-kpi confirm">
               <div class="dash-kpi-label">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                REQUIRE_CONFIRM
+                CONFIRM
               </div>
               <div class="dash-kpi-value">842</div>
               <div class="dash-kpi-pct">7.5%</div>
@@ -1053,7 +1057,7 @@
                     <div class="dash-bar" style="height: 95%;"></div>
                   </div>
                   <div class="dash-bar-labels">
-                    <span>May 18</span><span>May 19</span><span>May 20</span><span>May 21</span><span>May 22</span><span>May 23</span><span>May 24</span>
+                    <span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span>
                   </div>
                 </div>
               </div>
