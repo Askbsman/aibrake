@@ -6,10 +6,15 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
-## 0.5.10-beta — `npx aibrake mcp` — skill-style install for OpenClaw / Claude Code / Cursor / Cline
+## 0.5.11-beta — `npx aibrake mcp` — skill-style install for OpenClaw / Claude Code / Cursor / Cline
 
-**Tag:** `aibrake-v0.5.10-beta`
+**Tag:** `aibrake-v0.5.11-beta`
 **Base:** `aibrake-v0.5.9-beta`
+**Note:** Version 0.5.10-beta was claimed on the registry during an
+earlier publish attempt and cannot be reused. 0.5.11-beta is identical
+in scope to what 0.5.10-beta would have shipped (the MCP server) plus
+a version-string bump in three places (`package.json`,
+`src/cli/aibrake.ts` `cmdVersion`, `src/cli/mcp.ts` `SERVER_VERSION`).
 **Goal:** make AIBrake installable into an agentic IDE the same way a
 Claude Code skill is — four lines of config, no migration, no template,
 no separate bot to maintain.
