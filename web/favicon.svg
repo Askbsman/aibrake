@@ -1,14 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AIBrake">
   <!--
-    Favicon variant of the AIBrake mark.
-    Same geometry as web/logo.svg but with a subtle dark background fill so
-    the icon stays legible in both light and dark browser chrome.
+    AIBrake favicon — blue gradient "a" monogram on dark rounded square.
+    Matches the v3 brand palette (var(--accent-deep) → var(--accent-bright)).
   -->
-  <rect width="64" height="64" rx="12" fill="#0b0d10"/>
-  <g fill="none" stroke="#6ee7b7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
-    <path d="M 44 36 A 12 12 0 1 0 38 22" />
-  </g>
-  <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
-  <circle cx="44" cy="36" r="2.4" fill="#6ee7b7" />
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0099ff"/>
+      <stop offset="0.55" stop-color="#1ec1f0"/>
+      <stop offset="1" stop-color="#4dd0e1"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0a0e1a"/>
+  <text x="32" y="46"
+        text-anchor="middle"
+        font-family="-apple-system, 'Segoe UI', Inter, sans-serif"
+        font-size="44"
+        font-weight="800"
+        letter-spacing="-2"
+        fill="url(#g)">a</text>
 </svg>

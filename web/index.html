@@ -4,435 +4,865 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>AIBrake — Loop detection and model stop-loss for paid AI agents</title>
-<meta name="description" content="PQS checks the prompt. AIBrake checks the loop. Detect stale retries, same-tool loops, and premium model burn before the next expensive agent step. ~5ms per check." />
+<meta name="description" content="Shadow-mode API for AI agents. Detects stale retries, same-tool loops, and premium-model burn before the next expensive step. Privacy-first. No training on your data. <50ms P95." />
 <link rel="canonical" href="https://aibrake.dev/" />
-<!-- Favicon (SVG, with rounded-square dark background for legibility in light/dark browser chrome) -->
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-<!-- Apple touch icon (180×180 SVG; iOS applies the rounded mask) -->
 <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
-<!-- OpenGraph + Twitter -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://aibrake.dev/" />
 <meta property="og:title" content="AIBrake — loop detection for paid AI agents" />
-<meta property="og:description" content="PQS checks the prompt. AIBrake checks the loop. Catch stale retries and premium-model burn before the next expensive agent step." />
+<meta property="og:description" content="Shadow-mode API for AI agents. Detects stale retries, same-tool loops, and premium-model burn before the next expensive step." />
 <meta property="og:site_name" content="AIBrake" />
-<!--
-  NOTE: most social crawlers don't render SVG as og:image — convert
-  web/og-card.svg → web/og-card.png (1200×630) before going public.
-  Until then, og:image points at the SVG (renders cleanly in some viewers,
-  fails gracefully in others, never breaks the share).
--->
 <meta property="og:image" content="https://aibrake.dev/og-card.svg" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="AIBrake" />
-<meta name="twitter:description" content="Loop detection and model stop-loss for paid AI agents. ~5ms per check. Stage 0.5.3-beta." />
+<meta name="twitter:description" content="Loop detection and model stop-loss for paid AI agents. Built for the x402 economy." />
 <meta name="twitter:image" content="https://aibrake.dev/og-card.svg" />
-<meta name="theme-color" content="#0b0d10" />
+<meta name="theme-color" content="#0a0e1a" />
+
 <style>
   :root {
-    --bg: #0b0d10;
-    --fg: #e7e9ee;
-    --muted: #98a0ad;
-    --accent: #6ee7b7;
-    --accent-dim: #1f4339;
-    --border: #1c1f26;
-    --card: #13161b;
-    --warn: #f59e0b;
-    --block: #ef4444;
-    --allow: #6ee7b7;
+    /* Background layers — slight blue tint */
+    --bg-0: #06090f;
+    --bg-1: #0a0e1a;
+    --bg-2: #0f1320;
+    --bg-3: #151b2b;
+    --bg-4: #1a2238;
+
+    /* Borders */
+    --border-soft: #1a2238;
+    --border-mid: #243150;
+    --border-strong: #2f3f66;
+
+    /* Accent — blue/cyan gradient (replaces mint) */
+    --accent: #1ec1f0;
+    --accent-bright: #4dd0e1;
+    --accent-deep: #0099ff;
+    --accent-soft: rgba(30, 193, 240, 0.10);
+    --accent-dim: rgba(30, 193, 240, 0.25);
+    --accent-glow: 0 0 40px rgba(30, 193, 240, 0.25);
+
+    /* Foreground */
+    --fg: #e7ebf3;
+    --fg-strong: #ffffff;
+    --muted: #94a0b8;
+    --muted-soft: #5a6580;
+
+    /* Decision signal colors */
+    --allow: #34d399;
+    --allow-soft: rgba(52, 211, 153, 0.12);
+    --warn: #fbbf24;
+    --warn-soft: rgba(251, 191, 36, 0.14);
+    --confirm: #a78bfa;
+    --confirm-soft: rgba(167, 139, 250, 0.15);
+    --block: #f87171;
+    --block-soft: rgba(248, 113, 113, 0.15);
+
+    /* Spacing scale */
+    --s-1: 4px;
+    --s-2: 8px;
+    --s-3: 12px;
+    --s-4: 16px;
+    --s-5: 20px;
+    --s-6: 24px;
+    --s-8: 32px;
+    --s-10: 40px;
+    --s-12: 48px;
+    --s-16: 64px;
+    --s-20: 80px;
+    --s-24: 96px;
+    --s-32: 128px;
+
+    /* Radii */
+    --r-sm: 6px;
+    --r-md: 10px;
+    --r-lg: 14px;
+    --r-xl: 20px;
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Helvetica Neue", sans-serif;
-    background: var(--bg);
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  html, body {
+    background: var(--bg-1);
     color: var(--fg);
-    line-height: 1.55;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  code, pre {
-    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 0.92em;
+  body {
+    background:
+      radial-gradient(ellipse 90% 50% at 50% -10%, rgba(30, 193, 240, 0.10), transparent),
+      radial-gradient(ellipse 60% 40% at 90% 20%, rgba(77, 208, 225, 0.06), transparent),
+      var(--bg-1);
+    min-height: 100vh;
   }
-  pre {
-    background: #0a0c10;
-    border: 1px solid var(--border);
-    padding: 14px 18px;
-    border-radius: 8px;
-    overflow-x: auto;
-    color: #d6dbe4;
+  code, pre, .mono {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-feature-settings: 'liga' 0;
   }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  .container { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+  a { color: var(--accent); text-decoration: none; transition: color 0.15s; }
+  a:hover { color: var(--accent-bright); }
+  .container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 0 var(--s-6);
+  }
+  ::selection { background: var(--accent); color: #06090f; }
 
-  /* Top nav */
+  /* ═══════════════════ NAV ═══════════════════ */
   nav.top {
-    border-bottom: 1px solid var(--border);
-    padding: 18px 0;
-    background: rgba(11, 13, 16, 0.85);
-    backdrop-filter: blur(8px);
-    position: sticky; top: 0; z-index: 10;
+    position: sticky; top: 0; z-index: 50;
+    padding: var(--s-4) 0;
+    background: rgba(10, 14, 26, 0.78);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border-bottom: 1px solid var(--border-soft);
   }
-  nav.top .container { display: flex; align-items: center; justify-content: space-between; }
+  nav.top .container {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s-6);
+  }
   nav.top .brand {
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--fg);
+    display: inline-flex; align-items: center; gap: var(--s-3);
+    font-weight: 700; font-size: var(--t-md);
+    color: var(--fg-strong);
+    text-decoration: none;
   }
-  nav.top .brand:hover { text-decoration: none; }
-  nav.top .brand svg { display: block; width: 26px; height: 26px; flex: 0 0 auto; }
-  nav.top .brand .dot { color: var(--accent); }
-  nav.top .links a { margin-left: 22px; color: var(--muted); font-size: 0.95em; }
-  nav.top .links a:hover { color: var(--fg); text-decoration: none; }
+  nav.top .brand:hover { color: var(--fg-strong); }
+  nav.top .brand img { display: block; height: 56px; width: auto; flex: 0 0 auto; }
+  nav.top .brand-text {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--accent-deep) 0%, var(--accent-bright) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  nav.top .brand-text .tld { color: var(--fg); -webkit-text-fill-color: var(--fg); font-weight: 600; }
+  nav.top .links { display: flex; align-items: center; gap: var(--s-8); }
+  nav.top .links a {
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: color 0.15s;
+  }
+  nav.top .links a:hover { color: var(--fg-strong); }
+  nav.top .cta {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    background: linear-gradient(135deg, var(--accent-deep), var(--accent-bright));
+    color: #06090f;
+    padding: 10px 20px;
+    border-radius: var(--r-md);
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.15s;
+    box-shadow: 0 4px 20px rgba(30, 193, 240, 0.25);
+  }
+  nav.top .cta:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(30, 193, 240, 0.4); color: #06090f; }
+  @media (max-width: 960px) {
+    nav.top .links { gap: var(--s-4); }
+    nav.top .links a { font-size: 0.85rem; }
+  }
   @media (max-width: 760px) {
-    nav.top .brand .brand-text { display: none; }
-    nav.top .links a { margin-left: 12px; font-size: 0.9em; }
+    nav.top .brand-text { display: none; }
+    nav.top .links a { display: none; }
   }
 
-  /* Hero */
-  header.hero { padding: 96px 0 64px; }
-  header.hero h1 {
-    font-size: clamp(2.2rem, 5vw, 3.4rem);
-    line-height: 1.08;
-    margin: 0 0 16px;
+  /* ═══════════════════ HERO ═══════════════════ */
+  header.hero {
+    position: relative;
+    padding: 72px 0 96px;
+    overflow: hidden;
+  }
+  .hero-grid {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      linear-gradient(rgba(30, 193, 240, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(30, 193, 240, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 50% 50% at 50% 30%, black 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 30%, black 30%, transparent 80%);
+    pointer-events: none;
+  }
+  .hero-inner {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1.05fr;
+    gap: var(--s-12);
+    align-items: center;
+  }
+  @media (max-width: 1080px) {
+    .hero-inner { grid-template-columns: 1fr; gap: var(--s-12); }
+  }
+
+  .hero-text { max-width: 580px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-dim);
+    color: var(--accent-bright);
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: var(--s-6);
+  }
+  .status-pill .dot {
+    width: 7px; height: 7px;
+    background: var(--allow);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--allow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+  h1.hero-title {
+    font-size: clamp(2.4rem, 5vw, 4.2rem);
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+    font-weight: 800;
+    color: var(--fg-strong);
+    margin-bottom: var(--s-6);
+  }
+  h1.hero-title .accent {
+    background: linear-gradient(135deg, var(--accent-deep) 0%, var(--accent-bright) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .hero-sub {
+    font-size: clamp(1.05rem, 1.5vw, 1.2rem);
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: var(--s-8);
+    max-width: 540px;
+  }
+
+  .hero-cta-row { display: flex; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-8); }
+  .btn {
+    display: inline-flex; align-items: center; gap: var(--s-2);
+    padding: 13px 24px;
+    border-radius: var(--r-md);
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    text-decoration: none;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent-deep), var(--accent-bright));
+    color: #06090f;
+    box-shadow: 0 4px 20px rgba(30, 193, 240, 0.3);
+  }
+  .btn-primary:hover { box-shadow: 0 6px 28px rgba(30, 193, 240, 0.5); color: #06090f; }
+  .btn-secondary {
+    background: var(--bg-2);
+    color: var(--fg);
+    border-color: var(--border-mid);
+  }
+  .btn-secondary:hover { border-color: var(--accent-dim); color: var(--accent-bright); }
+  .btn .arrow { transition: transform 0.15s; }
+  .btn:hover .arrow { transform: translateX(2px); }
+
+  .trust-row {
+    display: flex; flex-wrap: wrap; gap: var(--s-6);
+    color: var(--muted);
+    font-size: 0.88rem;
+    font-weight: 500;
+  }
+  .trust-item { display: inline-flex; align-items: center; gap: var(--s-2); }
+  .trust-item svg { color: var(--accent); flex: 0 0 auto; }
+
+  /* ═══════════════ DASHBOARD MOCKUP (hero right) ═══════════════ */
+  .dash-mockup {
+    position: relative;
+    background:
+      linear-gradient(135deg, rgba(30, 193, 240, 0.04) 0%, rgba(77, 208, 225, 0.02) 100%),
+      var(--bg-2);
+    border: 1px solid var(--border-mid);
+    border-radius: var(--r-lg);
+    padding: var(--s-5);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.04) inset,
+      0 24px 80px -20px rgba(0,0,0,0.6),
+      0 0 80px -20px rgba(30, 193, 240, 0.15);
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: var(--s-5);
+    min-height: 420px;
+  }
+  @media (max-width: 600px) {
+    .dash-mockup { grid-template-columns: 1fr; min-height: auto; }
+    .dash-sidebar { display: none; }
+  }
+  .dash-sidebar {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    padding: var(--s-3);
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .dash-sidebar-item {
+    display: flex; align-items: center; gap: var(--s-2);
+    padding: 8px 10px;
+    border-radius: var(--r-sm);
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .dash-sidebar-item:hover { background: var(--bg-3); color: var(--fg); }
+  .dash-sidebar-item.active {
+    background: var(--accent-soft);
+    color: var(--accent-bright);
+    border: 1px solid var(--accent-dim);
+  }
+  .dash-sidebar-item svg { flex: 0 0 auto; opacity: 0.8; }
+
+  .dash-main { display: flex; flex-direction: column; gap: var(--s-4); min-width: 0; }
+  .dash-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--s-3); padding: 0 var(--s-2);
+  }
+  .dash-title { display: flex; align-items: center; gap: var(--s-2); font-weight: 600; font-size: 0.92rem; color: var(--fg-strong); }
+  .dash-title svg { color: var(--accent); }
+  .dash-controls { display: flex; align-items: center; gap: var(--s-2); }
+  .dash-control {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg-3);
+    border: 1px solid var(--border-soft);
+    color: var(--muted);
+    padding: 5px 10px;
+    border-radius: var(--r-sm);
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dash-control-label { color: var(--muted-soft); font-size: 0.7rem; margin-right: 2px; }
+  .dash-control svg { opacity: 0.6; }
+
+  .dash-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-3); }
+  @media (max-width: 760px) { .dash-kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .dash-kpi {
+    background: var(--bg-3);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    padding: var(--s-4);
+    position: relative;
+    overflow: hidden;
+  }
+  .dash-kpi::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: currentColor; opacity: 0.5;
+  }
+  .dash-kpi-label {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.66rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--s-3);
+  }
+  .dash-kpi-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--fg-strong);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .dash-kpi-pct {
+    margin-top: 6px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .dash-kpi.allow   { color: var(--allow); }
+  .dash-kpi.warn    { color: var(--warn); }
+  .dash-kpi.confirm { color: var(--confirm); }
+  .dash-kpi.block   { color: var(--block); }
+
+  .dash-bottom { display: grid; grid-template-columns: 1.4fr 1fr; gap: var(--s-4); }
+  @media (max-width: 760px) { .dash-bottom { grid-template-columns: 1fr; } }
+  .dash-panel {
+    background: var(--bg-3);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    padding: var(--s-4);
+  }
+  .dash-panel-title { font-size: 0.78rem; font-weight: 600; color: var(--fg); margin-bottom: var(--s-3); }
+  .dash-pattern-row {
+    display: flex; align-items: center; gap: var(--s-3);
+    padding: var(--s-2) 0;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .dash-pattern-row:last-child { border-bottom: none; }
+  .dash-pattern-icon {
+    width: 26px; height: 26px; flex: 0 0 auto;
+    border-radius: var(--r-sm);
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-4);
+  }
+  .dash-pattern-icon.warn-ic { background: rgba(248, 113, 113, 0.15); color: var(--block); }
+  .dash-pattern-icon.confirm-ic { background: var(--confirm-soft); color: var(--confirm); }
+  .dash-pattern-icon.allow-ic { background: rgba(94, 234, 212, 0.12); color: #5eead4; }
+  .dash-pattern-info { flex: 1; min-width: 0; }
+  .dash-pattern-name { font-size: 0.78rem; font-weight: 600; color: var(--fg); }
+  .dash-pattern-desc { font-size: 0.68rem; color: var(--muted-soft); }
+  .dash-pattern-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--fg-strong);
+    text-align: right;
+  }
+  .dash-pattern-num span { display: block; font-size: 0.6rem; font-weight: 500; color: var(--muted-soft); }
+  .dash-pattern-spark { width: 50px; height: 18px; flex: 0 0 auto; opacity: 0.7; }
+
+  .dash-cost {
+    display: flex; flex-direction: column;
+  }
+  .dash-cost-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: var(--allow);
+    line-height: 1;
+    margin: var(--s-2) 0;
+    letter-spacing: -0.02em;
+  }
+  .dash-cost-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    line-height: 1.4;
+    margin-bottom: var(--s-3);
+  }
+  .dash-bars {
+    display: flex; align-items: end; gap: 4px; height: 60px;
+  }
+  .dash-bar { flex: 1; background: linear-gradient(180deg, var(--allow), rgba(52,211,153,0.4)); border-radius: 2px 2px 0 0; }
+  .dash-bar-labels { display: flex; gap: 4px; justify-content: space-between; margin-top: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--muted-soft); }
+  .dash-y-ticks { display: flex; flex-direction: column; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 0.55rem; color: var(--muted-soft); padding-right: 6px; height: 60px; align-items: flex-end; }
+  .dash-chart-row { display: flex; gap: 4px; }
+  .dash-chart-area { flex: 1; }
+
+  /* ═══════════════════ FEATURE CARDS ═══════════════════ */
+  section.features { padding: var(--s-16) 0; border-top: 1px solid var(--border-soft); }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--s-4);
+  }
+  @media (max-width: 1024px) { .feature-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px)  { .feature-grid { grid-template-columns: 1fr; } }
+  .feature-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    padding: var(--s-6);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  .feature-card:hover {
+    border-color: var(--accent-dim);
+    background: var(--bg-3);
+    transform: translateY(-2px);
+  }
+  .feature-icon {
+    width: 48px; height: 48px;
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, var(--accent-soft), transparent);
+    border: 1px solid var(--accent-dim);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: var(--s-4);
+    color: var(--accent-bright);
+  }
+  .feature-card h3 {
+    font-size: 1.05rem;
+    color: var(--fg-strong);
+    font-weight: 600;
+    margin-bottom: var(--s-2);
+    letter-spacing: -0.01em;
+  }
+  .feature-card p {
+    font-size: 0.9rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  /* ═══════════════════ HOW IT WORKS ═══════════════════ */
+  section.how { padding: var(--s-20) 0; border-top: 1px solid var(--border-soft); position: relative; }
+  section.how h2 {
+    font-size: clamp(1.6rem, 2.5vw, 2.2rem);
+    text-align: center;
+    color: var(--fg-strong);
+    margin-bottom: var(--s-12);
     letter-spacing: -0.02em;
     font-weight: 700;
   }
-  header.hero .tagline {
-    font-size: 1.25rem;
-    color: var(--muted);
-    margin: 0 0 12px;
-    max-width: 680px;
+  .how-flow {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+    gap: var(--s-3);
+    align-items: stretch;
   }
-  header.hero .tagline strong { color: var(--accent); font-weight: 600; }
-  header.hero .sub {
+  @media (max-width: 1024px) {
+    .how-flow { grid-template-columns: 1fr; }
+    .how-arrow { transform: rotate(90deg); margin: 0 auto; }
+  }
+  .how-step {
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    padding: var(--s-5);
+    display: flex; flex-direction: column; gap: var(--s-3);
+  }
+  .how-step-icon {
+    width: 56px; height: 56px;
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, var(--accent-soft), transparent);
+    border: 1px solid var(--accent-dim);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent-bright);
+  }
+  .how-step-num {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+  .how-step h3 {
+    font-size: 0.98rem;
+    color: var(--fg-strong);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .how-step p {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+  .how-arrow {
+    color: var(--muted-soft);
+    align-self: center;
+    flex: 0 0 auto;
+  }
+
+  /* ═══════════════════ GENERIC SECTION HEADER ═══════════════════ */
+  section.std { padding: var(--s-20) 0; border-top: 1px solid var(--border-soft); }
+  .section-header {
+    margin-bottom: var(--s-12);
+    max-width: 820px;
+  }
+  .section-eyebrow {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent-bright);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    margin-bottom: var(--s-3);
+    font-weight: 600;
+  }
+  .section-header h2 {
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    color: var(--fg-strong);
+    font-weight: 700;
+    margin-bottom: var(--s-4);
+  }
+  .section-lead {
     font-size: 1.05rem;
     color: var(--muted);
-    margin: 0 0 32px;
+    line-height: 1.6;
     max-width: 720px;
   }
-  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
-  .btn {
-    display: inline-block;
-    padding: 12px 22px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.97rem;
-    border: 1px solid transparent;
-    cursor: pointer;
-    transition: transform 0.08s ease;
-  }
-  .btn:hover { transform: translateY(-1px); text-decoration: none; }
-  .btn-primary {
-    background: var(--accent);
-    color: #0a0c10;
-  }
-  .btn-secondary {
-    background: transparent;
-    color: var(--fg);
-    border-color: var(--border);
-  }
-  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  section.std p { color: var(--muted); }
+  section.std strong { color: var(--fg); }
 
-  /* Status pill */
-  .status {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    border: 1px solid var(--accent-dim);
-    background: rgba(110, 231, 183, 0.05);
-    color: var(--accent);
-    border-radius: 999px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    margin-bottom: 20px;
-  }
-  .status .dot {
-    width: 6px; height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    box-shadow: 0 0 8px var(--accent);
-  }
-
-  /* Section */
-  section { padding: 56px 0; border-top: 1px solid var(--border); }
-  section h2 {
-    font-size: 1.6rem;
-    letter-spacing: -0.01em;
-    margin: 0 0 24px;
-    font-weight: 700;
-  }
-  section h2 .num {
-    display: inline-block;
-    width: 32px;
-    color: var(--muted);
-    font-weight: 500;
-  }
-  section p { color: #c2c8d3; max-width: 760px; }
-  section .lead { color: var(--fg); font-size: 1.08rem; }
-
-  /* Pattern grid */
-  .grid {
+  /* ═══════════════════ KPI ROW (benchmark) ═══════════════════ */
+  .kpi-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 14px;
-    margin-top: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--s-4);
   }
-  .pat {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px 20px;
+  .kpi-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    padding: var(--s-6);
+    transition: border-color 0.18s;
   }
-  .pat .name {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    color: var(--accent);
-    font-size: 0.92rem;
-    font-weight: 600;
-    margin-bottom: 6px;
-  }
-  .pat .desc { color: var(--muted); font-size: 0.95em; margin: 0; }
-
-  /* Flow */
-  .flow {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 22px 24px;
-    margin-top: 16px;
-    overflow-x: auto;
-  }
-  .flow pre { background: transparent; border: none; padding: 0; }
-
-  /* Demo table */
-  table.demo {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 16px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  table.demo th, table.demo td {
-    padding: 12px 16px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-    font-size: 0.95rem;
-  }
-  table.demo th { color: var(--muted); font-weight: 500; background: rgba(255,255,255,0.02); }
-  table.demo tr:last-child td { border-bottom: none; }
-  .pill {
-    display: inline-block;
-    padding: 2px 9px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    border-radius: 999px;
-    font-family: ui-monospace, monospace;
-  }
-  .pill.allow { background: rgba(110,231,183,0.15); color: var(--allow); }
-  .pill.warn { background: rgba(245,158,11,0.15); color: var(--warn); }
-  .pill.confirm { background: rgba(245,158,11,0.22); color: var(--warn); }
-  .pill.block { background: rgba(239,68,68,0.15); color: var(--block); }
-
-  /* Pricing */
-  .price-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 14px;
-    margin-top: 20px;
-  }
-  .price-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 22px 22px;
-  }
-  .price-card h3 { margin: 0 0 6px; font-size: 1.02rem; }
-  .price-card .price {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--accent);
-    margin: 8px 0;
-  }
-  .price-card ul { margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 0.93rem; }
-  .price-card .note { font-size: 0.78rem; color: var(--muted); margin-top: 8px; font-style: italic; }
-
-  /* Footer */
-  footer {
-    border-top: 1px solid var(--border);
-    padding: 40px 0 60px;
-    color: var(--muted);
-    font-size: 0.9rem;
-  }
-  footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-  footer a { color: var(--muted); }
-  footer a:hover { color: var(--accent); }
-
-  /* Form */
-  form.access {
-    display: flex; gap: 8px; max-width: 480px; margin-top: 20px;
-  }
-  form.access input[type="email"] {
-    flex: 1;
-    background: var(--card);
-    border: 1px solid var(--border);
-    color: var(--fg);
-    padding: 11px 14px;
-    border-radius: 8px;
-    font-size: 0.97rem;
-  }
-  form.access input[type="email"]:focus { outline: none; border-color: var(--accent); }
-
-  /* Hero — relative so the watermark mark can absolutely position behind */
-  header.hero { position: relative; overflow: hidden; }
-  .hero-watermark {
-    position: absolute;
-    top: 60px;
-    right: -120px;
-    width: 520px;
-    height: 520px;
-    opacity: 0.05;
-    pointer-events: none;
-    user-select: none;
-    z-index: 0;
-  }
-  header.hero .container { position: relative; z-index: 1; }
-  @media (max-width: 760px) {
-    .hero-watermark { display: none; }
-  }
-
-  /* Live savings counter (hero) */
-  .counter-card {
-    background: linear-gradient(135deg, rgba(110,231,183,0.06), rgba(110,231,183,0.02));
-    border: 1px solid var(--accent-dim);
-    border-radius: 12px;
-    padding: 22px 24px;
-    margin: 28px 0 28px;
-    max-width: 760px;
-    position: relative;
-    z-index: 1;
-  }
-  .counter-row {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr 1fr;
-    gap: 24px;
-    align-items: end;
-  }
-  .counter-cell { display: flex; flex-direction: column; gap: 4px; }
-  .counter-label {
-    font-size: 0.78rem;
+  .kpi-card:hover { border-color: var(--accent-dim); }
+  .kpi-card h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
     color: var(--muted);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.12em;
     font-weight: 600;
+    margin-bottom: var(--s-3);
   }
-  .counter-value {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 1.9rem;
-    font-weight: 700;
-    color: var(--accent);
-    letter-spacing: -0.01em;
-    line-height: 1.1;
+  .kpi-value {
+    font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
+    font-size: clamp(1.4rem, 2.5vw, 2rem);
+    font-weight: 700;
+    color: var(--fg-strong);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: var(--s-3);
   }
-  .counter-cell:first-child .counter-value { font-size: 2.4rem; }
-  .counter-note {
-    margin-top: 14px;
-    font-size: 0.82rem;
-    color: var(--muted);
-    border-top: 1px solid var(--border);
-    padding-top: 12px;
+  .kpi-card:first-child .kpi-value {
+    background: linear-gradient(135deg, var(--accent-deep), var(--accent-bright));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
-  .counter-note code {
-    background: rgba(110,231,183,0.07);
-    padding: 1px 5px;
-    border-radius: 4px;
-    color: var(--accent);
-  }
-  @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(110,231,183,0.0); }
-    50%      { box-shadow: 0 0 0 4px rgba(110,231,183,0.18); }
-  }
-  .counter-card.updated .counter-value { animation: pulseGlow 0.9s ease; }
+  .kpi-note { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+  .kpi-note code { color: var(--accent-bright); background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
 
-  /* Integrate / code example */
-  .code-tabs { display: flex; gap: 6px; margin-bottom: 0; }
+  /* ═══════════════════ CODE TABS ═══════════════════ */
+  .code-tabs {
+    display: flex; gap: 2px;
+    background: var(--bg-2);
+    padding: 4px;
+    border-radius: var(--r-md) var(--r-md) 0 0;
+    border: 1px solid var(--border-soft);
+    border-bottom: none;
+    width: fit-content;
+  }
   .code-tab {
     background: transparent;
     color: var(--muted);
-    border: 1px solid var(--border);
-    border-bottom: none;
-    padding: 8px 16px;
-    border-radius: 8px 8px 0 0;
+    border: none;
+    padding: 8px 18px;
+    border-radius: var(--r-sm);
     cursor: pointer;
-    font-size: 0.9rem;
-    font-family: inherit;
+    font-size: 0.85rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
   }
+  .code-tab:hover { color: var(--fg); }
   .code-tab[aria-selected="true"] {
-    background: #0a0c10;
-    color: var(--accent);
-    border-color: var(--accent-dim);
+    background: var(--bg-3);
+    color: var(--accent-bright);
   }
   .code-panel { display: none; }
   .code-panel[data-active="true"] { display: block; }
-  .code-panel pre { border-top-left-radius: 0; margin-top: 0; }
-
-  /* FAQ */
-  details.faq {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 10px;
-    padding: 0;
+  pre.code-block {
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 0 var(--r-md) var(--r-md) var(--r-md);
+    padding: var(--s-6) var(--s-8);
+    overflow-x: auto;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: var(--fg);
   }
+  .code-block .kw  { color: #c084fc; }
+  .code-block .fn  { color: var(--accent-bright); }
+  .code-block .str { color: #fbbf24; }
+  .code-block .com { color: var(--muted-soft); font-style: italic; }
+  .code-block .num { color: #fb923c; }
+  .code-block .var { color: #93c5fd; }
+  .code-block .prop { color: #f0abfc; }
+
+  /* ═══════════════════ PRICING ═══════════════════ */
+  .price-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--s-4);
+  }
+  .price-card {
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    padding: var(--s-6);
+    transition: border-color 0.18s;
+  }
+  .price-card:hover { border-color: var(--accent-dim); }
+  .price-card h3 { font-size: 1rem; color: var(--fg); font-weight: 600; margin-bottom: var(--s-2); }
+  .price-card .price {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-deep), var(--accent-bright));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+    margin: var(--s-3) 0 var(--s-2);
+  }
+  .price-card ul { list-style: none; margin-top: var(--s-4); padding: 0; }
+  .price-card li {
+    color: var(--muted); font-size: 0.85rem;
+    padding: 4px 0 4px 18px; position: relative;
+  }
+  .price-card li::before { content: "→"; position: absolute; left: 0; color: var(--accent); }
+  .price-card .note {
+    font-size: 0.75rem; color: var(--muted-soft);
+    margin-top: var(--s-4); padding-top: var(--s-3);
+    border-top: 1px solid var(--border-soft); font-style: italic;
+  }
+
+  /* ═══════════════════ FAQ ═══════════════════ */
+  details.faq {
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r-md);
+    margin-bottom: var(--s-2);
+    transition: border-color 0.15s;
+  }
+  details.faq:hover { border-color: var(--border-mid); }
+  details.faq[open] { border-color: var(--accent-dim); }
   details.faq summary {
-    padding: 14px 18px;
+    padding: var(--s-5) var(--s-6);
     cursor: pointer;
     font-weight: 600;
     list-style: none;
     color: var(--fg);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    display: flex; justify-content: space-between; align-items: center; gap: var(--s-4);
+    font-size: 1rem;
   }
   details.faq summary::-webkit-details-marker { display: none; }
   details.faq summary::after {
-    content: "+";
-    color: var(--accent);
-    font-size: 1.4rem;
-    line-height: 1;
-    transition: transform 0.2s ease;
+    content: "+"; color: var(--accent-bright); font-size: 1.4rem; line-height: 1;
+    transition: transform 0.2s; flex: 0 0 auto;
   }
   details.faq[open] summary::after { transform: rotate(45deg); }
   details.faq .faq-body {
-    padding: 0 18px 16px;
-    color: #c2c8d3;
-    font-size: 0.95rem;
-    line-height: 1.55;
+    padding: 0 var(--s-6) var(--s-5);
+    color: var(--muted); font-size: 0.95rem; line-height: 1.65;
   }
-  details.faq .faq-body p { margin: 0 0 8px; }
-  details.faq .faq-body code {
-    background: rgba(110,231,183,0.07);
-    padding: 1px 5px;
-    border-radius: 4px;
+  details.faq .faq-body p { margin-bottom: var(--s-2); }
+  details.faq .faq-body code { background: var(--accent-soft); color: var(--accent-bright); padding: 1px 6px; border-radius: 4px; }
+
+  /* ═══════════════════ JOIN BETA CTA ═══════════════════ */
+  section.cta-band { padding: var(--s-16) 0; border-top: 1px solid var(--border-soft); }
+  .cta-card {
+    background:
+      linear-gradient(135deg, rgba(30, 193, 240, 0.06) 0%, rgba(77, 208, 225, 0.02) 100%),
+      var(--bg-2);
+    border: 1px solid var(--accent-dim);
+    border-radius: var(--r-lg);
+    padding: var(--s-8) var(--s-10);
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s-8);
+    flex-wrap: wrap;
+  }
+  .cta-left { display: flex; align-items: center; gap: var(--s-5); }
+  .cta-icon {
+    width: 56px; height: 56px;
+    border-radius: var(--r-md);
+    background: linear-gradient(135deg, var(--accent-deep), var(--accent-bright));
+    display: flex; align-items: center; justify-content: center;
+    color: #06090f;
+    flex: 0 0 auto;
+  }
+  .cta-text h3 { font-size: 1.3rem; color: var(--fg-strong); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .cta-text p { font-size: 0.95rem; color: var(--muted); margin: 0; }
+  .cta-form { display: flex; gap: var(--s-2); flex: 1; max-width: 480px; min-width: 280px; }
+  .cta-form input[type="email"] {
+    flex: 1;
+    background: var(--bg-3);
+    border: 1px solid var(--border-mid);
+    color: var(--fg);
+    padding: 13px 16px;
+    border-radius: var(--r-md);
+    font-size: 0.9rem;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  .cta-form input:focus { outline: none; border-color: var(--accent); }
+
+  /* ═══════════════════ FOOTER ═══════════════════ */
+  footer {
+    border-top: 1px solid var(--border-soft);
+    padding: var(--s-12) 0 var(--s-16);
+    color: var(--muted);
+    font-size: 0.88rem;
+  }
+  footer .container {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr auto;
+    gap: var(--s-10);
+    align-items: start;
+  }
+  footer .footer-brand-row { display: inline-flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-3); }
+  footer .footer-brand-row img { height: 48px; width: auto; }
+  footer .footer-brand-row .name {
+    font-size: 1rem; font-weight: 700; letter-spacing: -0.01em;
+    background: linear-gradient(135deg, var(--accent-deep), var(--accent-bright));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  footer .footer-brand-row .tld { color: var(--fg); -webkit-text-fill-color: var(--fg); font-weight: 600; }
+  footer .footer-tag { font-size: 0.85rem; color: var(--muted); max-width: 280px; line-height: 1.5; }
+  footer h4 {
+    color: var(--fg);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: var(--s-3);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+  }
+  footer ul { list-style: none; padding: 0; }
+  footer ul li { padding: 3px 0; }
+  footer ul li a { color: var(--muted); }
+  footer ul li a:hover { color: var(--accent-bright); }
+  footer .footer-social { display: flex; gap: var(--s-3); }
+  footer .footer-social a {
+    width: 36px; height: 36px;
+    border-radius: var(--r-sm);
+    background: var(--bg-2);
+    border: 1px solid var(--border-soft);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+  footer .footer-social a:hover { border-color: var(--accent-dim); color: var(--accent-bright); }
+  footer .footer-bottom {
+    margin-top: var(--s-10);
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--border-soft);
+    grid-column: 1 / -1;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: var(--s-4);
+    font-size: 0.78rem; color: var(--muted-soft);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  @media (max-width: 880px) {
+    footer .container { grid-template-columns: 1fr 1fr; gap: var(--s-6); }
+    footer .footer-brand-col { grid-column: 1 / -1; }
+    footer .footer-social-col { grid-column: 1 / -1; }
   }
 
-  /* Mobile */
-  @media (max-width: 640px) {
-    header.hero { padding: 48px 0 36px; }
-    section { padding: 36px 0; }
-    nav.top .links a { margin-left: 14px; }
-    .counter-row { grid-template-columns: 1fr; gap: 16px; }
-    .counter-cell:first-child .counter-value { font-size: 2rem; }
-  }
+  /* Reveal */
+  .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } .status-pill .dot { animation: none; } }
 </style>
 </head>
 <body>
@@ -440,189 +870,377 @@
 <nav class="top">
   <div class="container">
     <a class="brand" href="#" aria-label="AIBrake — home">
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <g fill="none" stroke="#6ee7b7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
-          <path d="M 44 36 A 12 12 0 1 0 38 22" />
-        </g>
-        <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
-        <circle cx="44" cy="36" r="2.6" fill="#6ee7b7" />
-      </svg>
-      <span class="brand-text">aibrake<span class="dot">.</span></span>
+      <img src="/logo.png" alt="AIBrake — aibrake.dev" />
     </a>
     <div class="links">
-      <a href="#what-it-catches">Patterns</a>
-      <a href="#how-it-works">How</a>
-      <a href="#integrate">Integrate</a>
-      <a href="#demo">Demo</a>
-      <a href="#benchmark">Benchmark</a>
-      <a href="#faq">FAQ</a>
-      <a href="https://github.com/Askbsman/aibrake" target="_blank" rel="noopener">GitHub</a>
+      <a href="#features">Product</a>
+      <a href="https://github.com/Askbsman/aibrake/blob/main/PARTNER_ONBOARDING.md" target="_blank" rel="noopener">Docs</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#integrations">x402</a>
+      <a href="mailto:hello@aibrake.dev">Contact</a>
     </div>
+    <a class="cta" href="#beta">Get beta access</a>
   </div>
 </nav>
 
 <header class="hero">
-  <!-- Decorative watermark of the brand mark, fades into the background -->
-  <svg class="hero-watermark" viewBox="0 0 64 64" aria-hidden="true">
-    <g fill="none" stroke="#6ee7b7" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
-      <path d="M 44 36 A 12 12 0 1 0 38 22" />
-    </g>
-    <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
-    <circle cx="44" cy="36" r="2.4" fill="#6ee7b7" />
-  </svg>
+  <div class="hero-grid" aria-hidden="true"></div>
   <div class="container">
-    <div class="status"><span class="dot"></span>v0.5.4-beta — hosted beta, invite-only</div>
-    <h1>Loop detection and model stop-loss for paid AI agents.</h1>
-    <p class="tagline"><strong>PQS checks the prompt. AIBrake checks the loop.</strong></p>
-    <p class="sub">Detect stale retries, same-tool loops, and premium-model burn <em>before</em> the next expensive agent step. Provider-agnostic. Stateless core. One HTTP POST per check, ~5 ms median.</p>
+    <div class="hero-inner">
 
-    <!-- Live savings counter — pulls from /v1/public/stats.
-         Falls back to the benchmark numbers if the API is unreachable. -->
-    <div class="counter-card">
-      <div class="counter-row">
-        <div class="counter-cell">
-          <div class="counter-label">Savings offered to date</div>
-          <div class="counter-value" data-counter="savings">$<span data-counter-num="savings">6,883.44</span></div>
+      <div class="hero-text">
+        <div class="status-pill"><span class="dot"></span>Shadow-mode API for AI agents</div>
+        <h1 class="hero-title">
+          Loop detection and<br/>
+          model <span class="accent">stop-loss</span> for<br/>
+          paid AI agents.
+        </h1>
+        <p class="hero-sub">
+          Detects stale retries, same-tool loops, and premium-model burn before the next expensive step. One HTTP POST per check, ~5 ms median.
+        </p>
+        <div class="hero-cta-row">
+          <a class="btn btn-primary" href="#beta">Get beta access <span class="arrow">→</span></a>
+          <a class="btn btn-secondary" href="https://github.com/Askbsman/aibrake/blob/main/PARTNER_ONBOARDING.md" target="_blank" rel="noopener">View docs</a>
         </div>
-        <div class="counter-cell">
-          <div class="counter-label">Checks served</div>
-          <div class="counter-value"><span data-counter-num="checks">73,765</span></div>
-        </div>
-        <div class="counter-cell">
-          <div class="counter-label">Catches with savings</div>
-          <div class="counter-value"><span data-counter-num="catches">17,978</span></div>
+        <div class="trust-row">
+          <span class="trust-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Privacy-first
+          </span>
+          <span class="trust-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            No training on your data
+          </span>
+          <span class="trust-item">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            &lt; 50 ms P95
+          </span>
         </div>
       </div>
-      <div class="counter-note" data-counter-source>
-        Live: pulled from <code>/v1/public/stats</code> · seeded by the 100-partner × 7-day benchmark.
-      </div>
-    </div>
 
-    <div class="cta-row">
-      <a class="btn btn-primary" href="#beta">Get beta access</a>
-      <a class="btn btn-secondary" href="https://github.com/Askbsman/aibrake/blob/main/PARTNER_ONBOARDING.md" target="_blank" rel="noopener">View docs</a>
-      <a class="btn btn-secondary" href="#integrate">5-line integration</a>
+      <!-- DASHBOARD MOCKUP -->
+      <div class="dash-mockup" aria-hidden="true">
+        <div class="dash-sidebar">
+          <div class="dash-sidebar-item active">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Overview
+          </div>
+          <div class="dash-sidebar-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14H7L5 6"/></svg>
+            Decisions
+          </div>
+          <div class="dash-sidebar-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
+            Patterns
+          </div>
+          <div class="dash-sidebar-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6"/></svg>
+            Costs
+          </div>
+          <div class="dash-sidebar-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg>
+            Integrations
+          </div>
+          <div class="dash-sidebar-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            API Keys
+          </div>
+          <div class="dash-sidebar-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            Settings
+          </div>
+        </div>
+
+        <div class="dash-main">
+          <div class="dash-header">
+            <div class="dash-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Guard decisions
+            </div>
+            <div class="dash-controls">
+              <div class="dash-control"><span class="dash-control-label">Environment</span> Production <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+              <div class="dash-control">Last 24h <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+            </div>
+          </div>
+
+          <div class="dash-kpi-row">
+            <div class="dash-kpi allow">
+              <div class="dash-kpi-label">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                ALLOW
+              </div>
+              <div class="dash-kpi-value">6,842</div>
+              <div class="dash-kpi-pct">61.3%</div>
+            </div>
+            <div class="dash-kpi warn">
+              <div class="dash-kpi-label">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                WARN
+              </div>
+              <div class="dash-kpi-value">1,842</div>
+              <div class="dash-kpi-pct">16.5%</div>
+            </div>
+            <div class="dash-kpi confirm">
+              <div class="dash-kpi-label">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                REQUIRE_CONFIRM
+              </div>
+              <div class="dash-kpi-value">842</div>
+              <div class="dash-kpi-pct">7.5%</div>
+            </div>
+            <div class="dash-kpi block">
+              <div class="dash-kpi-label">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                BLOCK
+              </div>
+              <div class="dash-kpi-value">2,103</div>
+              <div class="dash-kpi-pct">18.7%</div>
+            </div>
+          </div>
+
+          <div class="dash-bottom">
+            <div class="dash-panel">
+              <div class="dash-panel-title">Top detected patterns</div>
+              <div class="dash-pattern-row">
+                <div class="dash-pattern-icon warn-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
+                <div class="dash-pattern-info">
+                  <div class="dash-pattern-name">Stale retry storm</div>
+                  <div class="dash-pattern-desc">Repeated failures with identical inputs</div>
+                </div>
+                <svg class="dash-pattern-spark" viewBox="0 0 50 18"><polyline fill="none" stroke="#f87171" stroke-width="1.5" points="0,12 8,10 16,14 24,8 32,11 40,4 50,7"/></svg>
+                <div class="dash-pattern-num">2,103 <span>blocks</span></div>
+              </div>
+              <div class="dash-pattern-row">
+                <div class="dash-pattern-icon confirm-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M3 12h6m6 0h6"/></svg></div>
+                <div class="dash-pattern-info">
+                  <div class="dash-pattern-name">Model escalation</div>
+                  <div class="dash-pattern-desc">Unnecessary upgrades driving cost</div>
+                </div>
+                <svg class="dash-pattern-spark" viewBox="0 0 50 18"><polyline fill="none" stroke="#a78bfa" stroke-width="1.5" points="0,10 8,9 16,12 24,6 32,9 40,5 50,8"/></svg>
+                <div class="dash-pattern-num">1,349 <span>warnings</span></div>
+              </div>
+              <div class="dash-pattern-row">
+                <div class="dash-pattern-icon allow-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></div>
+                <div class="dash-pattern-info">
+                  <div class="dash-pattern-name">Same-tool loop</div>
+                  <div class="dash-pattern-desc">Repeating identical tool calls</div>
+                </div>
+                <svg class="dash-pattern-spark" viewBox="0 0 50 18"><polyline fill="none" stroke="#5eead4" stroke-width="1.5" points="0,8 8,12 16,5 24,9 32,7 40,11 50,6"/></svg>
+                <div class="dash-pattern-num">842 <span>flags</span></div>
+              </div>
+            </div>
+
+            <div class="dash-panel">
+              <div class="dash-panel-title">Cost savings</div>
+              <div class="dash-cost-value">$17,482</div>
+              <div class="dash-cost-sub">Saved in potential spend vs. no guardrails</div>
+              <div class="dash-chart-row">
+                <div class="dash-y-ticks">
+                  <div>$20k</div><div>$10k</div><div>$5k</div><div>$0</div>
+                </div>
+                <div class="dash-chart-area">
+                  <div class="dash-bars">
+                    <div class="dash-bar" style="height: 35%;"></div>
+                    <div class="dash-bar" style="height: 50%;"></div>
+                    <div class="dash-bar" style="height: 45%;"></div>
+                    <div class="dash-bar" style="height: 65%;"></div>
+                    <div class="dash-bar" style="height: 75%;"></div>
+                    <div class="dash-bar" style="height: 60%;"></div>
+                    <div class="dash-bar" style="height: 95%;"></div>
+                  </div>
+                  <div class="dash-bar-labels">
+                    <span>May 18</span><span>May 19</span><span>May 20</span><span>May 21</span><span>May 22</span><span>May 23</span><span>May 24</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   </div>
 </header>
 
-<section id="problem">
+<!-- ═══════════════════ FEATURES ═══════════════════ -->
+<section id="features" class="features">
   <div class="container">
-    <h2><span class="num">01</span>Problem</h2>
-    <p class="lead">AI agents burn money when they retry the same failed task without new evidence.</p>
-    <p>The 7th paid retry on the same <code>TS2307</code> error rarely produces a different answer. The 4th opus call after a sonnet got stuck rarely teaches the model something it didn't already see. Most operators discover this in the monthly invoice — not before the call fires. AIBrake makes that decision <em>before</em> you pay.</p>
-  </div>
-</section>
-
-<section id="what-it-catches">
-  <div class="container">
-    <h2><span class="num">02</span>What it catches</h2>
-    <p>Five deterministic detectors. No LLM-on-the-side. No prompt content read. Pattern matches return in milliseconds with versioned <code>policy@</code> and <code>detector@</code> stamps.</p>
-    <div class="grid">
-      <div class="pat">
-        <div class="name">stale_context_retry_storm</div>
-        <p class="desc">Same failure fingerprint, growing retry count, no new files / tests / logs / diff between attempts. The canonical "7th guess" case.</p>
+    <div class="feature-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><path d="M8 11h6"/></svg>
+        </div>
+        <h3>Retry loop detection</h3>
+        <p>Catches stale retries, same-tool loops, and unproductive cycles in real time.</p>
       </div>
-      <div class="pat">
-        <div class="name">same_tool_retry_loop</div>
-        <p class="desc">Same tool, same input, no diagnostic step between calls. Per-objective threshold (default 6, tunable via <code>detector_policy</code>).</p>
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Model stop-loss</h3>
+        <p>Prevents unnecessary model escalation and caps premium-model burn.</p>
       </div>
-      <div class="pat">
-        <div class="name">model_escalation_without_evidence</div>
-        <p class="desc">Premium model burn — opus / GPT-5 / claude-4 — invoked on the same failure with no new evidence. Returns structured <code>model_route</code> if <code>secondaryModel</code> declared.</p>
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <h3>TypeScript &amp; Python SDKs</h3>
+        <p>Drop-in SDKs with types, middleware, and opinionated defaults.</p>
       </div>
-      <div class="pat">
-        <div class="name">objective_drift</div>
-        <p class="desc">Next action falls outside <code>objective.allowed_actions</code> or hits <code>objective.blocked_actions</code>. Deterministic block.</p>
-      </div>
-      <div class="pat">
-        <div class="name">task_budget_breach</div>
-        <p class="desc">Hard budget exceeded. The one detector that <em>does</em> block deterministically — your call whether to wire it as enforcing.</p>
+      <div class="feature-card reveal">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="12 2 22 8 22 16 12 22 2 16 2 8 12 2"/></svg>
+        </div>
+        <h3>x402-ready API</h3>
+        <p>Built for the x402 economy. Granular auth, metering, and continuels ready.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section id="how-it-works">
+<!-- ═══════════════════ HOW IT WORKS ═══════════════════ -->
+<section class="how">
   <div class="container">
-    <h2><span class="num">03</span>How it works</h2>
-    <p>Stateless Core. Stateful adapter on the agent side tracks retry history per objective. One POST, one decision.</p>
-    <div class="flow">
-<pre>Agent runtime
-    │
-    ▼  AgentActionTelemetry
-CodingAgentAdapter
-    │
-    ▼  POST /v1/check  (Bearer asg_v1_…)
-AIBrake
-    │
-    ▼  decision + recommended_policy + suggested_action (+ model_route)
-SDK helper
-    │
-    ▼  guard.checkOrConfirm / checkOrDowngrade / checkShadow
-Agent decides</pre>
+    <h2>How it works</h2>
+    <div class="how-flow">
+      <div class="how-step reveal">
+        <div class="how-step-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
+        </div>
+        <div class="how-step-num">01 · Agent</div>
+        <h3>Your agent is about to take an action</h3>
+        <p>Tool call, request, or model upgrade.</p>
+      </div>
+      <svg class="how-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      <div class="how-step reveal">
+        <div class="how-step-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <div class="how-step-num">02 · /v1/check</div>
+        <h3>Send context to AIBrake</h3>
+        <p>For a real-time guardrail evaluation.</p>
+      </div>
+      <svg class="how-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      <div class="how-step reveal">
+        <div class="how-step-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        </div>
+        <div class="how-step-num">03 · Decision</div>
+        <h3>Receive one of four decisions</h3>
+        <p>With risk score and reasoning.</p>
+      </div>
+      <svg class="how-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      <div class="how-step reveal">
+        <div class="how-step-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+        <div class="how-step-num">04 · Suggested action</div>
+        <h3>Your agent follows the recommendation</h3>
+        <p>And continues safely.</p>
+      </div>
     </div>
-    <p style="margin-top: 18px;">The SDK contract has four helpers. <code>checkShadow</code> never blocks — it logs the decision and returns it. Recommended for the first 7 days of integration.</p>
   </div>
 </section>
 
-<section id="integrate">
+<!-- ═══════════════════ BENCHMARK ═══════════════════ -->
+<section id="benchmark" class="std">
   <div class="container">
-    <h2><span class="num">04</span>Integrate in 5 lines</h2>
-    <p>Drop-in middleware. No new SDKs to learn, no DB, no dashboard, no SaaS account. Just an HTTP POST per expensive action.</p>
-    <div class="code-tabs" role="tablist">
-      <button class="code-tab" role="tab" aria-selected="true" data-tab="ts">TypeScript</button>
-      <button class="code-tab" role="tab" aria-selected="false" data-tab="py">Python</button>
-      <button class="code-tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
+    <div class="section-header reveal">
+      <div class="section-eyebrow">04 · Benchmark</div>
+      <h2>100 partners. 7 days. 73,765 real checks.</h2>
+      <p class="section-lead">
+        Stress-tested against 100 synthetic partners across 10 realistic archetypes over 7 simulated workdays — <strong>73,765 real <code style="color:var(--accent-bright);background:var(--accent-soft);padding:2px 6px;border-radius:4px;">/v1/check</code> POSTs</strong> against a live hosted server, deterministic seeds, fully reproducible.
+      </p>
     </div>
-    <div class="code-panel" data-panel="ts" data-active="true">
-<pre>import { SpendingGuard } from "spending-guard";
+    <div class="kpi-row reveal">
+      <div class="kpi-card">
+        <h3>Savings offered</h3>
+        <div class="kpi-value">$6,883.44</div>
+        <p class="kpi-note">sum of <code>projected_savings</code> across 17,978 catches (~107% of spend)</p>
+      </div>
+      <div class="kpi-card">
+        <h3>Spend observed</h3>
+        <div class="kpi-value">$6,450.83</div>
+        <p class="kpi-note">simulated agent spend across the week</p>
+      </div>
+      <div class="kpi-card">
+        <h3>Calls observed</h3>
+        <div class="kpi-value">73,765</div>
+        <p class="kpi-note">100 partners × 7 days · 10 archetypes</p>
+      </div>
+      <div class="kpi-card">
+        <h3>Median latency</h3>
+        <div class="kpi-value">~5 ms</div>
+        <p class="kpi-note">per <code>/v1/check</code> POST</p>
+      </div>
+    </div>
+    <p class="reveal" style="margin-top: var(--s-8); font-size: 1.05rem; color: var(--fg);">
+      Premium-heavy archetype (always-opus, $0.42/call) saw <strong>169%</strong> savings-to-spend.
+      Disciplined archetype rarely tripped — by design, 44% ratio. <strong>No false-positive warns</strong> on healthy debug cycles.
+    </p>
+    <p class="reveal" style="margin-top: var(--s-3); font-size: 0.88rem; color: var(--muted);">
+      <strong>Honest framing:</strong> simulated workloads, not paying customers. Numbers are <em>offered</em> savings — realized depends on team heed rate (typically 40-80%). Full methodology in <a href="https://github.com/Askbsman/aibrake/blob/main/SIMULATION_100_PARTNERS_WEEK_REPORT.md">SIMULATION_100_PARTNERS_WEEK_REPORT.md</a>.
+    </p>
+  </div>
+</section>
 
-const guard = new SpendingGuard({
-  baseUrl: "https://api.aibrake.dev",
-  apiKey: process.env.ASG_KEY,
-  failureMode: "open",   // never takes your agent offline on guard outage
+<!-- ═══════════════════ INTEGRATE ═══════════════════ -->
+<section id="integrate" class="std">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">05 · Integrate</div>
+      <h2>Five lines. No new SDKs to learn.</h2>
+      <p class="section-lead">Drop-in middleware. No DB, no dashboard, no SaaS account. Just an HTTP POST per expensive action.</p>
+    </div>
+    <div class="reveal">
+      <div class="code-tabs" role="tablist">
+        <button class="code-tab" role="tab" aria-selected="true" data-tab="ts">TypeScript</button>
+        <button class="code-tab" role="tab" aria-selected="false" data-tab="py">Python</button>
+        <button class="code-tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
+      </div>
+      <div class="code-panel" data-panel="ts" data-active="true">
+<pre class="code-block"><span class="kw">import</span> { SpendingGuard } <span class="kw">from</span> <span class="str">"spending-guard"</span>;
+
+<span class="kw">const</span> guard = <span class="kw">new</span> <span class="fn">SpendingGuard</span>({
+  <span class="prop">baseUrl</span>: <span class="str">"https://api.aibrake.dev"</span>,
+  <span class="prop">apiKey</span>: process.env.ASG_KEY,
+  <span class="prop">failureMode</span>: <span class="str">"open"</span>,   <span class="com">// never takes your agent offline on guard outage</span>
 });
 
-// Shadow mode for the first 7 days — log the decision, never block.
-const result = await guard.checkShadow(input);
-if (result.projected_savings) {
-  log.info({
-    saved_usd: result.projected_savings.amount_usd,
-    basis: result.projected_savings.basis,
-    pattern: result.pattern,
-  }, "guard caught a wasteful retry");
+<span class="com">// Shadow mode for the first 7 days — log the decision, never block.</span>
+<span class="kw">const</span> result = <span class="kw">await</span> guard.<span class="fn">checkShadow</span>(input);
+<span class="kw">if</span> (result.projected_savings) {
+  log.<span class="fn">info</span>({
+    <span class="prop">saved_usd</span>: result.projected_savings.amount_usd,
+    <span class="prop">pattern</span>: result.pattern,
+  }, <span class="str">"guard caught a wasteful retry"</span>);
 }</pre>
-    </div>
-    <div class="code-panel" data-panel="py" data-active="false">
-<pre>from agent_spend_guard import AgentSpendGuard
+      </div>
+      <div class="code-panel" data-panel="py" data-active="false">
+<pre class="code-block"><span class="kw">from</span> agent_spend_guard <span class="kw">import</span> AgentSpendGuard
 
-guard = AgentSpendGuard(
-    base_url="https://api.aibrake.dev",
-    api_key=os.environ["ASG_KEY"],
-    failure_mode="open",   # never takes your agent offline on guard outage
+guard = <span class="fn">AgentSpendGuard</span>(
+    <span class="var">base_url</span>=<span class="str">"https://api.aibrake.dev"</span>,
+    <span class="var">api_key</span>=os.environ[<span class="str">"ASG_KEY"</span>],
+    <span class="var">failure_mode</span>=<span class="str">"open"</span>,
 )
 
-# Shadow mode — log the decision, never block.
-result = guard.check_shadow(payload)
-ps = result.get("projected_savings")
-if ps:
-    log.info(
-        "guard caught a wasteful retry",
-        saved_usd=ps["amount_usd"],
-        basis=ps["basis"],
-        pattern=result["pattern"],
+result = guard.<span class="fn">check_shadow</span>(payload)
+ps = result.<span class="fn">get</span>(<span class="str">"projected_savings"</span>)
+<span class="kw">if</span> ps:
+    log.<span class="fn">info</span>(
+        <span class="str">"guard caught a wasteful retry"</span>,
+        <span class="var">saved_usd</span>=ps[<span class="str">"amount_usd"</span>],
+        <span class="var">pattern</span>=result[<span class="str">"pattern"</span>],
     )</pre>
-    </div>
-    <div class="code-panel" data-panel="curl" data-active="false">
-<pre>curl -s -X POST https://api.aibrake.dev/v1/check \
-  -H "Authorization: Bearer asg_v1_yourkey" \
-  -H "content-type: application/json" \
-  -d '{
+      </div>
+      <div class="code-panel" data-panel="curl" data-active="false">
+<pre class="code-block">curl -s -X POST <span class="str">https://api.aibrake.dev/v1/check</span> \
+  -H <span class="str">"Authorization: Bearer asg_v1_yourkey"</span> \
+  -H <span class="str">"content-type: application/json"</span> \
+  -d <span class="str">'{
     "actor": { "type": "agent", "runtime": "claude-code" },
-    "objective": { "id": "obj_42", "goal": "fix failing test" },
     "next_action": {
       "type": "paid_llm_call",
       "model": "claude-opus-4.5",
@@ -635,131 +1253,31 @@ if ps:
       "failure_fingerprint": "fp_v1_widget_fail",
       "new_evidence_since_last_attempt": false
     }
-  }' | jq '.decision, .projected_savings'
-
-# → "require_confirmation"
-# → { "amount_usd": 1.26, "basis": "projected_future_attempts",
-#     "explanation": "Stopping this stale_context_retry_storm avoids ..." }</pre>
-    </div>
-    <p style="margin-top: 18px; font-size: 0.93rem; color: var(--muted);">
-      Four SDK helpers: <code>check</code> · <code>checkShadow</code> · <code>checkOrConfirm</code> · <code>checkOrDowngrade</code>. <code>checkOrDowngrade</code> auto-applies <code>suggested_action.model_route.to</code> when premium-model burn is detected.
-    </p>
-  </div>
-</section>
-
-<section id="demo">
-  <div class="container">
-    <h2><span class="num">05</span>Demo stories</h2>
-    <p>Live numbers from the self-trial against this very repo's Stage 0.5 build. Three identical-looking POSTs differing only in evidence annotation.</p>
-    <table class="demo">
-      <thead><tr><th>Scenario</th><th>Decision</th><th>Pattern</th><th>Why</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>Cold start, no prior history</td>
-          <td><span class="pill allow">allow</span></td>
-          <td>none</td>
-          <td>First action on a new objective. Nothing to catch.</td>
-        </tr>
-        <tr>
-          <td>Healthy debug — read failing file, edited source, retrying</td>
-          <td><span class="pill allow">allow</span></td>
-          <td>none</td>
-          <td>Same failure fingerprint, but evidence annotated on the current attempt (<code>filesRead</code>, <code>gitDiffChanged</code>, <code>contextSourceConfirmed</code>).</td>
-        </tr>
-        <tr>
-          <td>7th blind retry — same error, no evidence between attempts</td>
-          <td><span class="pill confirm">require_confirmation</span></td>
-          <td>stale_context_retry_storm</td>
-          <td>16 rules matched. <code>suggested_action: context_refresh</code>. <code>recommended_policy: ask_human</code>.</td>
-        </tr>
-        <tr>
-          <td>Premium-model burn after sonnet got stuck</td>
-          <td><span class="pill warn">warn</span></td>
-          <td>model_escalation_without_evidence</td>
-          <td>Returns <code>model_route.to = secondaryModel</code> for SDK's <code>checkOrDowngrade</code> to auto-route.</td>
-        </tr>
-      </tbody>
-    </table>
-    <p style="margin-top: 18px; font-size: 0.92rem; color: var(--muted);">Same hosted beta server. Reproduce live: <code>npx tsx scripts/self-trial-guard.ts</code> against <code>localhost:8080</code> with <code>Bearer asg_v1_demo</code>.</p>
-  </div>
-</section>
-
-<section id="benchmark">
-  <div class="container">
-    <h2><span class="num">06</span>Benchmark</h2>
-    <p>We stress-tested AIBrake against 100 synthetic partners across 10 realistic archetypes over 7 simulated workdays — <strong>73,765 real <code>/v1/check</code> POSTs</strong> against a live hosted server, deterministic seeds, fully reproducible.</p>
-    <div class="price-row" style="margin-top: 16px;">
-      <div class="price-card">
-        <h3>Calls observed</h3>
-        <div class="price" style="font-size: 1.9rem;">73,765</div>
-        <p class="note">100 partners × 7 days · 10 archetypes · ~138/partner/day</p>
-      </div>
-      <div class="price-card">
-        <h3>Spend observed</h3>
-        <div class="price" style="font-size: 1.9rem;">$6,450.83</div>
-        <p class="note">simulated agent spend across the week</p>
-      </div>
-      <div class="price-card">
-        <h3>Savings offered</h3>
-        <div class="price" style="font-size: 1.9rem;">$6,883.44</div>
-        <p class="note">sum of <code>projected_savings</code> across 17,978 catches (~107% of spend)</p>
-      </div>
-      <div class="price-card">
-        <h3>Median latency</h3>
-        <div class="price" style="font-size: 1.9rem;">~5 ms</div>
-        <p class="note">per <code>/v1/check</code> POST at this volume</p>
-      </div>
-    </div>
-    <p style="margin-top: 22px; font-size: 0.95rem;">
-      The premium-heavy archetype (always-opus, $0.42/call) saw <strong>169%</strong> savings-to-spend.
-      The disciplined archetype rarely tripped — by design, 44% ratio.
-      <strong>No false-positive warns</strong> on healthy debug cycles. Weekend dip (~30%) visible in day-by-day breakdown.
-    </p>
-    <p style="font-size: 0.9rem; color: var(--muted); margin-top: 14px;">
-      <strong>Honest framing:</strong> simulated workloads, not paying customers. Numbers are <em>offered</em> savings — realized depends on team heed rate (typically 40-80%). Full methodology + reproduction command in <a href="https://github.com/Askbsman/aibrake/blob/main/SIMULATION_100_PARTNERS_WEEK_REPORT.md">SIMULATION_100_PARTNERS_WEEK_REPORT.md</a>. The simulation harness is open: <code>PARTNERS=100 DAYS=7 npx tsx scripts/simulate-100-partners-week.ts</code>.
-    </p>
-  </div>
-</section>
-
-<section id="integrations">
-  <div class="container">
-    <h2><span class="num">07</span>Integrations</h2>
-    <div class="grid">
-      <div class="pat">
-        <div class="name">TypeScript SDK</div>
-        <p class="desc">npm <code>spending-guard</code>. Four helpers (<code>check</code>, <code>checkShadow</code>, <code>checkOrConfirm</code>, <code>checkOrDowngrade</code>). Structured error <code>details.kind</code>. Fail-open by default.</p>
-      </div>
-      <div class="pat">
-        <div class="name">Python SDK</div>
-        <p class="desc">PyPI candidate <code>agent-spend-guard</code>. Stdlib-only (no <code>requests</code> dep). Same four helpers. <code>err.kind</code> / <code>err.retryable</code> on every error.</p>
-      </div>
-      <div class="pat">
-        <div class="name">CodingAgentAdapter</div>
-        <p class="desc">Universal evidence model. Drop into Claude Code, Codex, Cursor, or any custom runtime. Computes <code>failure_fingerprint</code>, <code>same_failure_count</code>, evidence window for you.</p>
-      </div>
-      <div class="pat">
-        <div class="name">x402-ready</div>
-        <p class="desc">Payment abstraction stubbed. Listing-ready for agentic.market when the hosted beta has data. No paid <code>/v1/check</code> yet — discipline-blocked on real partner usage.</p>
+  }'</span> | jq <span class="str">'.decision, .projected_savings'</span></pre>
       </div>
     </div>
   </div>
 </section>
 
-<section id="pricing">
+<!-- ═══════════════════ PRICING ═══════════════════ -->
+<section id="pricing" class="std">
   <div class="container">
-    <h2><span class="num">08</span>Pricing</h2>
-    <p>The honest version: <strong>everything below is anchor candidate, not committed</strong>. Real pricing waits for 7 days of partner logs.</p>
-    <div class="price-row">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">06 · Pricing</div>
+      <h2>Free during beta. Anchored sub-cent after.</h2>
+      <p class="section-lead"><strong>Honest version:</strong> everything below is anchor candidate, not committed. Real pricing waits for 7 days of partner logs.</p>
+    </div>
+    <div class="price-row reveal">
       <div class="price-card">
         <h3>Closed beta</h3>
         <div class="price">Free</div>
         <ul>
-          <li>Invite-only, 3–5 partners</li>
+          <li>Invite-only, 3-5 partners</li>
           <li>All five detectors</li>
           <li>JSONL decision log</li>
-          <li>Direct line to the maintainer</li>
+          <li>Direct line to maintainer</li>
         </ul>
-        <p class="note">What you give back: a 7-day usefulness review.</p>
+        <p class="note">In exchange: 7-day usefulness review.</p>
       </div>
       <div class="price-card">
         <h3>x402 rules check</h3>
@@ -775,7 +1293,7 @@ if ps:
         <h3>Deep audit</h3>
         <div class="price">$0.02–$0.10</div>
         <ul>
-          <li>Per <code>/v1/check-deep</code> call</li>
+          <li>Per <code>/v1/check-deep</code></li>
           <li>LLM-based semantic judgment</li>
           <li>Currently stubbed</li>
         </ul>
@@ -787,231 +1305,139 @@ if ps:
         <ul>
           <li>Dedicated keys</li>
           <li>SLAs, log retention</li>
-          <li>Per-objective dashboards (later)</li>
+          <li>Per-objective dashboards</li>
         </ul>
-        <p class="note">Not before there's signed-on partner volume.</p>
+        <p class="note">Not before signed-on volume.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section id="faq">
+<!-- ═══════════════════ FAQ ═══════════════════ -->
+<section id="faq" class="std">
   <div class="container">
-    <h2><span class="num">09</span>FAQ</h2>
-
-    <details class="faq">
-      <summary>Will the guard slow down my agent?</summary>
-      <div class="faq-body">
-        <p>Median <code>/v1/check</code> latency is <strong>~5 ms</strong> against a steady-state hosted instance (4-8 ms is the typical range). At 95th percentile under benchmark load it stays under 20 ms. The SDK default timeout is 500 ms; if the guard is unreachable you fail open by default — a synthetic <code>allow</code> result is returned and your agent keeps running.</p>
-      </div>
-    </details>
-
-    <details class="faq">
-      <summary>What if the guard service is down?</summary>
-      <div class="faq-body">
-        <p>The SDK defaults to <code>failureMode: "open"</code> — transport-class errors (DNS, timeout, 5xx) are converted to a synthetic <code>allow</code> with <code>pattern: "guard_unavailable"</code>. Your agent never goes offline because of us. You can configure <code>"closed"</code> if you'd rather hard-stop on guard outage, or <code>"throw"</code> if you want to handle the error yourself.</p>
-        <p>Note: server-side 4xx (validation errors, bad keys) are NOT failed open — they propagate so you see your integration bug instead of silently getting <code>allow</code>. This is the Stage 0.4.1 / 0.4.2 contract.</p>
-      </div>
-    </details>
-
-    <details class="faq">
-      <summary>What data do you log?</summary>
-      <div class="faq-body">
-        <p>Hashes and counts only. No raw prompts, no source-file contents, no API keys, no test output bodies. The decision log line carries: <code>request_id</code>, <code>input_hash</code> (sha256-16 of canonical input), <code>api_key_hash</code> (sha256-16 of the bearer key — never the raw key), the partner-supplied <code>objective_id</code> / <code>actor_runtime</code> labels, the decision + pattern + matched rules, and the partner-supplied <code>next_action.estimated_cost</code> + computed <code>projected_savings</code>.</p>
-        <p>Full contract in <a href="https://github.com/Askbsman/aibrake/blob/main/SECURITY.md">SECURITY.md</a>.</p>
-      </div>
-    </details>
-
-    <details class="faq">
-      <summary>How is this different from PQS / Boundary Guard / x402station?</summary>
-      <div class="faq-body">
-        <p><strong>PQS</strong> scores one prompt at a time on an 8-dimension rubric — answer to <em>"is this single prompt worth paying for?"</em></p>
-        <p><strong>Boundary Guard</strong> validates outputs against schema / safety constraints — <em>"did the output pass?"</em></p>
-        <p><strong>x402station</strong> checks endpoint trust before payment — <em>"is this x402 endpoint safe to call?"</em></p>
-        <p><strong>AIBrake</strong> watches the <em>session loop</em> — <em>"is the agent already stuck in a paid retry pattern?"</em> Per-session history with universal evidence model. We compose with the others — a serious agent stack uses prompt-preflight → loop-detection → output-validation in sequence.</p>
-      </div>
-    </details>
-
-    <details class="faq">
-      <summary>How does the guard decide what's "stale"?</summary>
-      <div class="faq-body">
-        <p>The universal evidence model. Every action carries six annotations on the current attempt: <code>filesRead</code>, <code>testsRun</code>, <code>logsRead</code>, <code>gitDiffChanged</code>, <code>toolResultsChanged</code>, <code>contextSourceConfirmed</code>. Any one of them &gt; 0 / true counts as "the agent gathered new evidence between attempts."</p>
-        <p>Read-edit-rerun on the same failing test = <code>allow</code> (Stage 0.5.1 contract). Blind retry with zero annotations = <code>require_confirmation</code> with <code>projected_savings.basis = "projected_future_attempts"</code>.</p>
-      </div>
-    </details>
-
-    <details class="faq">
-      <summary>Can I tune the thresholds?</summary>
-      <div class="faq-body">
-        <p>Yes, per-request via <code>objective.detector_policy</code>. Four knobs: <code>same_tool_retry_threshold</code> (default 6), <code>premium_retry_without_evidence_threshold</code> (default 3), <code>expensive_action_usd_threshold</code> (default 0.10), <code>require_confirmation_after_repeats</code> (default 5). Type / default / min / recommended-range / description for each are exposed at <code>GET /v1/meta</code>.</p>
-        <p>For scraper agents costing $0.10+ per call, tighter thresholds make sense (e.g. <code>same_tool_retry_threshold: 3</code>). For coding agents at $0.02-0.05 per call, defaults are usually fine.</p>
-      </div>
-    </details>
-
-    <details class="faq">
-      <summary>What does the <code>projected_savings</code> number mean exactly?</summary>
-      <div class="faq-body">
-        <p>It's the dollar amount <em>offered</em> by the guard — what you save <em>if you heed the recommendation</em>. The guard can't know whether you actually did. Three computation bases:</p>
-        <p>• <code>next_attempt_avoided</code> — single attempt cost. Used when the decision is warn / req_confirm / block on a non-storm pattern.</p>
-        <p>• <code>projected_future_attempts</code> — <code>cost × min(3, paid_attempts_on_same_failure)</code>. Used on <code>stale_context_retry_storm</code> to look forward at the loop's likely tail.</p>
-        <p>• <code>model_downgrade_delta</code> — <code>primary_cost − secondary_cost</code>. Used when a <code>model_route.to</code> is set. Falls back to a conservative 60% reduction when <code>estimatedCostUsd</code> on the secondary isn't declared (labeled as such in the explanation).</p>
-      </div>
-    </details>
-
-    <details class="faq">
-      <summary>Do you support models I'm using? GPT? Gemini? Local?</summary>
-      <div class="faq-body">
-        <p>Provider-agnostic. The guard never calls a model — it judges <em>your</em> next call. Send any provider / model name in <code>next_action.provider</code> / <code>next_action.model</code> and it works. The <code>DEFAULT_DOWNGRADE_MAP</code> at <code>/v1/meta</code> has heuristic entries for Anthropic / OpenAI premium tiers; for everything else declare your own <code>model_policy.secondaryModel</code> with <code>estimatedCostUsd</code> and the guard will route to it precisely.</p>
-      </div>
-    </details>
-
-    <details class="faq">
-      <summary>What's the pricing eventually?</summary>
-      <div class="faq-body">
-        <p>Beta is free for the first 3-5 partners in exchange for a 7-day usefulness review. After that, the anchor — <em>not a commitment, pending real data</em> — is sub-cent per <code>/v1/check</code> via x402 (target <code>$0.001–$0.005</code> USDC). Must stay well below the cost of the LLM/tool call the guard is protecting, otherwise we'd be a tax instead of a service.</p>
-      </div>
-    </details>
-
-    <details class="faq">
-      <summary>Is the source open?</summary>
-      <div class="faq-body">
-        <p>Docs, SDK, examples, and the simulation harness are open. The hosted production service is closed-beta until the wedge is validated. Run your own instance from the repo any time — <a href="https://github.com/Askbsman/aibrake/blob/main/DEPLOYMENT.md">DEPLOYMENT.md</a> has Render / Fly / Railway / Caddy-VPS recipes.</p>
-      </div>
-    </details>
+    <div class="section-header reveal">
+      <div class="section-eyebrow">07 · FAQ</div>
+      <h2>Common questions.</h2>
+    </div>
+    <div class="reveal">
+      <details class="faq">
+        <summary>Will the guard slow down my agent?</summary>
+        <div class="faq-body">
+          <p>Median <code>/v1/check</code> latency is <strong>~5 ms</strong> against a steady-state hosted instance. At 95th percentile it stays under 50 ms. The SDK default timeout is 500 ms; if the guard is unreachable you fail open by default.</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>What if the guard service is down?</summary>
+        <div class="faq-body">
+          <p>The SDK defaults to <code>failureMode: "open"</code> — transport-class errors (DNS, timeout, 5xx) are converted to a synthetic <code>allow</code>. Your agent never goes offline because of us.</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>What data do you log?</summary>
+        <div class="faq-body">
+          <p>Hashes and counts only. No raw prompts, no source-file contents, no API keys. Full contract in <a href="https://github.com/Askbsman/aibrake/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>How is this different from PQS / Boundary Guard?</summary>
+        <div class="faq-body">
+          <p><strong>PQS</strong> scores one prompt at a time. <strong>Boundary Guard</strong> validates outputs. <strong>AIBrake</strong> watches the <em>session loop</em> — per-session history with universal evidence model. We compose with the others.</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>Do you support GPT? Gemini? Local models?</summary>
+        <div class="faq-body">
+          <p>Provider-agnostic. The guard never calls a model — it judges <em>your</em> next call. Send any provider/model name and it works.</p>
+        </div>
+      </details>
+      <details class="faq">
+        <summary>Is the source open?</summary>
+        <div class="faq-body">
+          <p>Docs, SDK, examples, simulation harness are open at <a href="https://github.com/Askbsman/aibrake">github.com/Askbsman/aibrake</a>. The hosted service is closed-beta. Run your own instance via <a href="https://github.com/Askbsman/aibrake/blob/main/DEPLOYMENT.md">DEPLOYMENT.md</a>.</p>
+        </div>
+      </details>
+    </div>
   </div>
 </section>
 
-<section id="beta">
+<!-- ═══════════════════ JOIN BETA CTA ═══════════════════ -->
+<section id="beta" class="cta-band">
   <div class="container">
-    <h2><span class="num">10</span>Get beta access</h2>
-    <p>Closed beta — first 3–5 partners. The fit is paid coding agents, scraper / search agents, premium-model wrappers, or anyone routing $&gt;0.05 per agent action.</p>
-    <form class="access" action="mailto:beta@aibrake.dev?subject=Agent%20Spend%20Guard%20beta%20access" method="post">
-      <input type="email" name="email" placeholder="you@company.com" required />
-      <button class="btn btn-primary" type="submit">Request invite</button>
-    </form>
-    <p style="margin-top: 12px; font-size: 0.88rem; color: var(--muted);">Or read the contract first: <a href="https://github.com/Askbsman/aibrake/blob/main/PARTNER_ONBOARDING.md">PARTNER_ONBOARDING.md</a> · <a href="https://github.com/Askbsman/aibrake/blob/main/SECURITY.md">SECURITY.md</a> · <a href="https://github.com/Askbsman/aibrake/blob/main/CHANGELOG.md">CHANGELOG.md</a></p>
+    <div class="cta-card reveal">
+      <div class="cta-left">
+        <div class="cta-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div class="cta-text">
+          <h3>Join the beta</h3>
+          <p>Be first in line for early access, SDKs, and developer updates.</p>
+        </div>
+      </div>
+      <form class="cta-form" action="mailto:beta@aibrake.dev?subject=AIBrake%20beta%20access" method="post">
+        <input type="email" name="email" placeholder="Work email" required />
+        <button class="btn btn-primary" type="submit">Get beta access <span class="arrow">→</span></button>
+      </form>
+    </div>
   </div>
 </section>
 
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
 <footer>
   <div class="container">
-    <div style="display: flex; align-items: center; gap: 14px;">
-      <svg viewBox="0 0 64 64" aria-hidden="true" style="width: 32px; height: 32px; flex: 0 0 auto;">
-        <g fill="none" stroke="#6ee7b7" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M 22 8 L 42 8 L 54 18 L 54 36 L 32 58 L 10 36 L 10 18 Z" />
-          <path d="M 44 36 A 12 12 0 1 0 38 22" />
-        </g>
-        <polygon points="38,22 31,21 34,28" fill="#6ee7b7" />
-        <circle cx="44" cy="36" r="2.6" fill="#6ee7b7" />
-      </svg>
-      <div>
-        <div style="margin-bottom: 4px;"><strong>AIBrake</strong> · v0.5.4-beta</div>
-        <div>Loop detection and model stop-loss for paid AI agents.</div>
+    <div class="footer-brand-col">
+      <div class="footer-brand-row">
+        <img src="/logo.png" alt="AIBrake — aibrake.dev" />
       </div>
+      <p class="footer-tag">Built for the x402 economy. Secure. Fast. Developer-first.</p>
+      <p style="font-size: 0.78rem; color: var(--muted-soft); margin-top: var(--s-3); font-family: 'JetBrains Mono', monospace;">© 2026 AIBRAKE.dev, Inc. All rights reserved.</p>
     </div>
     <div>
-      <a href="https://github.com/Askbsman/aibrake">GitHub</a> ·
-      <a href="https://github.com/Askbsman/aibrake/blob/main/CHANGELOG.md">Changelog</a> ·
-      <a href="https://github.com/Askbsman/aibrake/blob/main/SECURITY.md">Security</a> ·
-      <a href="mailto:hello@aibrake.dev">Contact</a>
+      <h4>Product</h4>
+      <ul>
+        <li><a href="#features">Overview</a></li>
+        <li><a href="#integrations">Integrations</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#benchmark">Benchmark</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Developers</h4>
+      <ul>
+        <li><a href="https://github.com/Askbsman/aibrake/blob/main/PARTNER_ONBOARDING.md">Docs</a></li>
+        <li><a href="https://github.com/Askbsman/aibrake/blob/main/PYTHON_SDK.md">API Reference</a></li>
+        <li><a href="https://github.com/Askbsman/aibrake/blob/main/CHANGELOG.md">Changelog</a></li>
+        <li><a href="https://github.com/Askbsman/aibrake/blob/main/SECURITY.md">Security</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Company</h4>
+      <ul>
+        <li><a href="#beta">About</a></li>
+        <li><a href="mailto:hello@aibrake.dev">Contact</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+    </div>
+    <div class="footer-social-col">
+      <h4>Connect</h4>
+      <div class="footer-social">
+        <a href="https://github.com/Askbsman/aibrake" target="_blank" rel="noopener" aria-label="GitHub">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        </a>
+        <a href="mailto:hello@aibrake.dev" aria-label="Email">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>AIBrake · v0.5.5-beta · stateless core · provider-agnostic · ~5 ms median</span>
+      <span>Built for the x402 economy.</span>
     </div>
   </div>
 </footer>
 
 <script>
 (function () {
-  // ── Config ──────────────────────────────────────────────────────────
-  // Set this to your hosted API origin (no trailing slash). The counter
-  // falls back to the benchmark numbers if the API is unreachable, so it's
-  // safe to leave pointing at localhost during development.
-  var API_BASE =
-    (window.AGENT_SPEND_GUARD_API_BASE) ||
-    (location.hostname === "localhost" || location.hostname === "127.0.0.1"
-      ? "http://localhost:8080"
-      : "https://api.aibrake.dev");
-
-  // ── Counter widget ──────────────────────────────────────────────────
-  function fmtMoney(n) {
-    return "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  function fmtInt(n) { return Number(n).toLocaleString("en-US"); }
-
-  function animateNumber(el, from, to, formatter, duration) {
-    duration = duration || 900;
-    var start = performance.now();
-    function tick(now) {
-      var t = Math.min(1, (now - start) / duration);
-      // ease-out cubic
-      var k = 1 - Math.pow(1 - t, 3);
-      var v = from + (to - from) * k;
-      el.textContent = formatter(v);
-      if (t < 1) requestAnimationFrame(tick);
-      else el.textContent = formatter(to);
-    }
-    requestAnimationFrame(tick);
-  }
-
-  function updateCounter() {
-    var savingsEl = document.querySelector('[data-counter-num="savings"]');
-    var checksEl  = document.querySelector('[data-counter-num="checks"]');
-    var catchesEl = document.querySelector('[data-counter-num="catches"]');
-    var noteEl    = document.querySelector('[data-counter-source]');
-    var card      = document.querySelector('.counter-card');
-    if (!savingsEl || !checksEl || !catchesEl) return;
-
-    // Parse current displayed values as "from".
-    var fromSavings = parseFloat((savingsEl.textContent || "0").replace(/[,$]/g, "")) || 0;
-    var fromChecks  = parseFloat((checksEl.textContent  || "0").replace(/,/g, "")) || 0;
-    var fromCatches = parseFloat((catchesEl.textContent || "0").replace(/,/g, "")) || 0;
-
-    var url = API_BASE + "/v1/public/stats";
-    fetch(url, { method: "GET", mode: "cors", credentials: "omit" })
-      .then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .then(function (stats) {
-        var savings = Number(stats.total_savings_offered_usd || 0);
-        var checks  = Number(stats.total_checks || 0);
-        var catches = Number(stats.events_with_savings || 0);
-        if (checks <= 0) {
-          // Server has empty log — keep the benchmark seed visible.
-          if (noteEl) noteEl.innerHTML = "Seeded by the 100-partner × 7-day benchmark — hosted server logs are empty so far.";
-          return;
-        }
-        animateNumber(savingsEl, fromSavings, savings, fmtMoney);
-        animateNumber(checksEl,  fromChecks,  checks,  fmtInt);
-        animateNumber(catchesEl, fromCatches, catches, fmtInt);
-        if (card) {
-          card.classList.remove("updated");
-          // Force reflow so the animation re-runs.
-          void card.offsetWidth;
-          card.classList.add("updated");
-        }
-        if (noteEl) {
-          noteEl.innerHTML =
-            'Live: pulled from <code>/v1/public/stats</code> at ' +
-            new Date().toLocaleTimeString() + '. Aggregated from benchmark + beta logs.';
-        }
-      })
-      .catch(function () {
-        // Network/CORS error — leave the seeded benchmark numbers visible.
-        if (noteEl) {
-          noteEl.innerHTML =
-            'Showing 100-partner × 7-day benchmark numbers (live API at <code>' + API_BASE + '</code> unreachable from this page).';
-        }
-      });
-  }
-
-  // Update on load + every 60 seconds.
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", updateCounter);
-  } else {
-    updateCounter();
-  }
-  setInterval(updateCounter, 60_000);
-
-  // ── Code-example tab switcher ───────────────────────────────────────
   var tabs = document.querySelectorAll(".code-tab");
   tabs.forEach(function (tab) {
     tab.addEventListener("click", function () {
@@ -1022,6 +1448,17 @@ if ps:
       });
     });
   });
+
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) { entry.target.classList.add("in"); io.unobserve(entry.target); }
+      });
+    }, { threshold: 0.1, rootMargin: "0px 0px -40px 0px" });
+    document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function (el) { el.classList.add("in"); });
+  }
 })();
 </script>
 

@@ -12,6 +12,10 @@
 /*.svg
   Cache-Control: public, max-age=86400, must-revalidate
 
+# Same for PNG assets (logo, etc.)
+/*.png
+  Cache-Control: public, max-age=86400, must-revalidate
+
 # Don't cache the HTML (we want counter / version to refresh)
 /index.html
   Cache-Control: public, max-age=300, must-revalidate
