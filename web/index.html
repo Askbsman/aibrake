@@ -137,7 +137,7 @@
     text-decoration: none;
   }
   nav.top .brand:hover { color: var(--fg-strong); }
-  nav.top .brand img { display: block; height: 56px; width: auto; flex: 0 0 auto; }
+  nav.top .brand img { display: block; height: 88px; width: auto; flex: 0 0 auto; margin: -16px 0; }
   nav.top .brand-text {
     font-size: 1.2rem;
     font-weight: 700;
@@ -357,33 +357,37 @@
   .dash-control-label { color: var(--muted-soft); font-size: 0.7rem; margin-right: 2px; }
   .dash-control svg { opacity: 0.6; }
 
-  .dash-kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-3); }
-  @media (max-width: 760px) { .dash-kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .dash-kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); }
+  @media (max-width: 760px) { .dash-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .dash-kpi {
     background: var(--bg-3);
     border: 1px solid var(--border-soft);
     border-radius: var(--r-md);
-    padding: var(--s-4);
+    padding: var(--s-3);
     position: relative;
     overflow: hidden;
+    min-width: 0;
   }
   .dash-kpi::before {
     content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
     background: currentColor; opacity: 0.5;
   }
   .dash-kpi-label {
-    display: flex; align-items: center; gap: 6px;
+    display: flex; align-items: center; gap: 4px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.66rem;
+    font-size: 0.58rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: var(--s-3);
+    letter-spacing: 0.04em;
+    margin-bottom: var(--s-2);
+    line-height: 1.2;
+    word-break: break-word;
   }
+  .dash-kpi-label svg { flex: 0 0 auto; }
   .dash-kpi-value {
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--fg-strong);
     letter-spacing: -0.02em;
@@ -810,7 +814,7 @@
     align-items: start;
   }
   footer .footer-brand-row { display: inline-flex; align-items: center; gap: var(--s-3); margin-bottom: var(--s-3); }
-  footer .footer-brand-row img { height: 48px; width: auto; }
+  footer .footer-brand-row img { height: 72px; width: auto; margin: -12px 0; }
   footer .footer-brand-row .name {
     font-size: 1rem; font-weight: 700; letter-spacing: -0.01em;
     background: linear-gradient(135deg, var(--accent-deep), var(--accent-bright));
