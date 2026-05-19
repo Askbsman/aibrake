@@ -46,7 +46,14 @@ export {
   objectiveDriftDetector,
 } from "./detectors/index.js";
 
-export { buildServer } from "./server.js";
+// NOTE: buildServer moved to a separate entry point in 0.5.7-beta to
+// keep the client-only install free of fastify (~50 MB of transitive
+// deps). Import it from "aibrake/server" instead:
+//
+//   import { buildServer } from "aibrake/server";
+//
+// You also need to install fastify yourself: `npm install fastify`.
+// See CHANGELOG.md 0.5.7-beta for the full rationale.
 export { setLoggerSink, getLoggerSink, type LoggerSink } from "./core/logger.js";
 
 export {
