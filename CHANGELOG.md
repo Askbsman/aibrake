@@ -1,8 +1,41 @@
 # Changelog
 
-All notable changes to **AIBrake** (formerly "Agent Spend Guard"; npm package still `spending-guard` for historical reasons).
+All notable changes to **AIBrake** (npm package: `aibrake` since `0.5.5-beta`; formerly `spending-guard` while still in the private repo).
 
 The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) style. The leading entry is the work in progress on `main`; everything below it corresponds to a git tag.
+
+---
+
+## 0.5.5-beta — npm publish: `aibrake`
+
+**Tag:** `aibrake-v0.5.5-beta`
+**Base:** `spending-guard-v0.5.4-beta`
+**Goal:** first public npm release under the new brand. The package name `aibrake` was free on the registry, so we took it. No need for a scoped fallback.
+
+### Changed
+
+- **`package.json#name`:** `spending-guard` → `aibrake`
+- **`package.json#license`:** `UNLICENSED` → `MIT` (SDK is permissively licensed; the hosted service is the paid product)
+- **`package.json#private`:** removed (was `true` while we were repo-only)
+- Added publish-ready metadata: `repository`, `homepage`, `bugs`, `keywords`, `author`, `files`, `prepublishOnly`
+- Added top-level `LICENSE` file (MIT)
+- Added `./adapters/coding-agent` to the `exports` map (was already in `src/`, just not declared as a public entry point)
+- Version `0.5.4-beta` → `0.5.5-beta`
+
+### Preserved (NOT renamed — backwards compat)
+
+- API path prefix `/v1/*`, env vars `AGENT_SPEND_GUARD_*`, API key prefix `asg_v1_*`, SDK class name `SpendingGuard`, event type `spending_guard_decision`, service slug `agent-spend-guard`. See 0.5.4-beta entry below for the full preservation contract.
+
+### Install
+
+```bash
+npm install aibrake
+```
+
+```ts
+import { SpendingGuard } from "aibrake/sdk";
+const guard = new SpendingGuard({ apiKey: process.env.AIBRAKE_API_KEY!, baseUrl: "https://api.aibrake.dev" });
+```
 
 ---
 

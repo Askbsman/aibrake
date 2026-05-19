@@ -8,19 +8,19 @@
 >
 > **PQS checks the prompt. AIBrake checks the loop.**
 
-> **Status:** Stage 0.5.3 — Public stats endpoint + site polish
-> **Version:** `0.5.3-beta`
-> **Base:** `spending-guard-v0.5.2-beta`
-> **Tag:** `spending-guard-v0.5.3-beta`
+> **Status:** Stage 0.5.5 — First public npm release as `aibrake`
+> **Version:** `0.5.5-beta`
+> **Base:** `spending-guard-v0.5.4-beta`
+> **Tag:** `aibrake-v0.5.5-beta`
 > **Primary value:** loop detection + model stop-loss + **$-denominated projected savings** on every catch, **with a live public counter**
 > **Mode:** hosted beta / shadow-first
 > **Tests:** 198 TS unit + 14 audit + 36 harness actions; **35 Python tests passing** on Python 3.14
-> **Latest:** new `GET /v1/public/stats` endpoint (no auth, CORS, 30s cache) returns aggregate savings + decisions + cost across the decision log. The landing page (`web/index.html`) now has an animated live counter pulling from this endpoint, a tabbed 5-line integration example (TS / Python / curl), a 10-item FAQ, and proper OG / Twitter / favicon meta.
-> **SDKs:** TypeScript (`spending-guard`) + Python (`python/agent_spend_guard`)
+> **Latest:** package renamed `spending-guard` → `aibrake` on npm (the historical name was never published; we took the brand-matching name directly). The hosted API stays at `api.aibrake.dev`; env vars / API key prefix / class names preserved for backwards compat.
+> **SDKs:** TypeScript ([`aibrake`](https://www.npmjs.com/package/aibrake)) + Python (`python/agent_spend_guard`)
 > **Next step:** real partner integration → 7 days of logs → useful-warning review → pricing/x402 decision (see [`INTEGRATION_GUIDE.md`](./INTEGRATION_GUIDE.md), [`PARTNER_ONBOARDING.md`](./PARTNER_ONBOARDING.md), [`PYTHON_SDK.md`](./PYTHON_SDK.md), [`CODING_AGENT_ADAPTER.md`](./CODING_AGENT_ADAPTER.md), [`DEPLOYMENT.md`](./DEPLOYMENT.md))
-> **npm package name:** `spending-guard` (historical; product brand is "AIBrake" — see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
+> **npm package name:** `aibrake` (the SDK class name `SpendingGuard` is preserved for backwards compat — see [`IMPLEMENTATION_NOTES.md § 13`](./IMPLEMENTATION_NOTES.md))
 
-Spending Guard is a provider-agnostic, x402-ready pre-flight judgment middleware for expensive AI agent actions. It checks paid LLM calls, tool retries, model escalations and objective drift **before** execution and tells the operator whether to allow, warn, ask for confirmation, downgrade, delay or block.
+AIBrake is a provider-agnostic, x402-ready pre-flight judgment middleware for expensive AI agent actions. It checks paid LLM calls, tool retries, model escalations and objective drift **before** execution and tells the operator whether to allow, warn, ask for confirmation, downgrade, delay or block.
 
 This is **not** a budget counter. The product value is judgment:
 
@@ -30,6 +30,28 @@ This is **not** a budget counter. The product value is judgment:
 - Is another paid call likely to produce real progress, or is it just the 7th guess?
 
 **Don't pay for the 7th guess.**
+
+---
+
+## Install
+
+```bash
+npm install aibrake
+```
+
+```ts
+import { SpendingGuard } from "aibrake/sdk";
+
+const guard = new SpendingGuard({
+  baseUrl: "https://api.aibrake.dev",
+  apiKey: process.env.AIBRAKE_API_KEY!,
+});
+
+const result = await guard.check({ /* ... */ });
+console.log(result.decision, result.reason);
+```
+
+The class name `SpendingGuard` is intentionally preserved from the pre-rebrand SDK — partners with existing imports keep working. See [`CHANGELOG.md`](./CHANGELOG.md) `0.5.5-beta` for the full preservation contract.
 
 ---
 
@@ -78,7 +100,7 @@ curl -s -X POST http://localhost:3000/v1/check \
 ### Use the SDK in-process
 
 ```ts
-import { SpendingGuard } from "spending-guard";
+import { SpendingGuard } from "aibrake/sdk";
 
 const guard = new SpendingGuard();   // in-process Core; no network hop
 
@@ -99,11 +121,11 @@ console.log(result.decision, result.recommended_policy, result.reason);
 ### Use the SDK against a remote server
 
 ```ts
-import { SpendingGuard } from "spending-guard";
+import { SpendingGuard } from "aibrake/sdk";
 
 const guard = new SpendingGuard({
-  baseUrl: "https://spending-guard.example.com",
-  apiKey: process.env.SPENDING_GUARD_API_KEY,
+  baseUrl: "https://api.aibrake.dev",
+  apiKey: process.env.AIBRAKE_API_KEY,   // or AGENT_SPEND_GUARD_API_KEY (preserved alias)
   timeoutMs: 500,
   failureMode: "open",   // fail-open by default — see below
 });
