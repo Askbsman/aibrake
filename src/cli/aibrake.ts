@@ -14,6 +14,7 @@
 import { readFileSync } from "node:fs";
 import { runCheck } from "../core/check.js";
 import type { SpendingGuardCheckInput } from "../core/types.js";
+import { runMcpServer } from "./mcp.js";
 
 // ──────────────────────────────────────────────────────────────────────────
 // Color helpers (no deps — raw ANSI codes).
@@ -191,10 +192,15 @@ function cmdCheck(filePath: string | undefined): void {
   console.log(JSON.stringify(result, null, 2));
 }
 
+function cmdMcp(): void {
+  runMcpServer();
+  // Don't exit — stdin loop keeps the process alive.
+}
+
 function cmdVersion(): void {
   // package.json version is the source of truth; CLI prints it from a constant
   // baked at build time. For now, hardcode and bump alongside package.json.
-  console.log("aibrake 0.5.6-beta");
+  console.log("aibrake 0.5.10-beta");
 }
 
 function cmdHelp(): void {
@@ -207,11 +213,19 @@ ${C.bold}Usage:${C.reset}
 ${C.bold}Commands:${C.reset}
   demo                Run the canonical "$40 retry storm" demo (no setup)
   check <file.json>   Run AIBrake Core against a JSON input file
+  mcp                 Start AIBrake as an MCP server (stdio) — register
+                      in Claude Code / OpenClaw / Cursor / Cline config
   version             Print the installed version
   help                Print this message
 
 ${C.bold}Try it:${C.reset}
   ${C.cyan}npx aibrake demo${C.reset}
+
+${C.bold}Plug into your agent (Claude Code / OpenClaw / Cline / Cursor):${C.reset}
+  Add to your MCP config:
+    "mcpServers": {
+      "aibrake": { "command": "npx", "args": ["-y", "aibrake@beta", "mcp"] }
+    }
 
 ${C.bold}Learn more:${C.reset}
   ${C.cyan}https://aibrake.dev${C.reset}
@@ -226,6 +240,7 @@ const [, , cmd, ...args] = process.argv;
 switch (cmd) {
   case "demo":            cmdDemo(); break;
   case "check":           cmdCheck(args[0]); break;
+  case "mcp":             cmdMcp(); break;
   case "version":
   case "-v":
   case "--version":       cmdVersion(); break;

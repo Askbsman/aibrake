@@ -41,9 +41,23 @@ npm install aibrake
 
 `<1 MB` install. No fastify, no transitive web-framework deps.
 
-### The one-line integration (recommended)
+### Plug into an agentic IDE (Claude Code / OpenClaw / Cursor / Cline) — 4 lines
 
-If you use `openai` or `@anthropic-ai/sdk`, add ONE line at the top of your entrypoint:
+Add to your MCP config (`~/.claude/settings.json`, `mcp-config.json`, or your runtime's equivalent):
+
+```jsonc
+{
+  "mcpServers": {
+    "aibrake": { "command": "npx", "args": ["-y", "aibrake@beta", "mcp"] }
+  }
+}
+```
+
+Restart the agent. AIBrake now appears as an `aibrake_check` tool the agent can — and per its own description, **must** — call before any retry, deploy, install, or success-assertion. Returns `allow / warn / require_confirmation / block` with a reason and projected savings.
+
+### One-line integration for Node.js apps with openai / anthropic
+
+If you own a Node.js process that calls `openai` or `@anthropic-ai/sdk` directly, add ONE line at the top of your entrypoint:
 
 ```ts
 import "aibrake/auto";

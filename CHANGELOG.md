@@ -6,6 +6,100 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.10-beta — `npx aibrake mcp` — skill-style install for OpenClaw / Claude Code / Cursor / Cline
+
+**Tag:** `aibrake-v0.5.10-beta`
+**Base:** `aibrake-v0.5.9-beta`
+**Goal:** make AIBrake installable into an agentic IDE the same way a
+Claude Code skill is — four lines of config, no migration, no template,
+no separate bot to maintain.
+
+### Why now
+
+Founder feedback after 0.5.8-beta (`aibrake/auto`): "people won't make
+a separate Node bot just to test AIBrake. The agent should plug in
+like a skill. Easy." Correct — `aibrake/auto` requires the partner to
+own and modify a Node.js process. If their bot lives inside a closed
+agentic SaaS (OpenClaw, Cursor, Cline, hosted Claude Code) there is no
+process for them to modify.
+
+The right primitive is the Model Context Protocol (MCP). Every modern
+agentic runtime supports MCP — partner adds one stanza to their MCP
+config and AIBrake becomes a tool the agent can (and must) call.
+
+### Added
+
+- **`src/cli/mcp.ts`** — full MCP stdio server, ~270 lines, no vendor
+  SDK dep. Implements the four JSON-RPC methods Claude Code expects:
+  - `initialize`         — handshake with protocol version 2024-11-05
+  - `notifications/initialized` — no-op acknowledge
+  - `tools/list`         — returns the `aibrake_check` tool definition
+  - `tools/call`         — runs the AIBrake stateless Core in-process
+
+- **`aibrake_check` MCP tool** — the single tool the agent gets. Its
+  description starts with "MUST be called BEFORE any expensive or
+  potentially-looping action" — opinionated language to steer agents
+  toward calling it pre-flight on retries, deploys, and assertions.
+
+  Input parameters mirror the SDK's check payload, simplified:
+  ```
+  action_type                  required ("paid_llm_call" | "deployment_assertion" | ...)
+  reason                       required
+  model                        optional
+  estimated_cost_usd           optional
+  prior_attempts_on_same_failure  optional
+  failure_signal_present       optional
+  new_evidence_since_last_attempt  optional
+  verifications_done           optional, string[] for assertion actions
+  ```
+
+  Output: decision, risk_score, pattern, reason, projected_savings_usd,
+  matched_rules, suggested_action.
+
+- **`mcp` subcommand on the CLI**:
+  ```bash
+  npx aibrake mcp
+  ```
+  Spawns the stdio server. Partner registers it in their MCP config:
+  ```jsonc
+  {
+    "mcpServers": {
+      "aibrake": { "command": "npx", "args": ["-y", "aibrake@beta", "mcp"] }
+    }
+  }
+  ```
+
+### Smoke-tested end-to-end
+
+Three JSON-RPC requests piped through `node dist/cli/aibrake.js mcp`:
+
+1. `initialize` → protocol handshake OK
+2. `tools/list` → returns `aibrake_check` with full input schema
+3. `tools/call` with `action_type: "deployment_assertion"` and zero
+   `verifications_done` → returns `decision: "block"`,
+   `pattern: "unverified_success_assertion"`, risk_score 95
+4. `tools/call` with retry-storm payload (7th attempt, no new evidence)
+   → returns `decision: "require_confirmation"`,
+   `pattern: "stale_context_retry_storm"`, risk_score 100,
+   projected_savings $1.26
+
+### Updated
+
+- README install snippet now shows the MCP config as the recommended
+  partner integration path (above `aibrake/auto`, above the SDK).
+- CLI help text shows the MCP config stanza.
+- Version 0.5.9-beta → 0.5.10-beta.
+
+### What partners should reach for first, in order
+
+1. **MCP install** (this release) — for any agentic IDE
+2. **`import "aibrake/auto"`** (0.5.8-beta) — for Node.js apps that
+   directly call OpenAI/Anthropic
+3. **`SpendingGuard` + `OpenClawAdapter`** (since 0.1) — for custom
+   integrations that need full evidence-signal telemetry
+
+---
+
 ## 0.5.9-beta — New detector: `unverified_success_assertion`
 
 **Tag:** `aibrake-v0.5.9-beta`
