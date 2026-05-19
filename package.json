@@ -1,6 +1,6 @@
 {
   "name": "aibrake",
-  "version": "0.5.11-beta",
+  "version": "0.5.12-beta",
   "description": "Loop detection and model stop-loss for paid AI agents. One-line install (`import 'aibrake/auto'`) monkey-patches OpenAI + Anthropic SDKs so every paid call passes through AIBrake.",
   "type": "module",
   "main": "dist/index.js",
@@ -52,7 +52,7 @@
     "preflight": "node scripts/preflight.mjs",
     "configure": "node scripts/configure-for-deploy.mjs",
     "check:domains": "node scripts/check-domains.mjs",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "node scripts/check-version-strings.mjs && npm run build"
   },
   "keywords": [
     "ai",

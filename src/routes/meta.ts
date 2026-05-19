@@ -71,6 +71,7 @@ export async function registerMetaRoute(
         "model_escalation_without_evidence",
         "objective_drift",
         "task_budget_breach",
+        "unverified_success_assertion",
       ],
       modes: ["check", "shadow", "confirm", "downgrade"],
       policy_version: POLICY_VERSION,

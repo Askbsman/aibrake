@@ -200,7 +200,7 @@ function cmdMcp(): void {
 function cmdVersion(): void {
   // package.json version is the source of truth; CLI prints it from a constant
   // baked at build time. For now, hardcode and bump alongside package.json.
-  console.log("aibrake 0.5.11-beta");
+  console.log("aibrake 0.5.12-beta");
 }
 
 function cmdHelp(): void {

@@ -1,8 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
+import { readFileSync } from "node:fs";
 import { buildServer } from "../src/server.js";
 import { setLoggerSink } from "../src/core/logger.js";
 import { withCodingFailure } from "./helpers/fixtures.js";
+
+// Read the expected version from package.json so this test never drifts
+// when versions are bumped. scripts/check-version-strings.mjs enforces
+// that env.ts's hardcoded version matches package.json at publish time —
+// this test catches the same drift one layer earlier (at `npm test`).
+const PKG_VERSION = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8")
+).version as string;
 
 setLoggerSink({ emit: () => {} });
 
@@ -25,7 +34,7 @@ describe("HTTP routes", () => {
     expect(body.ok).toBe(true);
     // Stage 0.3: branded as "agent-spend-guard" via env config default.
     expect(body.service).toBe("agent-spend-guard");
-    expect(body.version).toBe("0.5.4-beta");
+    expect(body.version).toBe(PKG_VERSION);
     expect(body.mode).toBe("hosted-beta");
   });
 

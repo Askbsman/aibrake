@@ -6,6 +6,69 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.12-beta — Cleanup + critical fixes from project audit
+
+**Tag:** `aibrake-v0.5.12-beta`
+**Base:** `aibrake-v0.5.11-beta`
+**Goal:** address concrete issues found by a full-codebase audit:
+12 garbage files removed, stale `0.5.4-beta` server version unstuck,
+6th detector now visible in `/v1/meta`, prepublish version-drift guard.
+
+### Fixed (critical)
+
+- **`src/config/env.ts` `serviceVersion`** — was hardcoded at
+  `"0.5.4-beta"` since the Stage 0.5.4 rebrand. The hosted server at
+  `api.aibrake.dev` was reporting the wrong version in `/health`,
+  `/v1/meta`, `/v1/public/stats`, and the started-event log line.
+  Bumped to `0.5.12-beta` and the issue is now caught by an automated
+  pre-publish guard so it can't drift again.
+- **`/v1/meta supported_patterns`** — `unverified_success_assertion`
+  (added in 0.5.9-beta) was missing from this advertised list. Anyone
+  introspecting the API for detector capabilities would not have known
+  the 6th detector exists.
+
+### Added
+
+- **`scripts/check-version-strings.mjs`** — runs as part of `prepublishOnly`.
+  Reads `package.json#version` and asserts every hardcoded version
+  string in the codebase matches:
+  - `src/cli/aibrake.ts cmdVersion()`
+  - `src/cli/mcp.ts SERVER_VERSION`
+  - `src/config/env.ts serviceVersion`
+
+  If any drift, publish fails with a clear diff. Prevents the class of
+  bugs that produced the 0.5.4 → 0.5.11 silent drift above.
+
+- Tests `tests/routes.test.ts` and `tests/stage-03-hosting.test.ts`
+  now read the expected version from `package.json` instead of
+  hardcoding it. Catches the same drift at `npm test` time.
+
+### Removed (12 files / 2 directories)
+
+One-shot rebrand scripts (work complete, no longer needed):
+- `scripts/_apply-aibrake-rename.mjs`
+- `scripts/_apply-aibrake.mjs`
+- `scripts/_apply-github-org.mjs`
+
+Stale Stage 0.x audit / simulation reports (referenced the old
+"Agent Spend Guard" brand pre-rebrand):
+- `STAGE_0_1_AUDIT_REPORT.md`, `STAGE_0_1_1_AUDIT_REPORT.md`
+- `BENCHMARK_10_AGENTS.md`
+- `SIMULATION_10_PARTNERS_REPORT.md`, `SIMULATION_100_PARTNERS_WEEK_REPORT.md`
+- `SELF_TRIAL_CLAUDE_CODE_LOG.md`, `SELF_TRIAL_CLAUDE_CODE_REPORT.md`
+
+Local test/validation artifacts that should not have been tracked:
+- `test-aibrake-install/` (empty package.json experiment)
+- `validation-log/` (old partner-A/C/D reports from May 15)
+
+### Verified
+
+- 218/218 TS tests green.
+- `node scripts/check-version-strings.mjs` reports all 3 hardcoded
+  locations agree on `0.5.12-beta`.
+
+---
+
 ## 0.5.11-beta — `npx aibrake mcp` — skill-style install for OpenClaw / Claude Code / Cursor / Cline
 
 **Tag:** `aibrake-v0.5.11-beta`

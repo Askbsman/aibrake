@@ -14,6 +14,13 @@ import {
   it,
 } from "vitest";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+
+// Expected service version comes from package.json. Avoids stale-string
+// drift; the prepublishOnly guard (scripts/check-version-strings.mjs)
+// asserts env.ts matches package.json before publishing.
+const PKG_VERSION = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8")
+).version as string;
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
@@ -44,7 +51,7 @@ describe("Stage 0.3 — /v1/meta and /health", () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.name).toBe("AIBrake");
-    expect(body.version).toBe("0.5.4-beta");
+    expect(body.version).toBe(PKG_VERSION);
     expect(body.policy_version).toBe("policy@0.1.0");
     expect(body.modes).toEqual(["check", "shadow", "confirm", "downgrade"]);
     expect(body.supported_patterns).toContain("stale_context_retry_storm");

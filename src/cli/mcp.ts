@@ -24,7 +24,7 @@ import type { SpendingGuardCheckInput } from "../core/types.js";
 
 const PROTOCOL_VERSION = "2024-11-05";
 const SERVER_NAME = "aibrake";
-const SERVER_VERSION = "0.5.11-beta";
+const SERVER_VERSION = "0.5.12-beta";
 
 interface JsonRpcRequest {
   jsonrpc: "2.0";
