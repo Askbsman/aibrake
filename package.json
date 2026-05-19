@@ -1,7 +1,7 @@
 {
   "name": "aibrake",
-  "version": "0.5.7-beta",
-  "description": "Loop detection and model stop-loss for paid AI agents. Pre-flight judgment middleware: blocks retry storms, model escalation without evidence, objective drift, and budget breaches before they cost you.",
+  "version": "0.5.8-beta",
+  "description": "Loop detection and model stop-loss for paid AI agents. One-line install (`import 'aibrake/auto'`) monkey-patches OpenAI + Anthropic SDKs so every paid call passes through AIBrake.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,6 +12,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./auto": {
+      "types": "./dist/auto/index.d.ts",
+      "import": "./dist/auto/index.js"
     },
     "./sdk": {
       "types": "./dist/sdk/index.d.ts",
@@ -66,6 +70,7 @@
     "middleware",
     "openclaw",
     "coding-agent",
+    "monkey-patch",
     "x402"
   ],
   "author": "AIBrake <hello@aibrake.dev> (https://aibrake.dev)",
@@ -82,10 +87,18 @@
     "zod": "^3.23.8"
   },
   "peerDependencies": {
-    "fastify": "^4.28.1 || ^5.0.0"
+    "fastify": "^4.28.1 || ^5.0.0",
+    "openai": "^4.0.0 || ^5.0.0",
+    "@anthropic-ai/sdk": "^0.20.0 || ^0.30.0 || ^0.40.0"
   },
   "peerDependenciesMeta": {
     "fastify": {
+      "optional": true
+    },
+    "openai": {
+      "optional": true
+    },
+    "@anthropic-ai/sdk": {
       "optional": true
     }
   },

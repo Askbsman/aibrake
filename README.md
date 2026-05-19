@@ -39,7 +39,28 @@ This is **not** a budget counter. The product value is judgment:
 npm install aibrake
 ```
 
-`<1 MB` install. No fastify, no transitive web-framework deps. Self-hosting your own AIBrake instance? Also `npm install fastify` (peer dep) and import from `aibrake/server`.
+`<1 MB` install. No fastify, no transitive web-framework deps.
+
+### The one-line integration (recommended)
+
+If you use `openai` or `@anthropic-ai/sdk`, add ONE line at the top of your entrypoint:
+
+```ts
+import "aibrake/auto";
+import OpenAI from "openai";
+
+const client = new OpenAI();
+await client.chat.completions.create({ /* ... */ });   // ← AIBrake watches this
+```
+
+Every `chat.completions.create` (OpenAI) and `messages.create` (Anthropic) now passes through AIBrake first. Shadow mode by default — decisions log to stderr, your calls never get blocked. Switch to enforcement with `AIBRAKE_MODE=hard`.
+
+Env vars (all optional):
+```bash
+AIBRAKE_API_KEY=asg_v1_yourkey         # hosted decision log + analytics
+AIBRAKE_URL=https://api.aibrake.dev    # override only for self-hosting
+AIBRAKE_MODE=shadow                    # or "hard" to actually block calls
+```
 
 ### Try it in 30 seconds (no API key, no setup)
 
@@ -47,9 +68,11 @@ npm install aibrake
 npx aibrake demo
 ```
 
-Runs the canonical "$40 retry storm" scenario through AIBrake's stateless Core in-process and prints the decision + projected savings. Zero auth, zero network. See exactly what AIBrake would say before you sign up for a hosted API key.
+Runs the canonical "$40 retry storm" scenario through AIBrake's stateless Core in-process and prints the decision + projected savings. Zero auth, zero network.
 
-### Use it in your agent
+### Use the SDK directly (manual integration)
+
+If you need fine-grained control (custom evidence signals, per-objective sessions, OpenClaw / Hermes / Codex telemetry mapping), drop down to the SDK + adapter layer:
 
 ```ts
 import { SpendingGuard } from "aibrake/sdk";
@@ -59,7 +82,7 @@ const guard = new SpendingGuard({
   apiKey: process.env.AIBRAKE_API_KEY!,
 });
 
-const result = await guard.check({ /* ... */ });
+const result = await guard.check({ /* full evidence-aware payload */ });
 console.log(result.decision, result.reason);
 ```
 

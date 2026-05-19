@@ -6,6 +6,92 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.5.8-beta — `aibrake/auto`: one-line install for OpenAI + Anthropic
+
+**Tag:** `aibrake-v0.5.8-beta`
+**Base:** `aibrake-v0.5.7-beta`
+**Goal:** make the partner-side integration one line of code instead of
+five. The Sentry / New Relic pattern, applied to AI-agent guardrails.
+
+### Why
+
+Through 0.5.5-beta → 0.5.7-beta the integration story was:
+"install the package, instantiate `SpendingGuard`, instantiate
+`OpenClawAdapter`, build a check payload per call, wrap your LLM call
+with `await guard.check(...)`, handle the decision." That's ~30 lines
+of glue per project. Founder feedback after watching two independent
+agents fail to follow even a single-command instruction: "people won't
+bother."
+
+The fix is monkey-patching, the pattern observability vendors have
+used for a decade. Partner writes `import 'aibrake/auto'` once.
+Every paid LLM call from `openai` and `@anthropic-ai/sdk` then routes
+through AIBrake automatically — no wrappers, no per-call boilerplate.
+
+### Added
+
+- **`aibrake/auto`** — new side-effect entry point. Single import:
+  ```ts
+  import 'aibrake/auto';        // ← that's the entire integration
+  import OpenAI from 'openai';   // existing code unchanged
+  const client = new OpenAI();
+  await client.chat.completions.create({ model: 'gpt-4o', messages });
+  ```
+  On import, it tries to dynamically import `openai/resources/chat/completions`
+  and `@anthropic-ai/sdk/resources/messages`. For each one found, it
+  monkey-patches the prototype's `create()` so every call passes
+  through AIBrake first. Decisions print to stderr; in shadow mode
+  (default) the call always proceeds.
+
+- `src/auto/patch.ts` — patcher logic for both OpenAI and Anthropic.
+  Idempotent (re-importing doesn't double-wrap). Falls back to silent
+  no-op if the SDK isn't installed.
+
+- `src/auto/history.ts` — per-process call history with prompt-hash
+  fingerprinting + error-signature tracking. Capped at 200 entries
+  to avoid memory leaks in long-lived processes.
+
+- `src/auto/pricing.ts` — model → $/1k-token table covering the
+  GPT-4 / o1 / Claude families. Used to populate
+  `next_action.estimated_cost` for the AIBrake check.
+
+- `src/auto/guard.ts` — lazy SpendingGuard singleton reading
+  `AIBRAKE_API_KEY` / `AIBRAKE_URL` / `AIBRAKE_MODE` / `AIBRAKE_FAILURE_MODE`
+  / `AIBRAKE_TIMEOUT_MS` from env. Backwards-compatible aliases:
+  `AGENT_SPEND_GUARD_*` env vars are read if `AIBRAKE_*` are absent.
+
+### Modes
+
+- **Shadow** (default): every call gets a decision logged to stderr,
+  the original call always proceeds. Recommended for the first week.
+- **Hard** (`AIBRAKE_MODE=hard`): on `block` / `require_confirmation`
+  the patched call throws before the network request, surfacing the
+  AIBrake reason to the partner's exception handler.
+
+### Verified
+
+- 211/211 TS tests green (was 198 → +13 new tests on pricing, history,
+  env config, and patch-shape primitives).
+- `npm pack --dry-run`: tarball grew 95 kB → ~100 kB (+5 kB for the
+  auto module compiled output).
+- Existing `aibrake/sdk`, `aibrake/adapters/*`, `aibrake/server`, and
+  the `aibrake` CLI binary unchanged — no API breaks.
+
+### Peer dependencies (new, all optional)
+
+```jsonc
+"peerDependenciesMeta": {
+  "openai":            { "optional": true },
+  "@anthropic-ai/sdk": { "optional": true }
+}
+```
+
+Partners who only use the SDK directly install nothing extra. Partners
+using `aibrake/auto` install `openai` and/or `@anthropic-ai/sdk` for
+their own work; auto-patch detects whichever is present.
+
+---
+
 ## 0.5.7-beta — Client-only install (drops ~50 MB of fastify deps)
 
 **Tag:** `aibrake-v0.5.7-beta`
