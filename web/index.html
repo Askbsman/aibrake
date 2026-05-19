@@ -1208,11 +1208,12 @@
         <button class="code-tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
       </div>
       <div class="code-panel" data-panel="ts" data-active="true">
-<pre class="code-block"><span class="kw">import</span> { SpendingGuard } <span class="kw">from</span> <span class="str">"spending-guard"</span>;
+<pre class="code-block"><span class="com">// npm install aibrake</span>
+<span class="kw">import</span> { SpendingGuard } <span class="kw">from</span> <span class="str">"aibrake/sdk"</span>;
 
 <span class="kw">const</span> guard = <span class="kw">new</span> <span class="fn">SpendingGuard</span>({
   <span class="prop">baseUrl</span>: <span class="str">"https://api.aibrake.dev"</span>,
-  <span class="prop">apiKey</span>: process.env.ASG_KEY,
+  <span class="prop">apiKey</span>: process.env.AIBRAKE_API_KEY,
   <span class="prop">failureMode</span>: <span class="str">"open"</span>,   <span class="com">// never takes your agent offline on guard outage</span>
 });
 
@@ -1226,11 +1227,12 @@
 }</pre>
       </div>
       <div class="code-panel" data-panel="py" data-active="false">
-<pre class="code-block"><span class="kw">from</span> agent_spend_guard <span class="kw">import</span> AgentSpendGuard
+<pre class="code-block"><span class="com"># pip install agent-spend-guard  (Python package keeps the historical name)</span>
+<span class="kw">from</span> agent_spend_guard <span class="kw">import</span> AgentSpendGuard
 
 guard = <span class="fn">AgentSpendGuard</span>(
     <span class="var">base_url</span>=<span class="str">"https://api.aibrake.dev"</span>,
-    <span class="var">api_key</span>=os.environ[<span class="str">"ASG_KEY"</span>],
+    <span class="var">api_key</span>=os.environ[<span class="str">"AIBRAKE_API_KEY"</span>],
     <span class="var">failure_mode</span>=<span class="str">"open"</span>,
 )
 
