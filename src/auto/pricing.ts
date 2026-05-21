@@ -14,6 +14,16 @@ const PRICING_PER_1K_TOKENS_USD: Record<string, number> = {
   "o1":               0.015,
   "o1-mini":          0.003,
   "o1-preview":       0.015,
+  // GPT-5 family (current generation as of May 2026; pricing estimated
+  // from public benchmarks — adjust when OpenAI publishes official rates)
+  "gpt-5":            0.015,
+  "gpt-5.2":          0.015,
+  "gpt-5.4":          0.020,
+  "gpt-5.4-mini":     0.003,
+  "gpt-5.5":          0.025,
+  "gpt-5.5-mini":     0.004,
+  "gpt-5-mini":       0.003,
+  "gpt-5-nano":       0.0005,
 
   // Anthropic
   "claude-opus":            0.015,
