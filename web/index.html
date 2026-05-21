@@ -904,11 +904,11 @@
           paid AI agents.
         </h1>
         <p class="hero-sub">
-          Detects stale retries, same-tool loops, and premium-model burn before the next expensive step. One HTTP POST per check, ~5 ms median.
+          Detects stale retries, same-tool loops, premium-model burn, and unverified deploys before the next expensive step. <strong>4 lines in your MCP config</strong> — works with Codex CLI, Claude Code, Cursor, Cline. ~5 ms median.
         </p>
         <div class="hero-cta-row">
-          <a class="btn btn-primary" href="#beta">Get beta access <span class="arrow">→</span></a>
-          <a class="btn btn-secondary" href="https://github.com/Askbsman/aibrake/blob/main/PARTNER_ONBOARDING.md" target="_blank" rel="noopener">View docs</a>
+          <a class="btn btn-primary" href="#integrate">4-line install <span class="arrow">→</span></a>
+          <a class="btn btn-secondary" href="#beta">Get beta access</a>
         </div>
         <div class="trust-row">
           <span class="trust-item">
@@ -1093,8 +1093,8 @@
         <div class="feature-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
         </div>
-        <h3>TypeScript &amp; Python SDKs</h3>
-        <p>Drop-in SDKs with types, middleware, and opinionated defaults.</p>
+        <h3>MCP-server &middot; one config entry</h3>
+        <p>Works with Codex CLI, Claude Code, Cursor, Cline. Tool appears automatically.</p>
       </div>
       <div class="feature-card reveal">
         <div class="feature-icon">
@@ -1198,72 +1198,59 @@
   <div class="container">
     <div class="section-header reveal">
       <div class="section-eyebrow">05 · Integrate</div>
-      <h2>Five lines. No new SDKs to learn.</h2>
-      <p class="section-lead">Drop-in middleware. No DB, no dashboard, no SaaS account. Just an HTTP POST per expensive action.</p>
+      <h2>Four lines. Tool appears in your agent.</h2>
+      <p class="section-lead">Add one MCP-server entry to your agent&rsquo;s config. Restart. <code>aibrake_check</code> tool is now available — agent calls it before retries, deploys, and success-assertions.</p>
     </div>
     <div class="reveal">
       <div class="code-tabs" role="tablist">
-        <button class="code-tab" role="tab" aria-selected="true" data-tab="ts">TypeScript</button>
-        <button class="code-tab" role="tab" aria-selected="false" data-tab="py">Python</button>
-        <button class="code-tab" role="tab" aria-selected="false" data-tab="curl">curl</button>
+        <button class="code-tab" role="tab" aria-selected="true" data-tab="codex">Codex CLI</button>
+        <button class="code-tab" role="tab" aria-selected="false" data-tab="claude">Claude Code &middot; Cursor &middot; Cline</button>
+        <button class="code-tab" role="tab" aria-selected="false" data-tab="manual">Manual SDK</button>
       </div>
-      <div class="code-panel" data-panel="ts" data-active="true">
-<pre class="code-block"><span class="com">// npm install aibrake</span>
-<span class="kw">import</span> { SpendingGuard } <span class="kw">from</span> <span class="str">"aibrake/sdk"</span>;
+      <div class="code-panel" data-panel="codex" data-active="true">
+<pre class="code-block"><span class="com"># ~/.codex/config.toml</span>
 
-<span class="kw">const</span> guard = <span class="kw">new</span> <span class="fn">SpendingGuard</span>({
-  <span class="prop">baseUrl</span>: <span class="str">"https://api.aibrake.dev"</span>,
-  <span class="prop">apiKey</span>: process.env.AIBRAKE_API_KEY,
-  <span class="prop">failureMode</span>: <span class="str">"open"</span>,   <span class="com">// never takes your agent offline on guard outage</span>
-});
+[mcp_servers.aibrake]
+command = <span class="str">"npx"</span>
+args = [ <span class="str">"-y"</span>, <span class="str">"aibrake@beta"</span>, <span class="str">"mcp"</span> ]
 
-<span class="com">// Shadow mode for the first 7 days — log the decision, never block.</span>
-<span class="kw">const</span> result = <span class="kw">await</span> guard.<span class="fn">checkShadow</span>(input);
-<span class="kw">if</span> (result.projected_savings) {
-  log.<span class="fn">info</span>({
-    <span class="prop">saved_usd</span>: result.projected_savings.amount_usd,
-    <span class="prop">pattern</span>: result.pattern,
-  }, <span class="str">"guard caught a wasteful retry"</span>);
-}</pre>
+<span class="com"># Restart Codex CLI. `mcp__aibrake__aibrake_check` is now a tool
+# the agent can call before paid LLM calls, deploys, retries.</span></pre>
       </div>
-      <div class="code-panel" data-panel="py" data-active="false">
-<pre class="code-block"><span class="com"># pip install agent-spend-guard  (Python package keeps the historical name)</span>
-<span class="kw">from</span> agent_spend_guard <span class="kw">import</span> AgentSpendGuard
+      <div class="code-panel" data-panel="claude" data-active="false">
+<pre class="code-block"><span class="com">// ~/.claude/settings.json  (or your IDE's MCP config — same shape)</span>
 
-guard = <span class="fn">AgentSpendGuard</span>(
-    <span class="var">base_url</span>=<span class="str">"https://api.aibrake.dev"</span>,
-    <span class="var">api_key</span>=os.environ[<span class="str">"AIBRAKE_API_KEY"</span>],
-    <span class="var">failure_mode</span>=<span class="str">"open"</span>,
-)
-
-result = guard.<span class="fn">check_shadow</span>(payload)
-ps = result.<span class="fn">get</span>(<span class="str">"projected_savings"</span>)
-<span class="kw">if</span> ps:
-    log.<span class="fn">info</span>(
-        <span class="str">"guard caught a wasteful retry"</span>,
-        <span class="var">saved_usd</span>=ps[<span class="str">"amount_usd"</span>],
-        <span class="var">pattern</span>=result[<span class="str">"pattern"</span>],
-    )</pre>
-      </div>
-      <div class="code-panel" data-panel="curl" data-active="false">
-<pre class="code-block">curl -s -X POST <span class="str">https://api.aibrake.dev/v1/check</span> \
-  -H <span class="str">"Authorization: Bearer asg_v1_yourkey"</span> \
-  -H <span class="str">"content-type: application/json"</span> \
-  -d <span class="str">'{
-    "actor": { "type": "agent", "runtime": "claude-code" },
-    "next_action": {
-      "type": "paid_llm_call",
-      "model": "claude-opus-4.5",
-      "estimated_cost": { "amount": 0.42, "currency": "USD" }
-    },
-    "history": {
-      "attempt_number": 7,
-      "paid_attempts_on_same_failure": 6,
-      "failure_signal_present": true,
-      "failure_fingerprint": "fp_v1_widget_fail",
-      "new_evidence_since_last_attempt": false
+{
+  <span class="prop">"mcpServers"</span>: {
+    <span class="prop">"aibrake"</span>: {
+      <span class="prop">"command"</span>: <span class="str">"npx"</span>,
+      <span class="prop">"args"</span>: [<span class="str">"-y"</span>, <span class="str">"aibrake@beta"</span>, <span class="str">"mcp"</span>]
     }
-  }'</span> | jq <span class="str">'.decision, .projected_savings'</span></pre>
+  }
+}
+
+<span class="com">// Restart the IDE. Tool appears as `mcp__aibrake__aibrake_check`.</span></pre>
+      </div>
+      <div class="code-panel" data-panel="manual" data-active="false">
+<pre class="code-block"><span class="com">// For Node.js apps that call openai / anthropic directly.
+// One side-effect import patches every chat.completions.create.</span>
+
+<span class="com">// 1. Install</span>
+<span class="com">// $ npm install aibrake</span>
+
+<span class="com">// 2. Add to your entrypoint (one line)</span>
+<span class="kw">import</span> <span class="str">"aibrake/auto"</span>;
+<span class="kw">import</span> OpenAI <span class="kw">from</span> <span class="str">"openai"</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="fn">OpenAI</span>();
+<span class="kw">await</span> client.chat.completions.<span class="fn">create</span>({
+  <span class="prop">model</span>: <span class="str">"gpt-5.5"</span>,
+  <span class="prop">messages</span>: [ <span class="com">/* ... */</span> ],
+});  <span class="com">// ← AIBrake watches every call automatically</span>
+
+<span class="com">// Python / Go / shell?
+// Raw HTTP: POST https://api.aibrake.dev/v1/check
+// Schema: github.com/Askbsman/aibrake#schema</span></pre>
       </div>
     </div>
   </div>
