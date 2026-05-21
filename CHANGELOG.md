@@ -6,7 +6,105 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
-## 0.5.13-beta — Pricing table + model name freshness
+## 0.6.0-beta — MCP feature-complete: budget cap + hosted log forwarding
+
+**Tag:** `aibrake-v0.6.0-beta`
+**Base:** `aibrake-v0.5.12-beta` (0.5.13-beta skipped on registry —
+                                 changes folded into 0.6.0-beta)
+**Goal:** close the two known limitations of the 0.5.11-beta MCP path
+identified in the project audit, plus a security/compat cleanup.
+This is the first 0.6.x release — graduating off the 0.5.x churn.
+
+### Added — MCP `aibrake_check` tool gains three input fields
+
+- **`budget_cap_usd: number`** — hard or soft budget cap for the
+  current objective. When set, the `task_budget_breach` detector
+  compares (spent + estimated) against this cap and can fire properly.
+  Without this, the MCP path used a permissive $50 default that
+  rendered the detector effectively dormant — Case Study #4 in the
+  audit was a known limitation.
+- **`budget_hard_limit: boolean`** — if true and the cap would be
+  breached, AIBrake **deterministically blocks** (`decision: "block"`).
+  If false (default), warns or requires confirmation.
+- **`spent_on_objective_usd: number`** — actual running spend for the
+  objective. If omitted, AIBrake approximates as
+  `prior_attempts × estimated_cost` (covers the simple "I retried N
+  times" case without forcing the agent to track totals).
+
+Smoke-test confirmed: with `budget_cap_usd: 5.00, budget_hard_limit:
+true, spent_on_objective_usd: 4.80, estimated_cost_usd: 0.42` →
+returns `decision: "block", pattern: "task_budget_breach",
+matched_rules: ["task_budget_exceeded", "hard_budget_breach"]`.
+
+### Added — hosted-API forwarding (best-effort, non-blocking)
+
+When `AIBRAKE_API_KEY` env is set, every MCP `aibrake_check` call
+**also** fires a fire-and-forget POST to
+`https://api.aibrake.dev/v1/check` (`AIBRAKE_URL` overrides). The
+agent gets its decision from the in-process Core immediately —
+the hosted call is pure observability, used to:
+
+- Populate the hosted decision log (`/v1/public/stats` counter
+  increments)
+- Let the founder see what partners' agents are actually doing
+- Provide cross-session pattern analysis (impossible from the
+  stateless Core alone)
+
+Failures are logged to stderr but never propagate — the agent must
+not block on AIBrake's own telemetry being healthy. 1.5-second
+hard timeout via AbortController. Without the key, the MCP path
+runs purely in-process (current behavior).
+
+### Removed — `MockPaymentGuard` from public exports
+
+Per project audit: shipping a "payment always succeeds" mock as a
+public surface (`import { MockPaymentGuard } from "aibrake"`) was
+a foot-gun. Removed from `src/index.ts` re-exports. Importable from
+`aibrake/payments` for tests; not from the package root. Inline
+comment in `src/index.ts` explains the rationale.
+
+### Changed — broader peer-dep ranges for openai / anthropic
+
+- `openai`: `^4.0.0 || ^5.0.0` → `>=4.0.0`
+- `@anthropic-ai/sdk`: `^0.20.0 || ^0.30.0 || ^0.40.0` → `>=0.20.0`
+
+The old caret-ored ranges silently no-op'd when partners ran newer
+SDK majors (Anthropic's now-pending 0.5x). Open-ended ranges let the
+auto-patch attempt resolution against any modern SDK version; if the
+SDK internal structure changes incompatibly, the patcher fails to
+locate `Completions.prototype.create` / `Messages.prototype.create`
+and silently no-ops (existing behavior — graceful degradation).
+
+### Folded in from un-published 0.5.13-beta
+
+Model-name freshness updates (see un-tagged commit `88ed2f7`):
+- `CASE_STUDIES.md`, `src/cli/mcp.ts`, `examples/openclaw-quickstart.ts`:
+  `claude-opus-4.5` → `claude-opus-4.7`
+- `src/auto/pricing.ts`: added `claude-opus-4.6/4.7`, `claude-sonnet-4.6/4.7`,
+  `claude-haiku-4.5` rows.
+
+### Verified
+
+- 218/218 TS tests green.
+- `node scripts/check-version-strings.mjs` agrees on `0.6.0-beta`
+  across all 3 hardcoded locations.
+- MCP end-to-end smoke confirms `task_budget_breach` now fires from
+  MCP path when budget params are passed.
+
+### Upgrade notes
+
+| Before (0.5.x)                                  | After (0.6.0-beta)                                     |
+| ----------------------------------------------- | ------------------------------------------------------ |
+| `import { MockPaymentGuard } from "aibrake"`    | `import { MockPaymentGuard } from "aibrake/payments"`  |
+| MCP `aibrake_check` w/o budget params           | Add `budget_cap_usd`, `budget_hard_limit` to enable    |
+| MCP calls only in-process                       | Set `AIBRAKE_API_KEY` to populate hosted decision log  |
+
+Anyone using `SpendingGuard` / `OpenClawAdapter` / `aibrake/auto` /
+the CLI without these specific surfaces does NOT need to change anything.
+
+---
+
+## 0.5.13-beta — Pricing table + model name freshness (UN-PUBLISHED — folded into 0.6.0-beta)
 
 **Tag:** `aibrake-v0.5.13-beta`
 **Base:** `aibrake-v0.5.12-beta`

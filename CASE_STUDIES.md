@@ -187,38 +187,46 @@ The `pattern: "model_escalation_without_evidence"` JSON. **This is the case stud
 ### Prompt to paste into Codex
 
 ```
-Imagine you are working on a task with a hard budget cap of $5.00 USD.
-You have already spent $4.80 of that budget. You're about to make a
-$0.42 paid Claude Opus call which would push the total to $5.22 —
-over the cap.
+Imagine you are working on a task with a HARD budget cap of $5.00 USD.
+You have already spent $4.80 of that budget on the same objective.
+You're about to make a $0.42 paid Claude Opus call which would push
+the total to $5.22 — over the cap.
 
 Before making the call, invoke mcp__aibrake__aibrake_check with these
-arguments. Pay close attention to the budget fields:
+arguments (pay close attention to the budget fields):
 
   action_type: "paid_llm_call"
   model: "claude-opus-4.7"
   estimated_cost_usd: 0.42
   reason: "next reasoning step on this task"
+  budget_cap_usd: 5.00
+  budget_hard_limit: true
+  spent_on_objective_usd: 4.80
 
 Show me the raw JSON response.
-
-NOTE: the MCP tool builds its own default budget of $50 unless the
-partner supplies one. For this demo, the budget breach won't fire from
-the MCP path alone (this is a known limitation flagged in the audit).
-Instead, paste the situation as a check on the underlying detector
-using prior_attempts_on_same_failure=12 and failure_signal_present=true
-to trigger a different high-risk pattern. Show the raw JSON.
 ```
 
 ### Expected AIBrake response
 
-This case study has a known limitation: the MCP-driven path uses a hardcoded budget of $50, so the budget detector can't fire from this path alone. The fallback (high attempts + failure_signal) triggers `stale_context_retry_storm` instead — still a strong block, just a different rule.
+```json
+{
+  "decision": "block",
+  "risk_score": 90,
+  "pattern": "task_budget_breach",
+  "reason": "Hard task budget would be breached: planned spend 5.22 USD > budget 5 USD. Stop the action or raise the budget explicitly.",
+  "projected_savings_usd": 0.42,
+  "matched_rules": ["task_budget_exceeded", "hard_budget_breach"],
+  "suggested_action": "stop_session"
+}
+```
 
-**Action item for 0.5.13-beta:** extend the MCP tool's input schema to accept a `budget_cap_usd` parameter so this case study works as intended. Filed as a TODO.
+### Expected Codex follow-up
+
+"AIBrake blocked this call — I would exceed the hard $5 budget by $0.22. I will stop and ask the user whether to raise the budget or end the session."
 
 ### What to screenshot
 
-For now, screenshot Case Study 1 instead and use it as the "AIBrake stopped a budget burn" example — it's substantively the same outcome (don't make the expensive call) just from a different detector.
+The `decision: "block"` JSON with `pattern: "task_budget_breach"`. **This is the case study for finance-conscious founders** — concrete dollar figure, deterministic block, no model judgment involved.
 
 ---
 
@@ -329,11 +337,11 @@ hits one of these failure modes and the agent voluntarily calls
 auto-call behavior depends on the underlying model (GPT-5.5, Claude
 Opus, etc.) and isn't 100% guaranteed.
 
-The hosted decision log (api.aibrake.dev) doesn't yet receive these
-five case study calls — the MCP path runs the Core in-process. To
-land calls in the public stats counter, the MCP tool would need to
-also POST to `https://api.aibrake.dev/v1/check` with a beta API key.
-Filed as a 0.5.13-beta enhancement.
+**Hosted decision log forwarding (since 0.6.0-beta):** the MCP tool
+now fires a non-blocking POST to `api.aibrake.dev/v1/check` whenever
+`AIBRAKE_API_KEY` is set. Each case study call counted in the public
+stats counter when the env var is present. Without the key, the MCP
+path runs the Core in-process only.
 
 ---
 

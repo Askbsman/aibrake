@@ -24,7 +24,7 @@ import type { SpendingGuardCheckInput } from "../core/types.js";
 
 const PROTOCOL_VERSION = "2024-11-05";
 const SERVER_NAME = "aibrake";
-const SERVER_VERSION = "0.5.13-beta";
+const SERVER_VERSION = "0.6.0-beta";
 
 interface JsonRpcRequest {
   jsonrpc: "2.0";
@@ -106,6 +106,31 @@ const TOOLS = [
             "git_diff_verified, smoke_test_passed. If empty for a deploy/restart assertion, " +
             "AIBrake will block.",
         },
+        budget_cap_usd: {
+          type: "number",
+          description:
+            "Hard or soft budget cap in USD for the current objective. When set, " +
+            "the task_budget_breach detector compares (spent_on_objective_usd + " +
+            "estimated_cost_usd) against this cap. If omitted, AIBrake uses a " +
+            "permissive default of $50 (effectively dormant) — pass an actual " +
+            "budget so the detector can protect you.",
+        },
+        budget_hard_limit: {
+          type: "boolean",
+          description:
+            "If true and the budget would be breached, AIBrake deterministically " +
+            "BLOCKS the action (returns decision: 'block'). If false (default), it " +
+            "warns or requires confirmation. Use true for production-grade budget " +
+            "guardrails; false for early experimentation.",
+        },
+        spent_on_objective_usd: {
+          type: "number",
+          description:
+            "How much the agent has ALREADY spent on this objective in this " +
+            "session, in USD. Used together with estimated_cost_usd to project " +
+            "the post-action total against budget_cap_usd. If omitted, AIBrake " +
+            "approximates as prior_attempts × estimated_cost.",
+        },
       },
       required: ["action_type", "reason"],
     },
@@ -134,6 +159,18 @@ function runAibrakeCheck(args: any): {
   const verifications: string[] = Array.isArray(args.verifications_done)
     ? args.verifications_done
     : [];
+  // Budget cap: if caller passes one, honour it; else permissive $50 default
+  // (effectively dormant — task_budget_breach detector can't fire usefully).
+  const budgetCap = typeof args.budget_cap_usd === "number" && args.budget_cap_usd > 0
+    ? args.budget_cap_usd
+    : 50;
+  const budgetHardLimit = args.budget_hard_limit === true;
+  // Spent-on-objective: if caller passes one, honour it; else approximate as
+  // prior_attempts × estimated_cost (covers the simple "I retried N times"
+  // case without making the agent track running totals itself).
+  const spentOnObjective = typeof args.spent_on_objective_usd === "number"
+    ? args.spent_on_objective_usd
+    : prior * cost;
 
   // Build verification evidence map for assertion-shaped actions
   const verificationKeys = [
@@ -167,7 +204,7 @@ function runAibrakeCheck(args: any): {
     objective: {
       id: "mcp_session",
       goal: args.reason,
-      budget: { amount: 50, currency: "USD", hard_limit: false },
+      budget: { amount: budgetCap, currency: "USD", hard_limit: budgetHardLimit },
       success_criteria: [],
       max_paid_attempts: 20,
       allowed_actions: [actionType],
@@ -195,12 +232,26 @@ function runAibrakeCheck(args: any): {
       confidence_delta: newEvidence ? 0.1 : 0,
     },
     spend: {
-      spent_on_objective: { amount: prior * cost, currency: "USD" },
+      spent_on_objective: { amount: spentOnObjective, currency: "USD" },
     },
     telemetry_quality: { completeness: "medium" },
   };
 
   const out = runCheck(input, { emitLog: false });
+
+  // Fire-and-forget hosted forwarding. If AIBRAKE_API_KEY is set, POST the
+  // same input to api.aibrake.dev/v1/check so the hosted decision log
+  // captures the call and /v1/public/stats counter increments. We do NOT
+  // await it — the agent gets its decision from the in-process Core
+  // immediately, the hosted call is best-effort observability. Failures
+  // are logged to stderr but never propagate (the agent must not block
+  // on AIBrake's own telemetry).
+  forwardToHosted(input).catch((err) => {
+    process.stderr.write(
+      `[aibrake mcp] hosted forward failed (non-fatal): ${err?.message ?? err}\n`
+    );
+  });
+
   return {
     decision: out.decision,
     risk_score: out.risk_score,
@@ -210,6 +261,43 @@ function runAibrakeCheck(args: any): {
     matched_rules: out.matched_rules,
     suggested_action: out.suggested_action.type,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Hosted-API forwarder (best-effort, non-blocking)
+// ─────────────────────────────────────────────────────────────────────────
+
+async function forwardToHosted(input: SpendingGuardCheckInput): Promise<void> {
+  const apiKey =
+    process.env.AIBRAKE_API_KEY ?? process.env.AGENT_SPEND_GUARD_API_KEY;
+  if (!apiKey) return; // No key → no hosted log, local Core decision only.
+
+  const baseUrl =
+    process.env.AIBRAKE_URL ??
+    process.env.AGENT_SPEND_GUARD_URL ??
+    "https://api.aibrake.dev";
+
+  if (typeof fetch !== "function") return; // Node <18 — skip silently.
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 1500);
+
+  try {
+    await fetch(`${baseUrl}/v1/check`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${apiKey}`,
+        "x-aibrake-source": "mcp-server",
+      },
+      body: JSON.stringify(input),
+      signal: controller.signal,
+    });
+    // We don't even read the response — the local Core already produced the
+    // canonical decision. The POST is purely for hosted-side logging.
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
