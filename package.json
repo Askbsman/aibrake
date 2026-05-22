@@ -52,7 +52,9 @@
     "preflight": "node scripts/preflight.mjs",
     "configure": "node scripts/configure-for-deploy.mjs",
     "check:domains": "node scripts/check-domains.mjs",
-    "prepublishOnly": "node scripts/check-version-strings.mjs && npm run build"
+    "prepublishOnly": "node scripts/check-version-strings.mjs && npm run build",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "keywords": [
     "ai",
@@ -87,9 +89,9 @@
     "zod": "^3.23.8"
   },
   "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.20.0",
     "fastify": "^4.28.1 || ^5.0.0",
-    "openai": ">=4.0.0",
-    "@anthropic-ai/sdk": ">=0.20.0"
+    "openai": ">=4.0.0"
   },
   "peerDependenciesMeta": {
     "fastify": {
@@ -107,7 +109,8 @@
     "fastify": "^4.28.1",
     "tsx": "^4.16.2",
     "typescript": "^5.5.3",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "wrangler": "^4.93.1"
   },
   "engines": {
     "node": ">=20"
