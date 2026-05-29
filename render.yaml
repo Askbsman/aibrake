@@ -68,3 +68,19 @@ services:
       # Optional — only set if you want partners to see the public URL in /v1/meta
       - key: AGENT_SPEND_GUARD_PUBLIC_URL
         sync: false
+      # ── x402 micropayments (Stage 0.7) ──
+      # Off by default. Flip to "true" to activate the paid /x402/v1/check
+      # endpoint. Requires X402_PAY_TO. Free /v1/check stays as-is.
+      - key: X402_ENABLED
+        value: "false"
+      # "base" for mainnet (real USDC), "base-sepolia" for testnet
+      - key: X402_NETWORK
+        value: base-sepolia
+      # Receiving wallet address. SECRET — Render will prompt at deploy.
+      # Use the SAME wallet as your other x402 projects for consistency.
+      - key: X402_PAY_TO
+        sync: false
+      - key: X402_FACILITATOR_URL
+        value: https://x402.org/facilitator
+      - key: X402_PRICE_CHECK_USD
+        value: "0.001"

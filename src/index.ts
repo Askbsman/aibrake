@@ -108,10 +108,11 @@ export { CodingAgentAdapter } from "./adapters/coding-agent/index.js";
 //
 // NOTE: MockPaymentGuard is intentionally NOT exported from the package
 // root. It's a development-only helper that always returns {ok: true} —
-// shipping it as a public surface would let a partner accidentally wire a
-// "payment always succeeds" mock into production policy. Importable from
-// `aibrake/payments/mock` for tests; not from `aibrake`.
+// shipping it as a public surface would let a partner accidentally wire
+// "payment always succeeds" into production policy. Importable from
+// `aibrake/payments` for tests; not from `aibrake`.
 export {
+  X402PaymentGuard,
   X402PaymentGuardStub,
   type PaidResource,
   type PaymentGuard,

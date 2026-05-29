@@ -6,6 +6,126 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.7.0-beta — x402 micropayments on Base (server-side paywall)
+
+**Tag:** `aibrake-v0.7.0-beta`
+**Base:** `aibrake-v0.6.0-beta`
+**Goal:** AIBrake is now discoverable / monetisable on the x402 economy.
+Partners can pay $0.001 USDC per `/v1/check` call without signing up,
+exchanging API keys, or filling out a partner-onboarding form. Same
+pattern as our other project bsman-ai / callbsman.com — consistent
+operator experience across both author services.
+
+### Added
+
+- **`POST /x402/v1/check`** — paid mirror of `/v1/check`. Same input,
+  same Core check, same decision output — but gated behind an x402
+  payment requirement. Calls without an `X-Payment` header receive
+  HTTP 402 with `PaymentRequiredBody` describing price + payee +
+  network + USDC contract address. With a verified header, the
+  request runs through the canonical AIBrake check.
+
+- **`GET /.well-known/x402`** — discovery manifest. Returns the same
+  PaymentRequiredBody shape at HTTP 200 so x402 crawlers / agentic.market
+  indexers / x402 registries can introspect pricing without triggering
+  the paywall. Returns `{enabled: false, ...}` when x402 is off so
+  clients always get a definitive answer.
+
+- **`src/middleware/x402.ts`** — Fastify preHandler that implements the
+  minimal server-side x402 protocol on top of `fetch()`. No new npm
+  dependencies (server doesn't need `@x402/*` packages — all crypto
+  verification happens at the facilitator). Functions exported:
+  `buildPaymentRequirements()`, `verifyPaymentWithFacilitator()`,
+  `createX402PreHandler()`.
+
+- **`src/payments/x402-payment-guard.ts` — real `X402PaymentGuard`**
+  replacing the throw-loudly stub. Implements the `PaymentGuard`
+  contract for partners doing custom integrations outside the
+  canonical /x402/v1/check route. Re-exported from package root.
+
+- **`X402PaymentGuardStub`** kept exported for 0.5.x partners but
+  scheduled for removal in 1.0.
+
+### Env config (new — all optional, off by default)
+
+```
+X402_ENABLED=false                # toggle the paywall
+X402_NETWORK=base-sepolia         # "base" for mainnet, "base-sepolia" for testnet
+X402_PAY_TO=0x...                 # wallet that receives USDC
+X402_FACILITATOR_URL=https://x402.org/facilitator
+X402_PRICE_CHECK_USD=0.001        # price per /x402/v1/check in USD
+```
+
+Wired in `render.yaml` so the next Render deploy can prompt for the
+secret `X402_PAY_TO` value. Recommended: use the SAME wallet address
+as your other x402 projects (consistent treasury for cross-project
+accounting).
+
+### Discovery — `/v1/meta` extension
+
+When `X402_ENABLED=true`, `/v1/meta` now includes:
+```json
+"endpoints": {
+  ...,
+  "x402_check": "/x402/v1/check",
+  "x402_discovery": "/.well-known/x402"
+},
+"x402": {
+  "enabled": true,
+  "network": "base-sepolia",
+  "price_check_usd": 0.001,
+  "asset": "USDC",
+  "facilitator": "https://x402.org/facilitator"
+}
+```
+
+Off: `{"x402": {"enabled": false}}` — partners can probe whether the
+paid path is available without making a paid call.
+
+### Pattern source
+
+Implementation mirrors [bsman-ai](https://github.com/Askbsman/Bsman-ai)
+`src/middleware/x402.ts`, adapted from Hono to Fastify. Same env var
+names (`X402_*`), same protocol semantics, same facilitator. Partners
+running both services see one consistent x402 surface.
+
+### Verified
+
+- 234/234 TS tests green (was 218 → +16 new x402 tests covering:
+  PaymentRequiredBody shape, network/price scaling, /x402/v1/check
+  route 402 flow when disabled vs enabled, /.well-known/x402,
+  X402PaymentGuard happy/sad paths with mocked facilitator).
+- `node scripts/check-version-strings.mjs` agrees on `0.7.0-beta`.
+
+### What is NOT implemented (deferred)
+
+- **Settlement** (calling facilitator's `/settle` endpoint) — currently
+  we only `/verify`. Facilitators that auto-settle on verify don't need
+  this; for facilitators that require explicit settle, this is a 0.7.1
+  follow-up.
+- **Replay protection** (idempotent receipt storage) — out of scope for
+  testnet validation. Required before mainnet flip.
+- **Mainnet deployment** — start on `base-sepolia` for ~7 days of
+  validation; flip `X402_NETWORK=base` after smoke is green and replay
+  protection is in.
+
+### Upgrade notes
+
+This is additive. Existing deployments where `X402_ENABLED` is unset
+get default `false` and behave identically to 0.6.0-beta — no new
+endpoints mount, `/v1/meta` reports `x402.enabled: false`.
+
+To activate on testnet:
+1. Set `X402_ENABLED=true`, `X402_NETWORK=base-sepolia`, `X402_PAY_TO=0x...`
+   in your hosting platform's env
+2. Redeploy
+3. `curl -X POST https://api.aibrake.dev/x402/v1/check` should return
+   HTTP 402 with the PaymentRequiredBody
+4. Use any x402-compatible client (e.g. `x402-fetch`) to send a signed
+   payment, expect HTTP 200 with the AIBrake decision
+
+---
+
 ## 0.6.0-beta — MCP feature-complete: budget cap + hosted log forwarding
 
 **Tag:** `aibrake-v0.6.0-beta`

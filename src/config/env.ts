@@ -6,6 +6,16 @@
 export type AuthMode = "optional" | "required";
 export type LogSinkKind = "stdout" | "jsonl" | "none";
 
+export type X402Network = "base" | "base-sepolia";
+
+export interface X402Config {
+  enabled: boolean;
+  network: X402Network;
+  facilitatorUrl: string;
+  payTo: string;
+  priceCheckUsd: number;
+}
+
 export interface EnvConfig {
   port: number;
   nodeEnv: string;
@@ -21,6 +31,11 @@ export interface EnvConfig {
   serviceName: string;
   serviceVersion: string;
   publicUrl: string | undefined;
+
+  // Stage 0.7: x402 micropayments on Base. Off by default for backwards compat.
+  // When enabled, mounts POST /x402/v1/check as a paid resource alongside the
+  // free /v1/check (which keeps the Bearer-auth contract).
+  x402: X402Config;
 }
 
 function parseList(raw: string | undefined): Set<string> {
@@ -50,6 +65,24 @@ function parseNumber(raw: string | undefined, fallback: number): number {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function parseBool(raw: string | undefined, fallback: boolean): boolean {
+  if (raw === undefined) return fallback;
+  const v = raw.trim().toLowerCase();
+  if (v === "true" || v === "1" || v === "yes") return true;
+  if (v === "false" || v === "0" || v === "no") return false;
+  return fallback;
+}
+
+function parseFloatPositive(raw: string | undefined, fallback: number): number {
+  if (!raw) return fallback;
+  const n = parseFloat(raw);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function parseX402Network(raw: string | undefined): X402Network {
+  return raw === "base" ? "base" : "base-sepolia";
+}
+
 export function loadEnvConfig(
   env: NodeJS.ProcessEnv = process.env
 ): EnvConfig {
@@ -72,7 +105,17 @@ export function loadEnvConfig(
     logPath: env.AGENT_SPEND_GUARD_LOG_PATH ?? "./logs/decisions.jsonl",
 
     serviceName: env.AGENT_SPEND_GUARD_SERVICE_NAME ?? "agent-spend-guard",
-    serviceVersion: "0.6.0-beta",
+    serviceVersion: "0.7.0-beta",
     publicUrl: env.AGENT_SPEND_GUARD_PUBLIC_URL,
+
+    x402: {
+      enabled: parseBool(env.X402_ENABLED, false),
+      network: parseX402Network(env.X402_NETWORK),
+      facilitatorUrl:
+        env.X402_FACILITATOR_URL?.trim() ||
+        "https://x402.org/facilitator",
+      payTo: env.X402_PAY_TO?.trim() ?? "",
+      priceCheckUsd: parseFloatPositive(env.X402_PRICE_CHECK_USD, 0.001),
+    },
   };
 }

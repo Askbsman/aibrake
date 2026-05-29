@@ -9,6 +9,8 @@ import { registerCheckDeepRoute } from "./routes/check-deep.js";
 import { registerHealthRoute } from "./routes/health.js";
 import { registerMetaRoute } from "./routes/meta.js";
 import { registerPublicStatsRoute } from "./routes/public-stats.js";
+import { registerX402CheckRoute } from "./routes/x402-check.js";
+import { registerWellKnownX402Route } from "./routes/well-known-x402.js";
 
 export interface BuildServerOptions {
   logger?: boolean;
@@ -57,6 +59,8 @@ export async function buildServerWithDeps(
   await registerPublicStatsRoute(app, config);
   await registerCheckRoute(app, { authMiddleware, rateLimitMiddleware });
   await registerCheckDeepRoute(app, { authMiddleware, rateLimitMiddleware });
+  await registerWellKnownX402Route(app, config);
+  await registerX402CheckRoute(app, { x402: config.x402 });
 
   return { app, config, rateLimitMiddleware };
 }

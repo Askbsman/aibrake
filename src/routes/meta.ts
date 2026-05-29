@@ -64,7 +64,22 @@ export async function registerMetaRoute(
         check: "/v1/check",
         check_deep: "/v1/check-deep",
         public_stats: "/v1/public/stats",
+        ...(config.x402.enabled
+          ? {
+              x402_check: "/x402/v1/check",
+              x402_discovery: "/.well-known/x402",
+            }
+          : {}),
       },
+      x402: config.x402.enabled
+        ? {
+            enabled: true,
+            network: config.x402.network,
+            price_check_usd: config.x402.priceCheckUsd,
+            asset: "USDC",
+            facilitator: config.x402.facilitatorUrl,
+          }
+        : { enabled: false },
       supported_patterns: [
         "stale_context_retry_storm",
         "same_tool_retry_loop",

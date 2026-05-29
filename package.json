@@ -1,6 +1,6 @@
 {
   "name": "aibrake",
-  "version": "0.6.0-beta",
+  "version": "0.7.0-beta",
   "description": "Loop detection and model stop-loss for paid AI agents. One-line install (`import 'aibrake/auto'`) monkey-patches OpenAI + Anthropic SDKs so every paid call passes through AIBrake.",
   "type": "module",
   "main": "dist/index.js",
