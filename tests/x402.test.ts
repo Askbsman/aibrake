@@ -37,15 +37,13 @@ describe("x402 buildPaymentRequirements", () => {
       "https://api.example.com/x402/v1/check",
       "test description"
     );
-    expect(body.x402Version).toBe(1);
+    expect(body.x402Version).toBe(2);
     expect(body.accepts).toHaveLength(1);
     expect(body.accepts[0]!.scheme).toBe("exact");
-    expect(body.accepts[0]!.network).toBe("base-sepolia");
+    expect(body.accepts[0]!.network).toBe("eip155:84532"); // CAIP-2 for Base Sepolia
     expect(body.accepts[0]!.payTo).toBe(TEST_PAYEE);
-    expect(body.accepts[0]!.maxAmountRequired).toBe("1000"); // 0.001 * 1e6
-    expect(body.accepts[0]!.resource).toBe(
-      "https://api.example.com/x402/v1/check"
-    );
+    expect(body.accepts[0]!.amount).toBe("1000"); // 0.001 * 1e6
+    expect(body.resource.url).toBe("https://api.example.com/x402/v1/check");
     expect(body.accepts[0]!.extra.name).toBe("USDC");
   });
 
@@ -63,7 +61,8 @@ describe("x402 buildPaymentRequirements", () => {
     expect(body.accepts[0]!.asset.toLowerCase()).toBe(
       "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
     );
-    expect(body.accepts[0]!.maxAmountRequired).toBe("5000"); // 0.005 * 1e6
+    expect(body.accepts[0]!.amount).toBe("5000"); // 0.005 * 1e6
+    expect(body.accepts[0]!.network).toBe("eip155:8453"); // CAIP-2 for Base mainnet
   });
 
   it("scales maxAmountRequired correctly across orders of magnitude", () => {
@@ -85,7 +84,7 @@ describe("x402 buildPaymentRequirements", () => {
         { ...config, priceCheckUsd: price },
         "https://api.example.com/x402/v1/check"
       );
-      expect(body.accepts[0]!.maxAmountRequired).toBe(expected);
+      expect(body.accepts[0]!.amount).toBe(expected);
     }
   });
 });
@@ -146,11 +145,11 @@ describe("POST /x402/v1/check route behaviour", () => {
       });
       expect(res.statusCode).toBe(402);
       const body = res.json();
-      expect(body.x402Version).toBe(1);
+      expect(body.x402Version).toBe(2);
       expect(body.accepts[0]!.payTo).toBe(TEST_PAYEE);
-      expect(body.accepts[0]!.network).toBe("base-sepolia");
-      expect(body.accepts[0]!.maxAmountRequired).toBe("1000");
-      expect(body.error).toMatch(/X-PAYMENT|required/i);
+      expect(body.accepts[0]!.network).toBe("eip155:84532");
+      expect(body.accepts[0]!.amount).toBe("1000");
+      expect(body.error).toMatch(/required/i);
     });
 
     it("GET /.well-known/x402 returns the full requirements when enabled", async () => {
@@ -158,7 +157,7 @@ describe("POST /x402/v1/check route behaviour", () => {
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body.enabled).toBe(true);
-      expect(body.x402Version).toBe(1);
+      expect(body.x402Version).toBe(2);
       expect(body.accepts[0]!.payTo).toBe(TEST_PAYEE);
     });
 
@@ -327,15 +326,11 @@ describe("verifyPaymentWithFacilitator", () => {
       "not-valid-base64!@#",
       {
         scheme: "exact",
-        network: "base-sepolia",
-        maxAmountRequired: "1000",
-        resource: "https://api.example.com/x402/v1/check",
-        description: "x",
-        mimeType: "application/json",
-        outputSchema: null,
+        network: "eip155:84532",
+        amount: "1000",
+        asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
         payTo: TEST_PAYEE,
         maxTimeoutSeconds: 60,
-        asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
         extra: { name: "USDC", version: "2" },
       }
     );

@@ -6,6 +6,80 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.7.1-beta — x402 v2 wire shape + bazar-compatible discovery
+
+**Tag:** `aibrake-v0.7.1-beta`
+**Base:** `aibrake-v0.7.0-beta`
+**Goal:** make AIBrake's `/x402/v1/check` and `/.well-known/x402` produce
+the **same PaymentRequiredBody structure** that callbsman.com / bsman-ai
+ships, so the official x402 bazar (Coinbase + agentic.market crawlers)
+can discover and index AIBrake the same way it indexes bsman-ai.
+
+### Wire-shape changes (breaking vs 0.7.0)
+
+- `x402Version: 1` → `x402Version: 2`
+- `accepts[].network` was `"base" | "base-sepolia"` → now CAIP-2:
+  `"eip155:8453"` (mainnet) | `"eip155:84532"` (sepolia)
+- `accepts[].maxAmountRequired` → renamed to `accepts[].amount`
+- `accepts[].resource` (top-level on each accept) → moved to a
+  request-level `resource: { url, description, mimeType }` object
+- Removed `accepts[].outputSchema` (was `null` anyway) — moved into
+  `extensions["x402.discovery"].output.schema`
+- Added bazar-required top-level fields:
+  - `extensions` — discovery extension with input/output examples + JSON
+    schemas (mirrors `@x402/extensions.declareDiscoveryExtension`)
+  - `compatibility` — `paymentRequiredHeader` canonical, `headerIsCanonical`,
+    `hint`
+  - `resourceUrl`, `method`, `endpoint`
+  - `payment` — human-readable network ("Base mainnet"), CAIP-2
+    `networkId`, formatted `price`
+  - `metadata` — full bazar listing: name, provider, category, description,
+    docsUrl, openApiUrl, githubUrl, mainMode, supportedModes, tags,
+    fallbackUrl
+
+This matches bsman-ai's `src/middleware/x402.ts createX402PaymentRequiredBody`
+exactly in shape. Wire-compatible with x402 bazar crawlers.
+
+### Added
+
+- **`src/config/discovery.ts`** — bazar metadata module. Mirrors
+  `bsman-ai/src/config/discovery.ts`:
+  - `bazaarDiscoveryMetadata` (name / provider / category / description /
+    URLs / supportedModes / tags / payment)
+  - `bazaarTags` (11 tags including `x402`, `MCP`, `Base mainnet`,
+    `agent safety`, `loop detection`, `AgentCash`)
+  - `checkRequestExample` + `checkResponseExample` — concrete payloads
+    for bazar listing previews
+  - `checkRequestDiscoverySchema` + `checkResponseDiscoverySchema` —
+    full JSON schemas for the bazar's input/output validation hints
+
+- **`X-Payment` accepted as alias** for the canonical
+  `PAYMENT-REQUIRED` header on incoming requests (clients on the older
+  spec keep working).
+
+### Acceptance criteria (re-verified)
+
+- 234/234 TS tests green. The x402 test suite was updated to assert
+  the v2 shape (`accepts[0].amount` instead of `.maxAmountRequired`,
+  `network: "eip155:84532"` instead of `"base-sepolia"`, etc).
+- `node scripts/check-version-strings.mjs` → all 3 locations on `0.7.1-beta`.
+- `npm run build` clean.
+
+### Upgrade notes
+
+This is an **additive backwards-compatible** change at the **endpoint
+behaviour** level — partners hitting `/x402/v1/check` still get HTTP 402
+without a payment header. The wire shape **changes** for clients that
+parse the body — any x402 client that's already on the official
+@x402/* SDK or anything written against the bsman-ai shape will work
+unchanged. Clients hardcoded against v1 shape (`maxAmountRequired`,
+plain `"base"` network strings) need to update.
+
+Same Render env var contract — no new vars added. `X402_NETWORK=base`
+still works (auto-normalized to `eip155:8453`).
+
+---
+
 ## 0.7.0-beta — x402 micropayments on Base (server-side paywall)
 
 **Tag:** `aibrake-v0.7.0-beta`

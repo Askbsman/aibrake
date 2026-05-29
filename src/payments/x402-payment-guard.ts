@@ -69,7 +69,7 @@ export class X402PaymentGuard implements PaymentGuard {
     const requirementsBody = buildPaymentRequirements(
       this.config,
       resource.endpoint,
-      resource.description ?? "AIBrake check decision"
+      { description: resource.description ?? "AIBrake check decision" }
     );
     const requirement = requirementsBody.accepts[0]!;
 

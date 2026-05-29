@@ -1,83 +1,204 @@
-// x402 micropayment middleware for Fastify routes.
+// x402 micropayment middleware for Fastify routes — bazar-compatible.
 //
-// Pattern adapted from Bsman-ai's src/middleware/x402.ts (which uses
-// @x402/hono) — we re-implement the minimal server-side protocol on top
-// of fetch() so we don't need to add @x402/* as deps (server only needs
-// 402-response formatting and a facilitator call; all the crypto is
-// off-server).
+// Pattern + protocol shape mirrored from bsman-ai (callbsman.com)
+// `src/middleware/x402.ts`. Same x402Version (2), same CAIP-2 network
+// identifiers, same PaymentRequiredBody structure. Bsman-ai uses the
+// official @x402 SDK; we re-implement the server-side primitives on
+// top of fetch() to keep AIBrake free of @x402 deps. Wire-compatibility
+// is what matters for the bazar crawler — we match that.
 //
-// Flow:
-//   1. Client sends POST /x402/v1/check WITHOUT X-Payment header
-//   2. We return 402 with PaymentRequiredBody describing price + payee
-//   3. Client constructs a signed payment, retries with X-Payment header
-//   4. We POST { paymentPayload, paymentRequirements } to
-//      ${facilitatorUrl}/verify
-//   5. If verify returns isValid: true, we let the request through
-//   6. Optionally call /settle to finalize the on-chain settlement
+// Bsman-ai PaymentRequiredBody fields covered:
+//   - x402Version: 2
+//   - error
+//   - resource { url, description, mimeType }
+//   - accepts[]: { scheme, network (CAIP-2), amount, asset, payTo, maxTimeoutSeconds, extra }
+//   - extensions (bazaar discovery payload — schema, examples)
+//   - compatibility { paymentRequiredHeader, headerIsCanonical, hint }
+//   - resourceUrl, method, endpoint
+//   - payment { protocol, network, networkId, price, facilitator }
+//   - metadata (bazaar listing fields)
 //
-// All env config lives in X402Config (src/config/env.ts).
+// USDC contract addresses per network are inlined from the canonical
+// Coinbase USDC deployment list; the facilitator will reject any payment
+// to a wrong contract so the bazar crawler can rely on these as ground
+// truth.
 
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { X402Config } from "../config/env.js";
+import {
+  bazaarDiscoveryMetadata,
+  bazaarTags,
+  checkRequestExample,
+  checkRequestDiscoverySchema,
+  checkResponseExample,
+  checkResponseDiscoverySchema,
+} from "../config/discovery.js";
 
 // ─────────────────────────────────────────────────────────────────────────
-// Types — mirror the x402 protocol (https://x402.org/spec)
+// Network mapping — same as bsman-ai/src/config/x402.ts
 // ─────────────────────────────────────────────────────────────────────────
 
-export interface PaymentRequirement {
+const NETWORK_ALIASES: Record<string, `${string}:${string}`> = {
+  "base-sepolia": "eip155:84532",
+  base: "eip155:8453",
+};
+
+const USDC_CONTRACTS: Record<string, string> = {
+  "eip155:8453": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",       // Base mainnet
+  "eip155:84532": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",      // Base Sepolia
+};
+
+export function normalizeNetwork(value: string): `${string}:${string}` {
+  if (NETWORK_ALIASES[value]) return NETWORK_ALIASES[value]!;
+  if (value.includes(":")) return value as `${string}:${string}`;
+  throw new Error(
+    `X402_NETWORK must be a CAIP-2 identifier or known alias. Got: ${value}`
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Types — x402 v2 wire shape (bazar-compatible)
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface PaymentAccept {
   scheme: "exact";
-  network: "base" | "base-sepolia";
-  maxAmountRequired: string;        // smallest unit (wei/microUSDC)
-  resource: string;                  // canonical URL of the paid resource
-  description: string;
-  mimeType: string;
-  outputSchema: Record<string, unknown> | null;
-  payTo: string;                     // 0x... receiver
+  network: `${string}:${string}`;     // CAIP-2 e.g. eip155:8453
+  amount: string;                       // smallest unit (microUSDC)
+  asset: string;                        // 0x... contract
+  payTo: string;                        // 0x... receiver
   maxTimeoutSeconds: number;
-  asset: string;                     // 0x... USDC contract address
-  extra: { name: string; version: string };
+  extra: Record<string, unknown>;
 }
 
 export interface PaymentRequiredBody {
-  x402Version: number;
-  accepts: PaymentRequirement[];
+  x402Version: 2;
   error: string;
+  resource: {
+    url: string;
+    description: string;
+    mimeType: string;
+  };
+  accepts: PaymentAccept[];
+  extensions: Record<string, unknown>;
+  compatibility: {
+    paymentRequiredHeader: "PAYMENT-REQUIRED";
+    headerIsCanonical: true;
+    hint: string;
+  };
+  resourceUrl: string;
+  method: string;
+  endpoint: string;
+  payment: {
+    protocol: "x402";
+    network: string;                    // human-readable e.g. "Base mainnet"
+    networkId: string;                  // CAIP-2 e.g. "eip155:8453"
+    price: string;                      // "$0.001 per check decision"
+    facilitator: string;                // "configured x402 facilitator"
+  };
+  metadata: Record<string, unknown>;
 }
 
-// USDC contract addresses per network (canonical, from official USDC docs).
-const USDC_CONTRACTS: Record<string, string> = {
-  base: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-  "base-sepolia": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-};
-
 // ─────────────────────────────────────────────────────────────────────────
-// Build a PaymentRequiredBody from config + the actual resource URL.
+// Build a v2 PaymentRequiredBody (bazar-compatible).
 // ─────────────────────────────────────────────────────────────────────────
 
 export function buildPaymentRequirements(
   config: X402Config,
   resourceUrl: string,
-  description = "AIBrake /v1/check decision"
+  options: {
+    method?: "GET" | "POST";
+    description?: string;
+  } = {}
 ): PaymentRequiredBody {
-  // USDC has 6 decimals — convert dollars to microUSDC.
+  const network = normalizeNetwork(config.network);
   const microUsdc = Math.round(config.priceCheckUsd * 1_000_000);
-  const requirement: PaymentRequirement = {
+  const method = (options.method ?? "POST").toUpperCase();
+  const description =
+    options.description ?? bazaarDiscoveryMetadata.description;
+  const mimeType = bazaarDiscoveryMetadata.mimeType;
+
+  const accept: PaymentAccept = {
     scheme: "exact",
-    network: config.network,
-    maxAmountRequired: String(microUsdc),
-    resource: resourceUrl,
-    description,
-    mimeType: "application/json",
-    outputSchema: null,
+    network,
+    amount: String(microUsdc),
+    asset:
+      USDC_CONTRACTS[network] ?? USDC_CONTRACTS["eip155:8453"]!,
     payTo: config.payTo,
     maxTimeoutSeconds: 60,
-    asset: USDC_CONTRACTS[config.network] ?? USDC_CONTRACTS.base!,
-    extra: { name: "USDC", version: "2" },
+    extra: {
+      name: "USDC",
+      version: "2",
+      aibrake: {
+        name: bazaarDiscoveryMetadata.name,
+        provider: bazaarDiscoveryMetadata.provider,
+        category: bazaarDiscoveryMetadata.category,
+        tags: [...bazaarTags],
+        docsUrl: bazaarDiscoveryMetadata.docsUrl,
+        openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
+        githubUrl: bazaarDiscoveryMetadata.githubUrl,
+        mainMode: bazaarDiscoveryMetadata.mainMode,
+        supportedModes: [...bazaarDiscoveryMetadata.supportedModes],
+        fallbackUrl: bazaarDiscoveryMetadata.fallbackUrl,
+      },
+    },
   };
+
+  // Discovery extensions — mirror the shape that
+  // @x402/extensions declareDiscoveryExtension produces.
+  const extensions: Record<string, unknown> = {
+    "x402.discovery": {
+      bodyType: "json",
+      input:
+        method === "GET" ? undefined : checkRequestExample,
+      inputSchema:
+        method === "GET" ? undefined : checkRequestDiscoverySchema,
+      output: {
+        example: checkResponseExample,
+        schema: checkResponseDiscoverySchema,
+      },
+    },
+  };
+
   return {
-    x402Version: 1,
-    accepts: [requirement],
-    error: "X-PAYMENT header is required",
+    x402Version: 2,
+    error: "Payment required",
+    resource: {
+      url: resourceUrl,
+      description,
+      mimeType,
+    },
+    accepts: [accept],
+    extensions,
+    compatibility: {
+      paymentRequiredHeader: "PAYMENT-REQUIRED",
+      headerIsCanonical: true,
+      hint:
+        "The PAYMENT-REQUIRED header is canonical. This JSON body mirrors the same PaymentRequired payload for clients that read the body.",
+    },
+    resourceUrl,
+    method,
+    endpoint: `${method} ${resourceUrl}`,
+    payment: {
+      protocol: "x402",
+      network: network === "eip155:8453" ? "Base mainnet" : "Base Sepolia",
+      networkId: network,
+      price: `$${config.priceCheckUsd.toFixed(3)} ${bazaarDiscoveryMetadata.payment.unit}`,
+      facilitator: "configured x402 facilitator",
+    },
+    metadata: {
+      name: bazaarDiscoveryMetadata.name,
+      provider: bazaarDiscoveryMetadata.provider,
+      category: bazaarDiscoveryMetadata.category,
+      description: bazaarDiscoveryMetadata.shortDescription,
+      mimeType,
+      docsUrl: bazaarDiscoveryMetadata.docsUrl,
+      openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
+      githubUrl: bazaarDiscoveryMetadata.githubUrl,
+      mainMode: bazaarDiscoveryMetadata.mainMode,
+      supportedModes: [...bazaarDiscoveryMetadata.supportedModes],
+      tags: [...bazaarTags],
+      fallbackUrl: bazaarDiscoveryMetadata.fallbackUrl,
+    },
   };
 }
 
@@ -94,19 +215,18 @@ interface FacilitatorVerifyResponse {
 export async function verifyPaymentWithFacilitator(
   facilitatorUrl: string,
   paymentPayloadB64: string,
-  paymentRequirements: PaymentRequirement,
+  paymentRequirements: PaymentAccept,
   abortSignal?: AbortSignal
 ): Promise<FacilitatorVerifyResponse> {
   const url = `${facilitatorUrl.replace(/\/$/, "")}/verify`;
   let payload: unknown;
   try {
-    // X-Payment is base64-encoded JSON of the signed payment.
     const decoded = Buffer.from(paymentPayloadB64, "base64").toString("utf8");
     payload = JSON.parse(decoded);
   } catch (err) {
     return {
       isValid: false,
-      invalidReason: `Invalid X-Payment header: ${(err as Error).message}`,
+      invalidReason: `Invalid X-Payment / PAYMENT-REQUIRED header: ${(err as Error).message}`,
     };
   }
 
@@ -114,7 +234,7 @@ export async function verifyPaymentWithFacilitator(
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      x402Version: 1,
+      x402Version: 2,
       paymentPayload: payload,
       paymentRequirements,
     }),
@@ -140,8 +260,6 @@ export function createX402PreHandler(config: X402Config) {
     req: FastifyRequest,
     reply: FastifyReply
   ): Promise<void> {
-    // Defensive: if x402 is disabled, this preHandler shouldn't be wired
-    // up — but if it is, refuse to validate and 503 loudly.
     if (!config.enabled) {
       reply.code(503).send({
         error: "x402_disabled",
@@ -160,22 +278,34 @@ export function createX402PreHandler(config: X402Config) {
     const resourceUrl = `${getOrigin(req)}${req.url}`;
     const paymentRequirementsBody = buildPaymentRequirements(
       config,
-      resourceUrl
+      resourceUrl,
+      {
+        method: req.method.toUpperCase() as "GET" | "POST",
+        description: bazaarDiscoveryMetadata.description,
+      }
     );
 
-    // No X-Payment header → return 402 with requirements.
-    const xPayment = (req.headers["x-payment"] ?? req.headers["X-Payment"]) as
-      | string
-      | undefined;
-    if (!xPayment) {
+    // x402 canonical: clients read either PAYMENT-REQUIRED header (preferred)
+    // or the body. We accept X-Payment (legacy) and PAYMENT-REQUIRED header
+    // names for forwards-compat.
+    const paymentHeaderRaw =
+      req.headers["x-payment"] ??
+      req.headers["X-Payment"] ??
+      req.headers["payment-required"] ??
+      req.headers["PAYMENT-REQUIRED"];
+    const paymentHeader = Array.isArray(paymentHeaderRaw)
+      ? paymentHeaderRaw[0]
+      : paymentHeaderRaw;
+
+    if (!paymentHeader) {
       reply
         .code(402)
         .header("content-type", "application/json")
+        .header("payment-required", "true")
         .send(paymentRequirementsBody);
       return;
     }
 
-    // Verify via facilitator.
     const requirement = paymentRequirementsBody.accepts[0]!;
     let verifyResult: FacilitatorVerifyResponse;
     const controller = new AbortController();
@@ -183,7 +313,7 @@ export function createX402PreHandler(config: X402Config) {
     try {
       verifyResult = await verifyPaymentWithFacilitator(
         config.facilitatorUrl,
-        xPayment,
+        paymentHeader,
         requirement,
         controller.signal
       );
@@ -205,7 +335,6 @@ export function createX402PreHandler(config: X402Config) {
       return;
     }
 
-    // Verified — annotate request and let it through.
     (req as any).x402Payer = verifyResult.payer;
     return;
   };

@@ -34,7 +34,10 @@ export async function registerWellKnownX402Route(
     const body = buildPaymentRequirements(
       config.x402,
       resourceUrl,
-      "AIBrake check — loop detection + model stop-loss decision"
+      {
+        method: "POST",
+        description: "AIBrake check — loop detection + model stop-loss decision",
+      }
     );
     return {
       enabled: true,
