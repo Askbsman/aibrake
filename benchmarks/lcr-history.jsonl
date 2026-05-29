@@ -1,0 +1,1 @@
+{"ts":"2026-05-29T15:50:49.886Z","corpus_version":"v1","total":100,"correct":98,"lcr_pct":98,"recall_pct":96,"precision_pct":100,"false_positive_rate_pct":0,"p50_ms":0.0042,"p95_ms":0.0832,"mean_ms":0.025564000000000003}
