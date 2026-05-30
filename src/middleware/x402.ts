@@ -381,15 +381,15 @@ export async function verifyPaymentWithFacilitator(
     };
   }
 
-  // Inject bazaar discovery metadata into the payload that goes to CDP.
-  if (bazaarContext) {
-    payload = enrichPayloadForBazaar(
-      payload,
-      paymentRequirements,
-      bazaarContext.resourceUrl,
-      bazaarContext.bazaarExt
-    );
-  }
+  // NOTE 2026-05-30: tried enriching paymentPayload directly with
+  // resource + extensions.bazaar (per CDP Bazaar docs); CDP /verify
+  // rejected the modified payload with HTTP 400 "must match one of
+  // [x402V2PaymentPayload, x402V1PaymentPayload]". The wallet-signed
+  // payload's shape is rigid — adding top-level fields breaks the
+  // EIP-712 schema match. Bazaar metadata is injected via the OUTER
+  // envelope (extensions field at top level of the verify request body)
+  // instead, below.
+  void bazaarContext;
 
   let authHeaders: Record<string, string> = {};
   try {
@@ -400,6 +400,13 @@ export async function verifyPaymentWithFacilitator(
       invalidReason: `Failed to sign CDP request: ${(err as Error).message}`,
     };
   }
+
+  // Outer envelope: include extensions at top level for the bazaar
+  // indexer (sibling to paymentPayload + paymentRequirements). The
+  // wallet-signed paymentPayload stays untouched.
+  const envelopeExtensions = bazaarContext
+    ? { bazaar: bazaarContext.bazaarExt }
+    : undefined;
 
   const res = await fetch(ep.url, {
     method: "POST",
@@ -412,6 +419,8 @@ export async function verifyPaymentWithFacilitator(
       x402Version: 2,
       paymentPayload: payload,
       paymentRequirements,
+      resource: bazaarContext?.resourceUrl,
+      extensions: envelopeExtensions,
     }),
     signal: abortSignal,
   });
@@ -461,17 +470,9 @@ export async function settlePaymentWithFacilitator(
       error: `Invalid payment payload: ${(err as Error).message}`,
     };
   }
-  // Inject bazaar metadata before settle — this is the call CDP's indexer
-  // actually reads from. Per docs: "settle request must contain
-  // paymentPayload.resource" and extensions.bazaar.
-  if (bazaarContext) {
-    payload = enrichPayloadForBazaar(
-      payload,
-      paymentRequirements,
-      bazaarContext.resourceUrl,
-      bazaarContext.bazaarExt
-    );
-  }
+  // Bazaar metadata is sent on the outer envelope below, not inside
+  // the wallet-signed paymentPayload (see verify() for the rationale).
+  void bazaarContext;
   let authHeaders: Record<string, string> = {};
   try {
     authHeaders = await buildAuthHeaders(facilitatorUrl, "settle", auth);
@@ -481,6 +482,9 @@ export async function settlePaymentWithFacilitator(
       error: `Failed to sign CDP settle request: ${(err as Error).message}`,
     };
   }
+  const settleEnvelopeExtensions = bazaarContext
+    ? { bazaar: bazaarContext.bazaarExt }
+    : undefined;
   const res = await fetch(ep.url, {
     method: "POST",
     redirect: "follow",
@@ -492,6 +496,8 @@ export async function settlePaymentWithFacilitator(
       x402Version: 2,
       paymentPayload: payload,
       paymentRequirements,
+      resource: bazaarContext?.resourceUrl,
+      extensions: settleEnvelopeExtensions,
     }),
     signal: abortSignal,
   });
