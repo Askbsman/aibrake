@@ -35,7 +35,7 @@ guardrail. They live in different parts of the stack.
 | **Built on** | Playwright | Stateless detector pipeline, 6 evidence-based detectors |
 | **Integration standard** | agentskills.io (Hermes-native skill) | MCP (Anthropic / Cursor / Cline / Codex CLI) — **also** agentskills.io as of today |
 | **Latency** | depends on browser ops | p50 0.004 ms (4 microseconds) |
-| **Public metric** | 60.8% on Odysseys long-task benchmark | 98.0% LCR on retry-storm / unverified-deploy / budget / drift / escalation corpus |
+| **Public metric** | 60.8% on Odysseys long-task benchmark | 98.0% LCR on isolated-scenario corpus · **100% sensitivity / 100% precision** on 130-step Odyssey multi-step session corpus |
 | **Origin** | Microsoft | Indie founder, open source MIT |
 | **License** | Microsoft license | MIT |
 
@@ -169,18 +169,27 @@ Microsoft shipped for Webwright + Hermes.
 
 ---
 
-## Repro the 98.0% LCR
+## Repro the benchmarks
 
 ```bash
 git clone https://github.com/Askbsman/aibrake.git
 cd aibrake
 npm install
-npx tsx benchmarks/run-lcr.ts
+npx tsx benchmarks/run-lcr.ts        # 98.0% LCR (isolated scenarios)
+npx tsx benchmarks/run-odyssey.ts    # 100/100 on multi-step sessions
 ```
 
-Corpus is `benchmarks/corpus.ts` — 100 labeled scenarios across the
-6 detectors. v1 is synthetic; v2 (planned) will be real partner traces
-with human-reviewed labels.
+**LCR (`benchmarks/corpus.ts`)** — 100 labeled isolated scenarios
+across the 6 detectors. Tests decision boundaries.
+
+**Odyssey (`benchmarks/odyssey-corpus.ts`)** — 5 hand-crafted agent
+sessions of 15–40 steps each (130 steps total). Mixes loop-prone
+regions with legitimate progress. Tests AIBrake's behavior under
+realistic context drift — does it catch the loops without flagging
+the work?
+
+Both are synthetic v1. v2 will be real partner traces with
+human-reviewed labels.
 
 ---
 

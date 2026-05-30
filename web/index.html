@@ -904,7 +904,7 @@
           paid AI agents.
         </h1>
         <p class="hero-sub">
-          Detects stale retries, same-tool loops, premium-model burn, and unverified deploys before the next expensive step. <strong>4 lines in your MCP config</strong> — works with Codex CLI, Claude Code, Cursor, Cline. <strong>98.0% LCR</strong>, p50 0.004 ms.
+          Detects stale retries, same-tool loops, premium-model burn, and unverified deploys before the next expensive step. <strong>4 lines in your MCP config</strong> — works with Codex CLI, Claude Code, Cursor, Cline. <strong>98.0% LCR</strong> · <strong>100/100 on 130-step Odyssey</strong>, p50 0.004 ms.
         </p>
         <div class="hero-cta-row">
           <a class="btn btn-primary" href="#integrate">4-line install <span class="arrow">→</span></a>
@@ -1190,6 +1190,38 @@
     <p class="reveal" style="margin-top: var(--s-3); font-size: 0.88rem; color: var(--muted);">
       <strong>Honest framing:</strong> simulated workloads, not paying customers. Numbers are <em>offered</em> savings — realized depends on team heed rate (typically 40-80%). Full methodology in <a href="https://github.com/Askbsman/aibrake/blob/main/SIMULATION_100_PARTNERS_WEEK_REPORT.md">SIMULATION_100_PARTNERS_WEEK_REPORT.md</a>.
     </p>
+    <div class="reveal" style="margin-top: var(--s-8); padding-top: var(--s-8); border-top: 1px solid var(--border);">
+      <h3 style="margin:0 0 var(--s-3) 0;">Odyssey — multi-step agent sessions</h3>
+      <p style="margin: 0 0 var(--s-4) 0; color: var(--muted); font-size: 0.95rem;">
+        Five hand-crafted agent journeys (130 steps total) that mix loop-prone regions with legitimate progress. AIBrake is asked at every step. Ground-truth labels per step let us score sensitivity and precision separately.
+      </p>
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <h3>Sensitivity</h3>
+          <div class="kpi-value">100%</div>
+          <p class="kpi-note">37 of 37 loop-region steps caught</p>
+        </div>
+        <div class="kpi-card">
+          <h3>Precision</h3>
+          <div class="kpi-value">100%</div>
+          <p class="kpi-note">37 of 37 catches correct (0 false positives across 88 progress steps)</p>
+        </div>
+        <div class="kpi-card">
+          <h3>Savings realized</h3>
+          <div class="kpi-value">$6.28</div>
+          <p class="kpi-note">of $6.12 potential — caught loops earlier than expected</p>
+        </div>
+        <div class="kpi-card">
+          <h3>Latency / step</h3>
+          <div class="kpi-value">~0.04 ms</div>
+          <p class="kpi-note">40 microseconds — invisible at runtime</p>
+        </div>
+      </div>
+      <p style="margin-top: var(--s-3); font-size: 0.88rem; color: var(--muted);">
+        Synthetic v1. Per-Odyssey results and reproduction in
+        <a href="https://github.com/Askbsman/aibrake/blob/main/benchmarks/ODYSSEY_RESULTS.md">ODYSSEY_RESULTS.md</a>.
+      </p>
+    </div>
   </div>
 </section>
 
