@@ -348,8 +348,13 @@ export async function verifyPaymentWithFacilitator(
     };
   }
 
+  // Some facilitators (e.g. x402.org/facilitator → www.x402.org/facilitator)
+  // serve a 308 permanent redirect on the bare hostname. Node's undici fetch
+  // does NOT follow redirects by default — passing `redirect: "follow"` makes
+  // it transparent so a stale env URL still routes.
   const res = await fetch(ep.url, {
     method: "POST",
+    redirect: "follow",
     headers: {
       "content-type": "application/json",
       ...authHeaders,
@@ -410,6 +415,7 @@ export async function settlePaymentWithFacilitator(
   }
   const res = await fetch(ep.url, {
     method: "POST",
+    redirect: "follow",
     headers: {
       "content-type": "application/json",
       ...authHeaders,
