@@ -908,7 +908,7 @@
         </p>
         <div class="hero-cta-row">
           <a class="btn btn-primary" href="#integrate">4-line install <span class="arrow">→</span></a>
-          <a class="btn btn-secondary" href="https://www.x402scan.com/server/37937158-815c-4e22-8ed7-afb716015ad4" target="_blank">Try $0.001 demo on x402scan ↗</a>
+          <a class="btn btn-secondary" href="https://www.x402scan.com/server/37937158-815c-4e22-8ed7-afb716015ad4" target="_blank">Try $0.005 demo on x402scan ↗</a>
         </div>
         <div class="trust-row">
           <span class="trust-item">
@@ -1099,7 +1099,7 @@
           <div style="font-size:0.7rem;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-top:6px;font-weight:600;">Facilitators</div>
         </a>
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;border:1px solid var(--border);border-radius:10px;padding:var(--s-4) var(--s-5);min-width:110px;">
-          <div style="font-size:1.6rem;font-weight:700;color:var(--accent-bright);line-height:1;">$0.001</div>
+          <div style="font-size:1.6rem;font-weight:700;color:var(--accent-bright);line-height:1;">$0.005</div>
           <div style="font-size:0.7rem;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted);margin-top:6px;font-weight:600;">per check</div>
         </div>
       </div>
@@ -1126,7 +1126,7 @@
 <section class="try-now" style="padding:var(--s-8) 0;background:var(--bg);">
   <div class="container">
     <div style="max-width:880px;margin:0 auto;text-align:center;">
-      <div style="font-size:0.7rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-bright);font-weight:700;margin-bottom:var(--s-2);">Try AIBrake — 1 command, $0.001</div>
+      <div style="font-size:0.7rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-bright);font-weight:700;margin-bottom:var(--s-2);">Try AIBrake — 1 command, $0.005 (saves $0.09 on average)</div>
       <h2 style="margin:0 0 var(--s-3) 0;font-size:1.8rem;line-height:1.2;">No signup. No API key. Real payment, real decision.</h2>
       <p style="margin:0 0 var(--s-5) 0;color:var(--muted);font-size:1.05rem;">
         Pays a fraction of a cent via x402 (USDC on Base), returns the actual AIBrake decision your agent would see. The whole round-trip takes under 3 seconds.
@@ -1405,13 +1405,14 @@ cp -r /tmp/aibrake/skills/aibrake ~/.hermes/skills/agent-safety/aibrake
       </div>
       <div class="price-card">
         <h3>x402 rules check</h3>
-        <div class="price">$0.001–$0.005</div>
+        <div class="price">$0.005</div>
         <ul>
-          <li>Per <code>/v1/check</code> call</li>
-          <li>USDC via x402 facilitator</li>
+          <li>Per <code>/x402/v1/check</code> call</li>
+          <li>USDC via CDP / xpay facilitator</li>
           <li>No account, no API key</li>
+          <li><strong>Avg $0.09 saved per call</strong> — ROI 18×</li>
         </ul>
-        <p class="note">Anchor only — pending beta data.</p>
+        <p class="note">Live on <a href="https://www.x402scan.com/server/37937158-815c-4e22-8ed7-afb716015ad4" target="_blank">x402scan</a>.</p>
       </div>
       <div class="price-card">
         <h3>Deep audit</h3>
