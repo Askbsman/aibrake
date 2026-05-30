@@ -481,43 +481,27 @@ export function createX402PreHandler(config: X402Config) {
       }
     );
 
-    // 0.7.2-beta diagnostic: surface what x402 clients (agentcash etc.)
-    // actually send. Pino logs ship to Render so we can correlate a
-    // 402 response with whether the client even tried to pay. Tracks
-    // all known payment-header aliases.
-    {
-      const headerKeys = Object.keys(req.headers);
-      const paymentRaw =
-        req.headers["x-payment"] ??
-        req.headers["payment-signature"] ??
-        req.headers["payment-required"] ??
-        null;
-      const paymentVal = Array.isArray(paymentRaw) ? paymentRaw[0] : paymentRaw;
-      const headerName = req.headers["x-payment"]
-        ? "x-payment"
-        : req.headers["payment-signature"]
-          ? "payment-signature"
-          : req.headers["payment-required"]
-            ? "payment-required"
-            : null;
-      // eslint-disable-next-line no-console
-      console.log(
-        JSON.stringify({
-          event: "x402.diag.incoming",
-          method: req.method,
-          path: req.url,
-          ua: req.headers["user-agent"] ?? null,
-          headerName,
-          paymentHeaderLen: paymentVal ? String(paymentVal).length : 0,
-          paymentHeaderPrefix: paymentVal
-            ? String(paymentVal).slice(0, 48)
-            : null,
-          walletAddress: req.headers["x-wallet-address"] ?? null,
-          sessionId: req.headers["x-session-id"] ?? null,
-          headerKeys,
-        })
-      );
-    }
+    // 0.7.2-beta diagnostic: log every request hitting the paywall so we
+    // can correlate 402s with what was sent. Compact: header alias used,
+    // facilitator URL active for this deployment, payer wallet.
+    // eslint-disable-next-line no-console
+    console.log(
+      JSON.stringify({
+        event: "x402.diag.incoming",
+        method: req.method,
+        path: req.url,
+        ua: req.headers["user-agent"] ?? null,
+        headerName: req.headers["x-payment"]
+          ? "x-payment"
+          : req.headers["payment-signature"]
+            ? "payment-signature"
+            : req.headers["payment-required"]
+              ? "payment-required"
+              : null,
+        facilitatorActive: config.facilitatorUrl,
+        walletAddress: req.headers["x-wallet-address"] ?? null,
+      })
+    );
 
     // x402 canonical: clients read either PAYMENT-REQUIRED header (preferred)
     // or the body. We accept several header names for forwards-compat:

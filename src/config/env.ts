@@ -90,21 +90,16 @@ function parseX402Network(raw: string | undefined): X402Network {
   return raw === "base" ? "base" : "base-sepolia";
 }
 
-// Transparent override: when X402_FACILITATOR_URL is empty or points at
-// a facilitator that doesn't currently route Base mainnet exact-v2
-// payments (CDP and x402.org both return "No facilitator registered
-// for scheme: exact and network: eip155:8453" as of 2026-05-30), route
-// through xpay — the public no-auth facilitator bsman-ai uses in
-// production. xpay.sh /supported declares
-//   { x402Version:2, scheme:"exact", network:"eip155:8453" }
-// and works end-to-end with agentcash on Base mainnet USDC.
+// Transparent fallback: when X402_FACILITATOR_URL is empty or invalid,
+// route through xpay (last-known-good public facilitator). When the env
+// explicitly points at a facilitator (including CDP), honor it — even if
+// CDP routing fails today, we want the live deployment to attempt CDP so
+// we can see the exact error and re-test as Coinbase fixes registration.
 function rewriteFacilitatorUrl(raw: string | undefined): string {
   const XPAY = "https://facilitator.xpay.sh";
   if (!raw || raw.length === 0) return XPAY;
   try {
-    const host = new URL(raw).hostname;
-    if (host.endsWith("cdp.coinbase.com")) return XPAY;
-    if (host.endsWith("x402.org")) return XPAY;
+    new URL(raw);
   } catch {
     return XPAY;
   }
