@@ -625,33 +625,28 @@ export function createX402PreHandler(config: X402Config) {
           }
         : undefined;
 
-    // Inject bazaar discovery metadata into verify+settle requests so
-    // CDP's indexer can pull the service into /discovery/merchant.
-    // Without this, agentcash-signed payloads (and most other wallets')
-    // arrive without extensions.bazaar and settlements remain invisible
-    // to the bazaar even though they complete on-chain.
+    // 2026-05-30 bazaar indexing dead-end:
+    // 1) Wallet-signed paymentPayload (from agentcash et al.) cannot be
+    //    mutated to add extensions.bazaar — CDP rejects with
+    //    "must match one of [x402V2PaymentPayload, x402V1PaymentPayload]"
+    //    because top-level field additions break the EIP-712 schema match.
+    // 2) Adding extensions on the OUTER verify/settle envelope (sibling
+    //    to paymentPayload) is accepted by CDP — it returns
+    //    EXTENSION-RESPONSES header — but every shape we tried, both
+    //    the full challenge body block and a minimal {discoverable,
+    //    name, description, category} block, comes back
+    //    `{bazaar:{status:"rejected", rejectedReason:"invalid discovery
+    //    configuration"}}`.
+    // 3) CDP's @coinbase/cdp-sdk publishes no `X402BazaarExtension` TS
+    //    interface — only the rejection enum `invalid_bazaar_extension`.
+    //    The schema is undocumented, so we'd be guessing.
     //
-    // 2026-05-30: CDP returned `EXTENSION-RESPONSES: {bazaar:{status:
-    // "rejected", rejectedReason: "invalid discovery configuration"}}`
-    // when we sent the full challenge bazaar block (with info/aibrake/
-    // openApiUrl/input/inputSchema/etc). The CDP indexer expects a
-    // narrower shape than what we ship to x402trace + bazaar mappers.
-    // Send a MINIMAL CDP-only block on the wire — keep the full block
-    // in the challenge body for bazaar listing UIs that need it.
-    const fullBazaar =
-      (paymentRequirementsBody.extensions as { bazaar?: any } | undefined)
-        ?.bazaar ?? undefined;
-    const minimalCdpBazaar = fullBazaar
-      ? {
-          discoverable: true,
-          name: fullBazaar.name,
-          description: fullBazaar.description,
-          category: fullBazaar.category,
-        }
-      : undefined;
-    const bazaarContext = minimalCdpBazaar
-      ? { resourceUrl, bazaarExt: minimalCdpBazaar }
-      : undefined;
+    // Decision: stop sending extensions on the envelope (keeps payments
+    // working) until a public schema lands or a CDP support contact
+    // ships an example payload. Payments still settle through CDP; the
+    // service just stays invisible to /discovery/merchant until then.
+    const bazaarContext: { resourceUrl: string; bazaarExt: unknown } | undefined =
+      undefined;
 
     let verifyResult: Awaited<ReturnType<typeof verifyPaymentWithFacilitator>>;
     const controller = new AbortController();
