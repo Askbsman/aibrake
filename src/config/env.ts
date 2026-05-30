@@ -14,6 +14,13 @@ export interface X402Config {
   facilitatorUrl: string;
   payTo: string;
   priceCheckUsd: number;
+  // CDP facilitator credentials. When the facilitatorUrl points at
+  // `api.cdp.coinbase.com`, every /verify and /settle call must be
+  // authenticated with a JWT signed by these creds. Optional: when unset,
+  // the middleware falls back to unauthenticated calls — fine for free
+  // facilitators (x402.org/facilitator) but rejected by CDP with 401.
+  cdpApiKeyId: string | undefined;
+  cdpApiKeySecret: string | undefined;
 }
 
 export interface EnvConfig {
@@ -105,7 +112,7 @@ export function loadEnvConfig(
     logPath: env.AGENT_SPEND_GUARD_LOG_PATH ?? "./logs/decisions.jsonl",
 
     serviceName: env.AGENT_SPEND_GUARD_SERVICE_NAME ?? "agent-spend-guard",
-    serviceVersion: "0.7.1-beta",
+    serviceVersion: "0.7.2-beta",
     publicUrl: env.AGENT_SPEND_GUARD_PUBLIC_URL,
 
     x402: {
@@ -116,6 +123,8 @@ export function loadEnvConfig(
         "https://x402.org/facilitator",
       payTo: env.X402_PAY_TO?.trim() ?? "",
       priceCheckUsd: parseFloatPositive(env.X402_PRICE_CHECK_USD, 0.001),
+      cdpApiKeyId: env.CDP_API_KEY_ID?.trim() || undefined,
+      cdpApiKeySecret: env.CDP_API_KEY_SECRET?.trim() || undefined,
     },
   };
 }

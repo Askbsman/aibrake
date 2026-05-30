@@ -1,6 +1,6 @@
 {
   "name": "aibrake",
-  "version": "0.7.1-beta",
+  "version": "0.7.2-beta",
   "description": "Loop detection and model stop-loss for paid AI agents. One-line install (`import 'aibrake/auto'`) monkey-patches OpenAI + Anthropic SDKs so every paid call passes through AIBrake.",
   "type": "module",
   "main": "dist/index.js",
@@ -87,6 +87,10 @@
   "license": "MIT",
   "dependencies": {
     "zod": "^3.23.8"
+  },
+  "optionalDependencies": {
+    "@coinbase/cdp-sdk": "^1.51.0",
+    "@coinbase/x402": "^2.1.0"
   },
   "peerDependencies": {
     "@anthropic-ai/sdk": ">=0.20.0",

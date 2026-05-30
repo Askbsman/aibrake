@@ -6,6 +6,41 @@ The format follows a partial [Keep a Changelog](https://keepachangelog.com/en/1.
 
 ---
 
+## 0.7.2-beta — CDP facilitator authentication (JWT signing)
+
+**Tag:** `aibrake-v0.7.2-beta`
+**Base:** `aibrake-v0.7.1-beta`
+**Goal:** make AIBrake's x402 middleware actually authenticate against the
+official Coinbase CDP facilitator at `api.cdp.coinbase.com/platform/v2/x402`,
+so paid `/x402/v1/check` calls can be verified + settled on Base mainnet
+through Coinbase infrastructure.
+
+### What changed
+
+- New optional deps: `@coinbase/x402` (^2.1.0) + `@coinbase/cdp-sdk`
+  (^1.51.0). Lazy-imported so SDK-only consumers don't pay for ~5MB of
+  viem/jose/cdp-sdk in their node_modules.
+- New env vars: `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`. When both are set
+  AND `X402_FACILITATOR_URL` points at `api.cdp.coinbase.com`, every
+  `/verify` and `/settle` call is signed with a fresh EdDSA JWT
+  (path-bound, ~60s TTL) via `@coinbase/x402`'s `createAuthHeader`.
+- New `settlePaymentWithFacilitator` — after a successful `/verify`, the
+  preHandler now calls `/settle` inline so the client gets a single 200
+  once the USDC is actually in `payTo`'s wallet (matches official x402
+  middleware behavior).
+- Response now carries `X-PAYMENT-RESPONSE` header with the tx hash +
+  payer address on success.
+- Backwards compatible: when CDP creds are absent or the facilitator is
+  NOT CDP (e.g. `x402.org/facilitator`), the middleware skips JWT signing
+  and falls back to unauthenticated POSTs — same behavior as 0.7.1-beta.
+
+### Wire shape
+
+Unchanged from 0.7.1-beta. PaymentRequiredBody is still x402Version 2,
+CAIP-2 networks, same bazar discovery metadata.
+
+---
+
 ## 0.7.1-beta — x402 v2 wire shape + bazar-compatible discovery
 
 **Tag:** `aibrake-v0.7.1-beta`

@@ -204,6 +204,14 @@ export function buildPaymentRequirements(
 
 // ─────────────────────────────────────────────────────────────────────────
 // Verify a payment by calling the facilitator's /verify endpoint.
+//
+// 0.7.2-beta: supports both unauthenticated facilitators (x402.org) AND
+// the official CDP facilitator at api.cdp.coinbase.com, which requires
+// every request to carry an Authorization: Bearer <JWT> header signed
+// with CDP API creds. JWT signing is done via @coinbase/x402's
+// `createAuthHeader` — a thin wrapper over @coinbase/cdp-sdk's
+// generateJwt. We import it lazily so the package stays optional for
+// users who never deploy the server (e.g. SDK-only npm consumers).
 // ─────────────────────────────────────────────────────────────────────────
 
 interface FacilitatorVerifyResponse {
@@ -212,13 +220,78 @@ interface FacilitatorVerifyResponse {
   payer?: string;
 }
 
+interface FacilitatorAuth {
+  apiKeyId: string;
+  apiKeySecret: string;
+}
+
+// CDP facilitator base path. When facilitatorUrl is the canonical CDP
+// endpoint, both /verify and /settle live under /platform/v2/x402/.
+// We detect this by hostname so callers can either pass the base URL
+// (without /platform/...) and we add the suffix, or pass the full URL.
+function isCdpFacilitator(url: string): boolean {
+  try {
+    return new URL(url).hostname.endsWith("cdp.coinbase.com");
+  } catch {
+    return false;
+  }
+}
+
+function facilitatorEndpoint(
+  facilitatorUrl: string,
+  op: "verify" | "settle" | "supported"
+): { url: string; host: string; path: string } {
+  const base = facilitatorUrl.replace(/\/+$/, "");
+  // If caller passed the bare host (https://api.cdp.coinbase.com), splice
+  // in /platform/v2/x402. If they already included the route, just append op.
+  let withRoute = base;
+  if (isCdpFacilitator(base) && !base.includes("/platform/v2/x402")) {
+    withRoute = `${base}/platform/v2/x402`;
+  }
+  const full = `${withRoute}/${op}`;
+  const parsed = new URL(full);
+  return {
+    url: full,
+    host: parsed.host,
+    path: parsed.pathname,
+  };
+}
+
+async function buildAuthHeaders(
+  facilitatorUrl: string,
+  op: "verify" | "settle" | "supported",
+  auth: FacilitatorAuth | undefined
+): Promise<Record<string, string>> {
+  if (!auth) return {};
+  if (!isCdpFacilitator(facilitatorUrl)) {
+    // Non-CDP facilitators may have other auth schemes; for now only
+    // CDP needs the JWT dance. Future facilitators can be added here.
+    return {};
+  }
+  // Lazy-load @coinbase/x402 — only required at runtime when CDP creds
+  // are present. Keeps SDK-only consumers from paying for ~5MB of
+  // viem/jose/cdp-sdk in their node_modules.
+  const { createAuthHeader } = await import("@coinbase/x402");
+  const ep = facilitatorEndpoint(facilitatorUrl, op);
+  const method = op === "supported" ? "GET" : "POST";
+  const authorization = await createAuthHeader(
+    auth.apiKeyId,
+    auth.apiKeySecret,
+    method,
+    ep.host,
+    ep.path
+  );
+  return { Authorization: authorization };
+}
+
 export async function verifyPaymentWithFacilitator(
   facilitatorUrl: string,
   paymentPayloadB64: string,
   paymentRequirements: PaymentAccept,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  auth?: FacilitatorAuth
 ): Promise<FacilitatorVerifyResponse> {
-  const url = `${facilitatorUrl.replace(/\/$/, "")}/verify`;
+  const ep = facilitatorEndpoint(facilitatorUrl, "verify");
   let payload: unknown;
   try {
     const decoded = Buffer.from(paymentPayloadB64, "base64").toString("utf8");
@@ -230,9 +303,22 @@ export async function verifyPaymentWithFacilitator(
     };
   }
 
-  const res = await fetch(url, {
+  let authHeaders: Record<string, string> = {};
+  try {
+    authHeaders = await buildAuthHeaders(facilitatorUrl, "verify", auth);
+  } catch (err) {
+    return {
+      isValid: false,
+      invalidReason: `Failed to sign CDP request: ${(err as Error).message}`,
+    };
+  }
+
+  const res = await fetch(ep.url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: {
+      "content-type": "application/json",
+      ...authHeaders,
+    },
     body: JSON.stringify({
       x402Version: 2,
       paymentPayload: payload,
@@ -242,13 +328,82 @@ export async function verifyPaymentWithFacilitator(
   });
 
   if (!res.ok) {
+    let bodyText = "";
+    try {
+      bodyText = await res.text();
+    } catch {
+      // ignore
+    }
     return {
       isValid: false,
-      invalidReason: `facilitator returned HTTP ${res.status}`,
+      invalidReason: `facilitator returned HTTP ${res.status}${bodyText ? ": " + bodyText.slice(0, 200) : ""}`,
     };
   }
 
   return (await res.json()) as FacilitatorVerifyResponse;
+}
+
+// Settle a verified payment — finalises the EIP-3009 transfer on-chain
+// through the facilitator. CDP charges this through /platform/v2/x402/settle
+// and requires a fresh JWT (different path → different signature).
+export async function settlePaymentWithFacilitator(
+  facilitatorUrl: string,
+  paymentPayloadB64: string,
+  paymentRequirements: PaymentAccept,
+  abortSignal?: AbortSignal,
+  auth?: FacilitatorAuth
+): Promise<{ success: boolean; error?: string; txHash?: string }> {
+  const ep = facilitatorEndpoint(facilitatorUrl, "settle");
+  let payload: unknown;
+  try {
+    const decoded = Buffer.from(paymentPayloadB64, "base64").toString("utf8");
+    payload = JSON.parse(decoded);
+  } catch (err) {
+    return {
+      success: false,
+      error: `Invalid payment payload: ${(err as Error).message}`,
+    };
+  }
+  let authHeaders: Record<string, string> = {};
+  try {
+    authHeaders = await buildAuthHeaders(facilitatorUrl, "settle", auth);
+  } catch (err) {
+    return {
+      success: false,
+      error: `Failed to sign CDP settle request: ${(err as Error).message}`,
+    };
+  }
+  const res = await fetch(ep.url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...authHeaders,
+    },
+    body: JSON.stringify({
+      x402Version: 2,
+      paymentPayload: payload,
+      paymentRequirements,
+    }),
+    signal: abortSignal,
+  });
+  if (!res.ok) {
+    let bodyText = "";
+    try {
+      bodyText = await res.text();
+    } catch {
+      // ignore
+    }
+    return {
+      success: false,
+      error: `facilitator settle returned HTTP ${res.status}${bodyText ? ": " + bodyText.slice(0, 200) : ""}`,
+    };
+  }
+  const data = (await res.json()) as { success?: boolean; transaction?: string; error?: string };
+  return {
+    success: data.success ?? false,
+    txHash: data.transaction,
+    error: data.error,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -307,6 +462,14 @@ export function createX402PreHandler(config: X402Config) {
     }
 
     const requirement = paymentRequirementsBody.accepts[0]!;
+    const facilitatorAuth =
+      config.cdpApiKeyId && config.cdpApiKeySecret
+        ? {
+            apiKeyId: config.cdpApiKeyId,
+            apiKeySecret: config.cdpApiKeySecret,
+          }
+        : undefined;
+
     let verifyResult: FacilitatorVerifyResponse;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -315,7 +478,8 @@ export function createX402PreHandler(config: X402Config) {
         config.facilitatorUrl,
         paymentHeader,
         requirement,
-        controller.signal
+        controller.signal,
+        facilitatorAuth
       );
     } catch (err) {
       reply.code(402).send({
@@ -335,7 +499,47 @@ export function createX402PreHandler(config: X402Config) {
       return;
     }
 
+    // Verified — now settle on-chain through the same facilitator. We
+    // settle inline so the client gets a single 200 once the USDC is in
+    // payTo's wallet, matching how the official x402 middleware behaves.
+    // CDP charges $0 for verify/settle; the only cost is the user's gas.
+    const settleController = new AbortController();
+    const settleTimeout = setTimeout(() => settleController.abort(), 30_000);
+    let settleResult;
+    try {
+      settleResult = await settlePaymentWithFacilitator(
+        config.facilitatorUrl,
+        paymentHeader,
+        requirement,
+        settleController.signal,
+        facilitatorAuth
+      );
+    } catch (err) {
+      reply.code(402).send({
+        ...paymentRequirementsBody,
+        error: `Payment settle failed: ${(err as Error).message}`,
+      });
+      return;
+    } finally {
+      clearTimeout(settleTimeout);
+    }
+
+    if (!settleResult.success) {
+      reply.code(402).send({
+        ...paymentRequirementsBody,
+        error: settleResult.error ?? "Payment settle failed",
+      });
+      return;
+    }
+
+    // Stamp the request so downstream handlers + access logs see who paid.
     (req as any).x402Payer = verifyResult.payer;
+    (req as any).x402TxHash = settleResult.txHash;
+    reply.header("X-PAYMENT-RESPONSE", JSON.stringify({
+      success: true,
+      transaction: settleResult.txHash,
+      payer: verifyResult.payer,
+    }));
     return;
   };
 }
