@@ -453,10 +453,22 @@ export function createX402PreHandler(config: X402Config) {
       : paymentHeaderRaw;
 
     if (!paymentHeader) {
+      // x402 canonical: the PAYMENT-REQUIRED header carries a base64
+      // encoding of the PaymentRequired body so clients reading only
+      // headers can deserialize without re-fetching. bsman-ai does the
+      // same on api.callbsman.com. Header value MUST be valid base64
+      // JSON — clients (e.g. agentcash) call Buffer.from(value,'base64')
+      // first thing, and a non-base64 value (e.g. "true") will produce
+      // garbage and break parsing.
+      const headerB64 = Buffer.from(
+        JSON.stringify(paymentRequirementsBody),
+        "utf8"
+      ).toString("base64");
       reply
         .code(402)
         .header("content-type", "application/json")
-        .header("payment-required", "true")
+        .header("access-control-expose-headers", "PAYMENT-REQUIRED")
+        .header("payment-required", headerB64)
         .send(paymentRequirementsBody);
       return;
     }
