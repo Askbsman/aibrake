@@ -41,7 +41,7 @@ npm install aibrake
 
 `<1 MB` install. No fastify, no transitive web-framework deps.
 
-### Plug into an agentic IDE (Claude Code / OpenClaw / Cursor / Cline) — 4 lines
+### Plug into an agentic IDE (Claude Code / OpenClaw / Hermes / Cursor / Cline) — 4 lines
 
 Add to your MCP config (`~/.claude/settings.json`, `mcp-config.json`, or your runtime's equivalent):
 
@@ -54,6 +54,12 @@ Add to your MCP config (`~/.claude/settings.json`, `mcp-config.json`, or your ru
 ```
 
 Restart the agent. AIBrake now appears as an `aibrake_check` tool the agent can — and per its own description, **must** — call before any retry, deploy, install, or success-assertion. Returns `allow / warn / require_confirmation / block` with a reason and projected savings.
+
+**On Hermes Agent (NousResearch)?** Hermes loads skills from
+`~/.hermes/skills/` filesystem (no npm-packaged skills). Drop our
+agentskills.io-compatible `skills/aibrake/SKILL.md` in there and Hermes
+auto-discovers it. See [`docs/HERMES_INSTALL.md`](./docs/HERMES_INSTALL.md)
+for the 1-minute setup.
 
 ### One-line integration for Node.js apps with openai / anthropic
 

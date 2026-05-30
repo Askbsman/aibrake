@@ -904,7 +904,7 @@
           paid AI agents.
         </h1>
         <p class="hero-sub">
-          Detects stale retries, same-tool loops, premium-model burn, and unverified deploys before the next expensive step. <strong>4 lines in your MCP config</strong> — works with Codex CLI, Claude Code, Cursor, Cline. <strong>98.0% LCR</strong> · <strong>100/100 on 130-step Odyssey</strong>, p50 0.004 ms.
+          Detects stale retries, same-tool loops, premium-model burn, and unverified deploys before the next expensive step. <strong>4 lines in your MCP config</strong> — works with Codex CLI, Claude Code, Cursor, Cline, Hermes Agent. <strong>98.0% LCR</strong> · <strong>100/100 on 130-step Odyssey</strong>, p50 0.004 ms.
         </p>
         <div class="hero-cta-row">
           <a class="btn btn-primary" href="#integrate">4-line install <span class="arrow">→</span></a>
@@ -1094,7 +1094,7 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
         </div>
         <h3>MCP-server &middot; one config entry</h3>
-        <p>Works with Codex CLI, Claude Code, Cursor, Cline. Tool appears automatically.</p>
+        <p>Works with Codex CLI, Claude Code, Cursor, Cline, Hermes Agent. Tool appears automatically. agentskills.io-compatible SKILL.md ships in the repo.</p>
       </div>
       <div class="feature-card reveal">
         <div class="feature-icon">
@@ -1237,6 +1237,7 @@
       <div class="code-tabs" role="tablist">
         <button class="code-tab" role="tab" aria-selected="true" data-tab="codex">Codex CLI</button>
         <button class="code-tab" role="tab" aria-selected="false" data-tab="claude">Claude Code &middot; Cursor &middot; Cline</button>
+        <button class="code-tab" role="tab" aria-selected="false" data-tab="hermes">Hermes Agent</button>
         <button class="code-tab" role="tab" aria-selected="false" data-tab="manual">Manual SDK</button>
       </div>
       <div class="code-panel" data-panel="codex" data-active="true">
@@ -1262,6 +1263,25 @@ args = [ <span class="str">"-y"</span>, <span class="str">"aibrake@beta"</span>,
 }
 
 <span class="com">// Restart the IDE. Tool appears as `mcp__aibrake__aibrake_check`.</span></pre>
+      </div>
+      <div class="code-panel" data-panel="hermes" data-active="false">
+<pre class="code-block"><span class="com"># Hermes loads skills from ~/.hermes/skills/ — agentskills.io standard.
+# 1. Clone the skill folder, 2. drop into Hermes' skills dir, 3. restart.</span>
+
+git clone https://github.com/Askbsman/aibrake.git /tmp/aibrake
+mkdir -p ~/.hermes/skills/agent-safety
+cp -r /tmp/aibrake/skills/aibrake ~/.hermes/skills/agent-safety/aibrake
+
+<span class="com"># Restart Hermes. `/aibrake` slash command appears.
+# Add the MCP server too (~/.hermes/mcp.json) for the `aibrake_check` tool:</span>
+
+{
+  <span class="prop">"mcpServers"</span>: {
+    <span class="prop">"aibrake"</span>: { <span class="prop">"command"</span>: <span class="str">"npx"</span>, <span class="prop">"args"</span>: [<span class="str">"-y"</span>, <span class="str">"aibrake@beta"</span>, <span class="str">"mcp"</span>] }
+  }
+}
+
+<span class="com"># Full guide: docs/HERMES_INSTALL.md</span></pre>
       </div>
       <div class="code-panel" data-panel="manual" data-active="false">
 <pre class="code-block"><span class="com">// For Node.js apps that call openai / anthropic directly.

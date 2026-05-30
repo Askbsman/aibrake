@@ -2,13 +2,31 @@
 name: aibrake
 description: Catch retry-storms, unverified deploys, model escalation, and budget breaches before the next expensive AI agent action. Use BEFORE retrying a failed paid LLM call, BEFORE declaring deploy/install/restart success, BEFORE escalating to a more expensive model, or BEFORE any action that would breach an objective budget. Returns decision (allow / warn / require_confirmation / block) with risk_score and projected_savings_usd.
 license: MIT
-compatibility: Works with any MCP-capable agent runtime — Claude Code, Cursor, Cline, OpenAI Codex CLI, Goose, OpenCode, OpenHands, and others listed at agentskills.io/clients. Requires `npx` available in PATH (Node.js >=20).
+compatibility: Works with any agentskills.io-compatible runtime — Hermes Agent (NousResearch), Claude Code, Cursor, Cline, OpenAI Codex CLI, OpenClaw, Goose, OpenCode, OpenHands, and others listed at agentskills.io/clients. Requires `npx` available in PATH (Node.js >=20).
+platforms: [macos, linux, windows]
 metadata:
   author: aibrake.dev
-  version: "0.7.0-beta"
+  version: "0.7.2-beta"
   homepage: https://aibrake.dev
   repo: https://github.com/Askbsman/aibrake
   npm: https://www.npmjs.com/package/aibrake
+  hermes:
+    category: agent-safety
+    tags:
+      - agent-safety
+      - guardrail
+      - cost-control
+      - loop-detection
+      - retry-storm
+      - mcp
+      - x402
+    requires_toolsets:
+      - terminal
+    config:
+      - key: aibrake.api_key
+        description: Optional hosted decision-log API key (forwards decisions to api.aibrake.dev for cross-session analytics). Local Core path works without it.
+        default: ""
+        env: AIBRAKE_API_KEY
 ---
 
 # AIBrake — loop detection and model stop-loss for paid AI agents
