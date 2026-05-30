@@ -9,6 +9,7 @@
 import type { FastifyInstance } from "fastify";
 import type { EnvConfig } from "../config/env.js";
 import { buildPaymentRequirements } from "../middleware/x402.js";
+import { bazaarDiscoveryMetadata, bazaarTags } from "../config/discovery.js";
 
 export async function registerWellKnownX402Route(
   app: FastifyInstance,
@@ -39,11 +40,34 @@ export async function registerWellKnownX402Route(
         description: "AIBrake check — loop detection + model stop-loss decision",
       }
     );
+    // x402trace bazaar-check enforces a top-level `name` and `description`
+    // on the well-known manifest — without them, listing cards on the
+    // bazaar mapper render as blank. Mirrors what callbsman.com ships.
     return {
       enabled: true,
       service: config.serviceName,
       version: config.serviceVersion,
+      name: bazaarDiscoveryMetadata.name,
+      description: bazaarDiscoveryMetadata.description,
+      serviceName: bazaarDiscoveryMetadata.name,
+      tags: [...bazaarTags],
+      iconUrl: "https://aibrake.dev/favicon.ico",
       ...body,
+      extensions: {
+        ...body.extensions,
+        bazaar: {
+          name: bazaarDiscoveryMetadata.name,
+          serviceName: bazaarDiscoveryMetadata.name,
+          description: bazaarDiscoveryMetadata.description,
+          provider: bazaarDiscoveryMetadata.provider,
+          category: bazaarDiscoveryMetadata.category,
+          tags: [...bazaarTags],
+          docsUrl: bazaarDiscoveryMetadata.docsUrl,
+          openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
+          githubUrl: bazaarDiscoveryMetadata.githubUrl,
+          iconUrl: "https://aibrake.dev/favicon.ico",
+        },
+      },
     };
   });
 }
