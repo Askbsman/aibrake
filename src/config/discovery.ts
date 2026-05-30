@@ -211,7 +211,7 @@ export const bazaarDiscoveryMetadata = {
     priceUsd: "0.001",
     unit: "per check decision",
   },
-  cdpIndexingLimitation: bazaarIndexingLimitationNote,
+  cdpIndexingLimitation: bazaarIndexingLimitationNote as string,
   request: {
     example: checkRequestExample,
     schema: checkRequestDiscoverySchema,

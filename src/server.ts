@@ -11,6 +11,7 @@ import { registerMetaRoute } from "./routes/meta.js";
 import { registerPublicStatsRoute } from "./routes/public-stats.js";
 import { registerX402CheckRoute } from "./routes/x402-check.js";
 import { registerWellKnownX402Route } from "./routes/well-known-x402.js";
+import { registerOpenApiRoute } from "./routes/openapi.js";
 
 export interface BuildServerOptions {
   logger?: boolean;
@@ -60,6 +61,7 @@ export async function buildServerWithDeps(
   await registerCheckRoute(app, { authMiddleware, rateLimitMiddleware });
   await registerCheckDeepRoute(app, { authMiddleware, rateLimitMiddleware });
   await registerWellKnownX402Route(app, config);
+  await registerOpenApiRoute(app, config);
   await registerX402CheckRoute(app, { x402: config.x402 });
 
   return { app, config, rateLimitMiddleware };
