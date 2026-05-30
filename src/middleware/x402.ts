@@ -121,6 +121,14 @@ export function buildPaymentRequirements(
     scheme: "exact",
     network,
     amount: String(microUsdc),
+    // `resource` inside accept — CDP indexer's /discovery/merchant
+    // response shows resourceUrl undefined for bsman-ai (which has no
+    // accept[].resource). Adding resource here lets the indexer link
+    // our payTo to api.aibrake.dev/x402/v1/check instead of leaving
+    // resourceUrl null.
+    resource: resourceUrl,
+    description,
+    mimeType,
     asset:
       USDC_CONTRACTS[network] ?? USDC_CONTRACTS["eip155:8453"]!,
     payTo: config.payTo,
