@@ -62,53 +62,40 @@ export function normalizeNetwork(value: string): `${string}:${string}` {
 
 export interface PaymentAccept {
   scheme: "exact";
-  // v1: friendly alias ("base" / "base-sepolia").
-  // v2: CAIP-2 ("eip155:8453" / "eip155:84532").
-  // Type stays `${string}:${string}` for v2 callers; v1 callers cast to the
-  // friendly alias.
-  network: string;
-  // v2 only — smallest unit (microUSDC).
-  amount?: string;
-  // v1 only — alias for amount.
-  maxAmountRequired?: string;
+  network: `${string}:${string}`;     // CAIP-2 e.g. eip155:8453
+  amount: string;                       // smallest unit (microUSDC)
   asset: string;                        // 0x... contract
   payTo: string;                        // 0x... receiver
   maxTimeoutSeconds: number;
-  // v1 only — top-level resource is required.
-  resource?: string;
-  description?: string;
-  mimeType?: string;
-  outputSchema?: unknown;
   extra: Record<string, unknown>;
 }
 
 export interface PaymentRequiredBody {
-  x402Version: 1 | 2;
+  x402Version: 2;
   error: string;
-  accepts: PaymentAccept[];
-  // v2-only fields (kept optional so v1 body can omit them).
-  resource?: {
+  resource: {
     url: string;
     description: string;
     mimeType: string;
   };
-  extensions?: Record<string, unknown>;
-  compatibility?: {
+  accepts: PaymentAccept[];
+  extensions: Record<string, unknown>;
+  compatibility: {
     paymentRequiredHeader: "PAYMENT-REQUIRED";
     headerIsCanonical: true;
     hint: string;
   };
-  resourceUrl?: string;
-  method?: string;
-  endpoint?: string;
-  payment?: {
+  resourceUrl: string;
+  method: string;
+  endpoint: string;
+  payment: {
     protocol: "x402";
-    network: string;
-    networkId: string;
-    price: string;
-    facilitator: string;
+    network: string;                    // human-readable e.g. "Base mainnet"
+    networkId: string;                  // CAIP-2 e.g. "eip155:8453"
+    price: string;                      // "$0.001 per check decision"
+    facilitator: string;                // "configured x402 facilitator"
   };
-  metadata?: Record<string, unknown>;
+  metadata: Record<string, unknown>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -130,66 +117,38 @@ export function buildPaymentRequirements(
     options.description ?? bazaarDiscoveryMetadata.description;
   const mimeType = bazaarDiscoveryMetadata.mimeType;
 
-  // CDP facilitator currently declares x402Version:1 in /supported for every
-  // network. Bsman-ai works on Base mainnet because they use xpay (which
-  // supports v2). When CDP creds are present we shape the response as v1 so
-  // CDP's /verify + /settle accept it. Without CDP creds we keep v2 (bazaar
-  // mapper + agentcash discover endpoint via OpenAPI in both shapes).
-  const useCdpV1Wire =
-    !!config.cdpApiKeyId && !!config.cdpApiKeySecret;
-  const wireVersion: 1 | 2 = useCdpV1Wire ? 1 : 2;
-  const networkV1: "base" | "base-sepolia" =
-    network === "eip155:8453" ? "base" : "base-sepolia";
-
-  // EIP-712 domain separator for Base USDC. The on-chain contract's
-  // `name()` returns "USD Coin" (the official ERC-20 token name) and
-  // `version()` returns "2". x402 clients sign EIP-3009
-  // transferWithAuthorization against this domain — mismatched values
-  // produce invalid signatures and the client silently refuses to
-  // submit the payment.
-  const sharedExtra = {
-    name: "USD Coin",
-    version: "2",
-    aibrake: {
-      name: bazaarDiscoveryMetadata.name,
-      provider: bazaarDiscoveryMetadata.provider,
-      category: bazaarDiscoveryMetadata.category,
-      tags: [...bazaarTags],
-      docsUrl: bazaarDiscoveryMetadata.docsUrl,
-      openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
-      githubUrl: bazaarDiscoveryMetadata.githubUrl,
-      mainMode: bazaarDiscoveryMetadata.mainMode,
-      supportedModes: [...bazaarDiscoveryMetadata.supportedModes],
-      fallbackUrl: bazaarDiscoveryMetadata.fallbackUrl,
+  const accept: PaymentAccept = {
+    scheme: "exact",
+    network,
+    amount: String(microUsdc),
+    asset:
+      USDC_CONTRACTS[network] ?? USDC_CONTRACTS["eip155:8453"]!,
+    payTo: config.payTo,
+    maxTimeoutSeconds: 60,
+    extra: {
+      // EIP-712 domain separator for Base USDC. The on-chain contract's
+      // `name()` returns "USD Coin" (the official ERC-20 token name) and
+      // `version()` returns "2". x402 clients sign EIP-3009
+      // transferWithAuthorization against this domain — mismatched values
+      // produce invalid signatures and the client silently refuses to
+      // submit the payment. Matches what callbsman.com ships and the
+      // canonical Coinbase USDC deployment on Base.
+      name: "USD Coin",
+      version: "2",
+      aibrake: {
+        name: bazaarDiscoveryMetadata.name,
+        provider: bazaarDiscoveryMetadata.provider,
+        category: bazaarDiscoveryMetadata.category,
+        tags: [...bazaarTags],
+        docsUrl: bazaarDiscoveryMetadata.docsUrl,
+        openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
+        githubUrl: bazaarDiscoveryMetadata.githubUrl,
+        mainMode: bazaarDiscoveryMetadata.mainMode,
+        supportedModes: [...bazaarDiscoveryMetadata.supportedModes],
+        fallbackUrl: bazaarDiscoveryMetadata.fallbackUrl,
+      },
     },
   };
-
-  const accept: PaymentAccept =
-    wireVersion === 1
-      ? {
-          scheme: "exact",
-          network: networkV1,
-          maxAmountRequired: String(microUsdc),
-          resource: resourceUrl,
-          description,
-          mimeType,
-          outputSchema: null,
-          asset:
-            USDC_CONTRACTS[network] ?? USDC_CONTRACTS["eip155:8453"]!,
-          payTo: config.payTo,
-          maxTimeoutSeconds: 60,
-          extra: sharedExtra,
-        }
-      : {
-          scheme: "exact",
-          network,
-          amount: String(microUsdc),
-          asset:
-            USDC_CONTRACTS[network] ?? USDC_CONTRACTS["eip155:8453"]!,
-          payTo: config.payTo,
-          maxTimeoutSeconds: 60,
-          extra: sharedExtra,
-        };
 
   // Discovery extensions — mirror the shape that
   // @x402/extensions declareDiscoveryExtension produces, PLUS the
@@ -234,18 +193,6 @@ export function buildPaymentRequirements(
       },
     },
   };
-
-  if (wireVersion === 1) {
-    // v1 wire shape — required by CDP facilitator's /verify + /settle.
-    // All bazaar discovery fields move inside extensions.bazaar so the
-    // x402trace mapper still has something to render.
-    return {
-      x402Version: 1,
-      error: "Payment required",
-      accepts: [accept],
-      extensions,
-    };
-  }
 
   return {
     x402Version: 2,
@@ -401,15 +348,6 @@ export async function verifyPaymentWithFacilitator(
     };
   }
 
-  // CDP /verify currently accepts only x402Version:1 (the /supported
-  // endpoint enumerates all networks at v1). Mirror what we sent in the
-  // 402 challenge body's accepts[0] — if the requirement shape is v1
-  // (network = "base"/"base-sepolia"), the verify request is v1.
-  const isV1 =
-    typeof paymentRequirements.network === "string" &&
-    !paymentRequirements.network.includes(":");
-  const verifyWireVersion = isV1 ? 1 : 2;
-
   const res = await fetch(ep.url, {
     method: "POST",
     headers: {
@@ -417,7 +355,7 @@ export async function verifyPaymentWithFacilitator(
       ...authHeaders,
     },
     body: JSON.stringify({
-      x402Version: verifyWireVersion,
+      x402Version: 2,
       paymentPayload: payload,
       paymentRequirements,
     }),
@@ -470,10 +408,6 @@ export async function settlePaymentWithFacilitator(
       error: `Failed to sign CDP settle request: ${(err as Error).message}`,
     };
   }
-  const isV1 =
-    typeof paymentRequirements.network === "string" &&
-    !paymentRequirements.network.includes(":");
-  const settleWireVersion = isV1 ? 1 : 2;
   const res = await fetch(ep.url, {
     method: "POST",
     headers: {
@@ -481,7 +415,7 @@ export async function settlePaymentWithFacilitator(
       ...authHeaders,
     },
     body: JSON.stringify({
-      x402Version: settleWireVersion,
+      x402Version: 2,
       paymentPayload: payload,
       paymentRequirements,
     }),
