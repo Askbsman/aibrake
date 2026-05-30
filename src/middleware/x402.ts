@@ -477,18 +477,23 @@ export function createX402PreHandler(config: X402Config) {
 
     // 0.7.2-beta diagnostic: surface what x402 clients (agentcash etc.)
     // actually send. Pino logs ship to Render so we can correlate a
-    // 402 response with whether the client even tried to pay.
+    // 402 response with whether the client even tried to pay. Tracks
+    // all known payment-header aliases.
     {
       const headerKeys = Object.keys(req.headers);
-      const hasPaymentHeader =
-        headerKeys.some((k) => k.toLowerCase() === "x-payment") ||
-        headerKeys.some((k) => k.toLowerCase() === "payment");
       const paymentRaw =
         req.headers["x-payment"] ??
-        req.headers["x-PAYMENT"] ??
-        req.headers["payment"] ??
+        req.headers["payment-signature"] ??
+        req.headers["payment-required"] ??
         null;
       const paymentVal = Array.isArray(paymentRaw) ? paymentRaw[0] : paymentRaw;
+      const headerName = req.headers["x-payment"]
+        ? "x-payment"
+        : req.headers["payment-signature"]
+          ? "payment-signature"
+          : req.headers["payment-required"]
+            ? "payment-required"
+            : null;
       // eslint-disable-next-line no-console
       console.log(
         JSON.stringify({
@@ -496,24 +501,29 @@ export function createX402PreHandler(config: X402Config) {
           method: req.method,
           path: req.url,
           ua: req.headers["user-agent"] ?? null,
-          hasPaymentHeader,
+          headerName,
           paymentHeaderLen: paymentVal ? String(paymentVal).length : 0,
           paymentHeaderPrefix: paymentVal
-            ? String(paymentVal).slice(0, 16)
+            ? String(paymentVal).slice(0, 48)
             : null,
+          walletAddress: req.headers["x-wallet-address"] ?? null,
+          sessionId: req.headers["x-session-id"] ?? null,
           headerKeys,
         })
       );
     }
 
     // x402 canonical: clients read either PAYMENT-REQUIRED header (preferred)
-    // or the body. We accept X-Payment (legacy) and PAYMENT-REQUIRED header
-    // names for forwards-compat.
+    // or the body. We accept several header names for forwards-compat:
+    // - x-payment (canonical x402 v2)
+    // - payment-required (legacy reverse echo)
+    // - payment-signature (agentcash's MCP fetch tool ships the signed
+    //   payment payload here, NOT in x-payment — observed via diag logging
+    //   on 2026-05-30 when agentcash-mcp-diag/1.0 POSTs always landed here)
     const paymentHeaderRaw =
       req.headers["x-payment"] ??
-      req.headers["X-Payment"] ??
-      req.headers["payment-required"] ??
-      req.headers["PAYMENT-REQUIRED"];
+      req.headers["payment-signature"] ??
+      req.headers["payment-required"];
     const paymentHeader = Array.isArray(paymentHeaderRaw)
       ? paymentHeaderRaw[0]
       : paymentHeaderRaw;
