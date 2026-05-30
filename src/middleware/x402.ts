@@ -144,7 +144,11 @@ export function buildPaymentRequirements(
   };
 
   // Discovery extensions — mirror the shape that
-  // @x402/extensions declareDiscoveryExtension produces.
+  // @x402/extensions declareDiscoveryExtension produces, PLUS the
+  // bazaar extension that agentic.market's mapper indexes off. Without
+  // extensions.bazaar (with non-empty name + description), x402trace
+  // bazaar-check rejects the challenge and agentic.market falls back to
+  // showing raw URLs in listings.
   const extensions: Record<string, unknown> = {
     "x402.discovery": {
       bodyType: "json",
@@ -155,6 +159,30 @@ export function buildPaymentRequirements(
       output: {
         example: checkResponseExample,
         schema: checkResponseDiscoverySchema,
+      },
+    },
+    bazaar: {
+      name: bazaarDiscoveryMetadata.name,
+      serviceName: bazaarDiscoveryMetadata.name,
+      description: bazaarDiscoveryMetadata.description,
+      provider: bazaarDiscoveryMetadata.provider,
+      category: bazaarDiscoveryMetadata.category,
+      tags: [...bazaarTags],
+      iconUrl: "https://aibrake.dev/favicon.ico",
+      docsUrl: bazaarDiscoveryMetadata.docsUrl,
+      openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
+      githubUrl: bazaarDiscoveryMetadata.githubUrl,
+      info: {
+        input: {
+          type: "http",
+          bodyType: "json",
+          method,
+          body: method === "GET" ? undefined : checkRequestExample,
+        },
+        output: {
+          type: "json",
+          example: checkResponseExample,
+        },
       },
     },
   };
