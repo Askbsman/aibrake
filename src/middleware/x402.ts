@@ -68,6 +68,11 @@ export interface PaymentAccept {
   payTo: string;                        // 0x... receiver
   maxTimeoutSeconds: number;
   extra: Record<string, unknown>;
+  // Optional v1-style fields kept on accept[] for CDP indexer linkage
+  // and compatibility with v1 clients.
+  resource?: string;
+  description?: string;
+  mimeType?: string;
 }
 
 export interface PaymentRequiredBody {
