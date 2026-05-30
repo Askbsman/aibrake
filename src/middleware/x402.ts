@@ -475,6 +475,37 @@ export function createX402PreHandler(config: X402Config) {
       }
     );
 
+    // 0.7.2-beta diagnostic: surface what x402 clients (agentcash etc.)
+    // actually send. Pino logs ship to Render so we can correlate a
+    // 402 response with whether the client even tried to pay.
+    {
+      const headerKeys = Object.keys(req.headers);
+      const hasPaymentHeader =
+        headerKeys.some((k) => k.toLowerCase() === "x-payment") ||
+        headerKeys.some((k) => k.toLowerCase() === "payment");
+      const paymentRaw =
+        req.headers["x-payment"] ??
+        req.headers["x-PAYMENT"] ??
+        req.headers["payment"] ??
+        null;
+      const paymentVal = Array.isArray(paymentRaw) ? paymentRaw[0] : paymentRaw;
+      // eslint-disable-next-line no-console
+      console.log(
+        JSON.stringify({
+          event: "x402.diag.incoming",
+          method: req.method,
+          path: req.url,
+          ua: req.headers["user-agent"] ?? null,
+          hasPaymentHeader,
+          paymentHeaderLen: paymentVal ? String(paymentVal).length : 0,
+          paymentHeaderPrefix: paymentVal
+            ? String(paymentVal).slice(0, 16)
+            : null,
+          headerKeys,
+        })
+      );
+    }
+
     // x402 canonical: clients read either PAYMENT-REQUIRED header (preferred)
     // or the body. We accept X-Payment (legacy) and PAYMENT-REQUIRED header
     // names for forwards-compat.
