@@ -40,9 +40,11 @@ export async function registerWellKnownX402Route(
         description: "AIBrake check — loop detection + model stop-loss decision",
       }
     );
-    // x402trace bazaar-check enforces a top-level `name` and `description`
-    // on the well-known manifest — without them, listing cards on the
-    // bazaar mapper render as blank. Mirrors what callbsman.com ships.
+    // Top-level fields (name, description, tags, iconUrl) keep x402trace
+    // bazaar-check happy without disturbing extensions.bazaar — the
+    // canonical {info, schema} shape ships through buildPaymentRequirements
+    // unchanged, so CDP indexer can read the same shape it expects to
+    // see in /verify and /settle.
     return {
       enabled: true,
       service: config.serviceName,
@@ -50,24 +52,14 @@ export async function registerWellKnownX402Route(
       name: bazaarDiscoveryMetadata.name,
       description: bazaarDiscoveryMetadata.description,
       serviceName: bazaarDiscoveryMetadata.name,
+      provider: bazaarDiscoveryMetadata.provider,
+      category: bazaarDiscoveryMetadata.category,
       tags: [...bazaarTags],
       iconUrl: "https://aibrake.dev/favicon.ico",
+      docsUrl: bazaarDiscoveryMetadata.docsUrl,
+      openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
+      githubUrl: bazaarDiscoveryMetadata.githubUrl,
       ...body,
-      extensions: {
-        ...body.extensions,
-        bazaar: {
-          name: bazaarDiscoveryMetadata.name,
-          serviceName: bazaarDiscoveryMetadata.name,
-          description: bazaarDiscoveryMetadata.description,
-          provider: bazaarDiscoveryMetadata.provider,
-          category: bazaarDiscoveryMetadata.category,
-          tags: [...bazaarTags],
-          docsUrl: bazaarDiscoveryMetadata.docsUrl,
-          openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
-          githubUrl: bazaarDiscoveryMetadata.githubUrl,
-          iconUrl: "https://aibrake.dev/favicon.ico",
-        },
-      },
     };
   });
 }
