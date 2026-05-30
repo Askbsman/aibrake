@@ -90,13 +90,21 @@ function parseX402Network(raw: string | undefined): X402Network {
   return raw === "base" ? "base" : "base-sepolia";
 }
 
-// Transparent fallback: when X402_FACILITATOR_URL is empty or invalid,
-// route through xpay (last-known-good public facilitator). When the env
-// explicitly points at a facilitator (including CDP), honor it — even if
-// CDP routing fails today, we want the live deployment to attempt CDP so
-// we can see the exact error and re-test as Coinbase fixes registration.
+// Transparent override: force CDP facilitator regardless of what's in
+// X402_FACILITATOR_URL — user explicitly asked to test CDP after the
+// EIP-712 + payment-signature + base64 PAYMENT-REQUIRED fixes landed.
+// Render UI Save was flaky earlier, so the env value may be stale.
+// Falls back to xpay only if env says something obviously wrong and
+// CDP creds aren't present.
 function rewriteFacilitatorUrl(raw: string | undefined): string {
+  const CDP = "https://api.cdp.coinbase.com/platform/v2/x402";
   const XPAY = "https://facilitator.xpay.sh";
+  // If CDP creds are configured, always route to CDP (override anything
+  // else). When CDP eventually fixes "No facilitator registered", this
+  // path will start returning 200.
+  if (process.env.CDP_API_KEY_ID && process.env.CDP_API_KEY_SECRET) {
+    return CDP;
+  }
   if (!raw || raw.length === 0) return XPAY;
   try {
     new URL(raw);
