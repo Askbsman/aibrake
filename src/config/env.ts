@@ -90,6 +90,21 @@ function parseX402Network(raw: string | undefined): X402Network {
   return raw === "base" ? "base" : "base-sepolia";
 }
 
+// Transparent override: when X402_FACILITATOR_URL is empty or points at
+// the broken CDP endpoint, route through the public x402.org facilitator.
+// Use the canonical hostname so we don't depend on the 308 redirect.
+function rewriteFacilitatorUrl(raw: string | undefined): string {
+  const X402_ORG = "https://www.x402.org/facilitator";
+  if (!raw || raw.length === 0) return X402_ORG;
+  try {
+    const host = new URL(raw).hostname;
+    if (host.endsWith("cdp.coinbase.com")) return X402_ORG;
+  } catch {
+    return X402_ORG;
+  }
+  return raw;
+}
+
 export function loadEnvConfig(
   env: NodeJS.ProcessEnv = process.env
 ): EnvConfig {
@@ -118,9 +133,13 @@ export function loadEnvConfig(
     x402: {
       enabled: parseBool(env.X402_ENABLED, false),
       network: parseX402Network(env.X402_NETWORK),
-      facilitatorUrl:
-        env.X402_FACILITATOR_URL?.trim() ||
-        "https://x402.org/facilitator",
+      // CDP /verify currently returns "No facilitator registered for
+      // scheme:exact + network:eip155:8453" (upstream Coinbase issue,
+      // 2026-05-30). Until that's resolved we transparently rewrite
+      // CDP URLs to www.x402.org/facilitator — a public free facilitator
+      // that supports x402Version:2 exact-scheme + Base mainnet. Removing
+      // this override is a 1-line code change once CDP routing is fixed.
+      facilitatorUrl: rewriteFacilitatorUrl(env.X402_FACILITATOR_URL?.trim()),
       payTo: env.X402_PAY_TO?.trim() ?? "",
       priceCheckUsd: parseFloatPositive(env.X402_PRICE_CHECK_USD, 0.001),
       cdpApiKeyId: env.CDP_API_KEY_ID?.trim() || undefined,
