@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>AIBrake — Loop detection and model stop-loss for paid AI agents</title>
-<meta name="description" content="Shadow-mode API for AI agents. Detects stale retries, same-tool loops, and premium-model burn before the next expensive step. Privacy-first. No training on your data. <50ms P95." />
+<meta name="description" content="Live x402 API for AI agents — $0.005 per check, 18× ROI on average. Detects stale retries, same-tool loops, and premium-model burn before the next expensive step. Privacy-first. No training on your data. <50ms P95." />
 <link rel="canonical" href="https://aibrake.dev/" />
 <link rel="icon" type="image/png" href="/favicon.png" />
 <link rel="apple-touch-icon" href="/favicon.png" />
@@ -16,7 +16,7 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://aibrake.dev/" />
 <meta property="og:title" content="AIBrake — loop detection for paid AI agents" />
-<meta property="og:description" content="Shadow-mode API for AI agents. Detects stale retries, same-tool loops, and premium-model burn before the next expensive step." />
+<meta property="og:description" content="Live x402 API for AI agents — $0.005 per check, 18× ROI on average. Detects stale retries, same-tool loops, and premium-model burn before the next expensive step." />
 <meta property="og:site_name" content="AIBrake" />
 <meta property="og:image" content="https://aibrake.dev/og-card.svg" />
 <meta property="og:image:width" content="1200" />
@@ -894,7 +894,7 @@
       <a href="#integrations">x402</a>
       <a href="mailto:hello@aibrake.dev">Contact</a>
     </div>
-    <a class="cta" href="#beta">Get beta access</a>
+    <a class="cta" href="https://www.x402scan.com/server/37937158-815c-4e22-8ed7-afb716015ad4" target="_blank" rel="noopener">Try $0.005 demo</a>
   </div>
 </nav>
 
@@ -904,7 +904,7 @@
     <div class="hero-inner">
 
       <div class="hero-text">
-        <div class="status-pill"><span class="dot"></span>Shadow-mode API for AI agents</div>
+        <div class="status-pill"><span class="dot"></span>Live on x402 · $0.005 per check</div>
         <h1 class="hero-title">
           Loop detection and<br/>
           model <span class="accent">stop-loss</span> for<br/>
@@ -1395,26 +1395,26 @@ cp -r /tmp/aibrake/skills/aibrake ~/.hermes/skills/agent-safety/aibrake
   <div class="container">
     <div class="section-header reveal">
       <div class="section-eyebrow">06 · Pricing</div>
-      <h2>Free during beta. Anchored sub-cent after.</h2>
-      <p class="section-lead"><strong>Honest version:</strong> everything below is anchor candidate, not committed. Real pricing waits for 7 days of partner logs.</p>
+      <h2>$0.005 per call. 18× ROI. No signup.</h2>
+      <p class="section-lead"><strong>Self-host free.</strong> Hosted x402 endpoint at $0.005 per call. No signup, no API key, no commitment.</p>
     </div>
     <div class="price-row reveal">
       <div class="price-card">
-        <h3>Closed beta</h3>
+        <h3>Self-hosted MCP</h3>
         <div class="price">Free</div>
         <ul>
-          <li>Invite-only, 3-5 partners</li>
-          <li>All five detectors</li>
-          <li>JSONL decision log</li>
-          <li>Direct line to maintainer</li>
+          <li><code>npx aibrake mcp</code> — run locally</li>
+          <li>All six detectors, fully open source</li>
+          <li>JSONL decision log to your own sink</li>
+          <li>MIT licensed</li>
         </ul>
-        <p class="note">In exchange: 7-day usefulness review.</p>
+        <p class="note">Best for individuals + Node.js stacks.</p>
       </div>
-      <div class="price-card">
-        <h3>x402 rules check</h3>
+      <div class="price-card highlight">
+        <h3>Hosted x402 endpoint</h3>
         <div class="price">$0.005</div>
         <ul>
-          <li>Per <code>/x402/v1/check</code> call</li>
+          <li>Per <code>POST /x402/v1/check</code> call</li>
           <li>USDC via CDP / xpay facilitator</li>
           <li>No account, no API key</li>
           <li><strong>Avg $0.09 saved per call</strong> — ROI 18×</li>
@@ -1422,24 +1422,24 @@ cp -r /tmp/aibrake/skills/aibrake ~/.hermes/skills/agent-safety/aibrake
         <p class="note">Live on <a href="https://www.x402scan.com/server/37937158-815c-4e22-8ed7-afb716015ad4" target="_blank">x402scan</a>.</p>
       </div>
       <div class="price-card">
-        <h3>Deep audit</h3>
+        <h3>Deep audit (planned)</h3>
         <div class="price">$0.02–$0.10</div>
         <ul>
           <li>Per <code>/v1/check-deep</code></li>
           <li>LLM-based semantic judgment</li>
-          <li>Currently stubbed</li>
+          <li>Not built — listed for transparency</li>
         </ul>
-        <p class="note">Not built. Listed for transparency.</p>
+        <p class="note">Ship-when-needed feature.</p>
       </div>
       <div class="price-card">
         <h3>Team hosted</h3>
         <div class="price">$29–$99/mo</div>
         <ul>
-          <li>Dedicated keys</li>
-          <li>SLAs, log retention</li>
+          <li>Dedicated keys, custom domain</li>
+          <li>SLAs, log retention, audit trail</li>
           <li>Per-objective dashboards</li>
         </ul>
-        <p class="note">Not before signed-on volume.</p>
+        <p class="note">Email <a href="mailto:hello@aibrake.dev">hello@aibrake.dev</a>.</p>
       </div>
     </div>
   </div>
@@ -1486,30 +1486,30 @@ cp -r /tmp/aibrake/skills/aibrake ~/.hermes/skills/agent-safety/aibrake
       <details class="faq">
         <summary>Is the source open?</summary>
         <div class="faq-body">
-          <p>Docs, SDK, examples, simulation harness are open at <a href="https://github.com/Askbsman/aibrake">github.com/Askbsman/aibrake</a>. The hosted service is closed-beta. Run your own instance via <a href="https://github.com/Askbsman/aibrake/blob/main/DEPLOYMENT.md">DEPLOYMENT.md</a>.</p>
+          <p>Source, SDK, examples, simulation harness, benchmarks — all open at <a href="https://github.com/Askbsman/aibrake">github.com/Askbsman/aibrake</a> under MIT. The hosted x402 endpoint at <code>api.aibrake.dev</code> is public — pay $0.005 USDC per call, no signup. Run your own instance via <a href="https://github.com/Askbsman/aibrake/blob/main/DEPLOYMENT.md">DEPLOYMENT.md</a>.</p>
         </div>
       </details>
     </div>
   </div>
 </section>
 
-<!-- ═══════════════════ JOIN BETA CTA ═══════════════════ -->
+<!-- ═══════════════════ GET STARTED CTA ═══════════════════ -->
 <section id="beta" class="cta-band">
   <div class="container">
     <div class="cta-card reveal">
       <div class="cta-left">
         <div class="cta-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
         <div class="cta-text">
-          <h3>Join the beta</h3>
-          <p>Be first in line for early access, SDKs, and developer updates.</p>
+          <h3>Ship it tonight</h3>
+          <p>4 lines in MCP config or one paid x402 call. No signup, no waitlist, no API key.</p>
         </div>
       </div>
-      <form class="cta-form" action="mailto:beta@aibrake.dev?subject=AIBrake%20beta%20access" method="post">
-        <input type="email" name="email" placeholder="Work email" required />
-        <button class="btn btn-primary" type="submit">Get beta access <span class="arrow">→</span></button>
-      </form>
+      <div class="cta-form" style="display:flex;gap:var(--s-3);flex-wrap:wrap;">
+        <a class="btn btn-primary" href="#integrate">4-line install <span class="arrow">→</span></a>
+        <a class="btn btn-secondary" href="https://www.x402scan.com/server/37937158-815c-4e22-8ed7-afb716015ad4" target="_blank" rel="noopener">Try $0.005 demo ↗</a>
+      </div>
     </div>
   </div>
 </section>
