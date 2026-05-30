@@ -630,11 +630,27 @@ export function createX402PreHandler(config: X402Config) {
     // Without this, agentcash-signed payloads (and most other wallets')
     // arrive without extensions.bazaar and settlements remain invisible
     // to the bazaar even though they complete on-chain.
-    const bazaarExt =
-      (paymentRequirementsBody.extensions as { bazaar?: unknown } | undefined)
+    //
+    // 2026-05-30: CDP returned `EXTENSION-RESPONSES: {bazaar:{status:
+    // "rejected", rejectedReason: "invalid discovery configuration"}}`
+    // when we sent the full challenge bazaar block (with info/aibrake/
+    // openApiUrl/input/inputSchema/etc). The CDP indexer expects a
+    // narrower shape than what we ship to x402trace + bazaar mappers.
+    // Send a MINIMAL CDP-only block on the wire — keep the full block
+    // in the challenge body for bazaar listing UIs that need it.
+    const fullBazaar =
+      (paymentRequirementsBody.extensions as { bazaar?: any } | undefined)
         ?.bazaar ?? undefined;
-    const bazaarContext = bazaarExt
-      ? { resourceUrl, bazaarExt }
+    const minimalCdpBazaar = fullBazaar
+      ? {
+          discoverable: true,
+          name: fullBazaar.name,
+          description: fullBazaar.description,
+          category: fullBazaar.category,
+        }
+      : undefined;
+    const bazaarContext = minimalCdpBazaar
+      ? { resourceUrl, bazaarExt: minimalCdpBazaar }
       : undefined;
 
     let verifyResult: Awaited<ReturnType<typeof verifyPaymentWithFacilitator>>;
