@@ -169,6 +169,10 @@ export function buildPaymentRequirements(
       },
     },
     bazaar: {
+      // discoverable: true — per CDP Bazaar docs, the flag the indexer
+      // checks before pulling metadata. Missing flag → service stays
+      // invisible to /discovery/merchant even after successful settle.
+      discoverable: true,
       name: bazaarDiscoveryMetadata.name,
       serviceName: bazaarDiscoveryMetadata.name,
       description: bazaarDiscoveryMetadata.description,
@@ -179,6 +183,14 @@ export function buildPaymentRequirements(
       docsUrl: bazaarDiscoveryMetadata.docsUrl,
       openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
       githubUrl: bazaarDiscoveryMetadata.githubUrl,
+      // Top-level input/inputSchema/output — the indexer reads these
+      // directly off extensions.bazaar (not from extensions.bazaar.info).
+      input: method === "GET" ? undefined : checkRequestExample,
+      inputSchema: method === "GET" ? undefined : checkRequestDiscoverySchema,
+      output: {
+        example: checkResponseExample,
+        schema: checkResponseDiscoverySchema,
+      },
       info: {
         input: {
           type: "http",
@@ -319,15 +331,46 @@ async function buildAuthHeaders(
   return { Authorization: authorization };
 }
 
+// Enrich the wallet-signed payment payload with the bazaar extension
+// metadata + resource URL that the CDP Facilitator needs to feed its
+// indexer. Wallets like agentcash sign only the EIP-3009 authorization
+// + signature — they have no knowledge of the bazaar discovery layer.
+// The server is the one that must inject extensions.bazaar (with
+// discoverable: true + tags + schemas) into the payload that goes into
+// /verify and /settle. Without this, /discovery/merchant?payTo=... will
+// keep returning 404 even after successful settles. Per CDP docs:
+//   "settle request must contain paymentPayload.resource"
+//   "extensions.bazaar must declare discoverable: true"
+function enrichPayloadForBazaar(
+  payload: any,
+  paymentRequirements: PaymentAccept,
+  resourceUrl: string,
+  bazaarExt: unknown
+): any {
+  if (!payload || typeof payload !== "object") return payload;
+  return {
+    x402Version: payload.x402Version ?? 2,
+    scheme: payload.scheme ?? paymentRequirements.scheme,
+    network: payload.network ?? paymentRequirements.network,
+    payload: payload.payload ?? payload,
+    resource: payload.resource ?? resourceUrl,
+    extensions: {
+      ...(payload.extensions ?? {}),
+      bazaar: bazaarExt,
+    },
+  };
+}
+
 export async function verifyPaymentWithFacilitator(
   facilitatorUrl: string,
   paymentPayloadB64: string,
   paymentRequirements: PaymentAccept,
   abortSignal?: AbortSignal,
-  auth?: FacilitatorAuth
-): Promise<FacilitatorVerifyResponse> {
+  auth?: FacilitatorAuth,
+  bazaarContext?: { resourceUrl: string; bazaarExt: unknown }
+): Promise<FacilitatorVerifyResponse & { extensionResponses?: string | null }> {
   const ep = facilitatorEndpoint(facilitatorUrl, "verify");
-  let payload: unknown;
+  let payload: any;
   try {
     const decoded = Buffer.from(paymentPayloadB64, "base64").toString("utf8");
     payload = JSON.parse(decoded);
@@ -336,6 +379,16 @@ export async function verifyPaymentWithFacilitator(
       isValid: false,
       invalidReason: `Invalid X-Payment / PAYMENT-REQUIRED header: ${(err as Error).message}`,
     };
+  }
+
+  // Inject bazaar discovery metadata into the payload that goes to CDP.
+  if (bazaarContext) {
+    payload = enrichPayloadForBazaar(
+      payload,
+      paymentRequirements,
+      bazaarContext.resourceUrl,
+      bazaarContext.bazaarExt
+    );
   }
 
   let authHeaders: Record<string, string> = {};
@@ -348,10 +401,6 @@ export async function verifyPaymentWithFacilitator(
     };
   }
 
-  // Some facilitators (e.g. x402.org/facilitator → www.x402.org/facilitator)
-  // serve a 308 permanent redirect on the bare hostname. Node's undici fetch
-  // does NOT follow redirects by default — passing `redirect: "follow"` makes
-  // it transparent so a stale env URL still routes.
   const res = await fetch(ep.url, {
     method: "POST",
     redirect: "follow",
@@ -367,6 +416,11 @@ export async function verifyPaymentWithFacilitator(
     signal: abortSignal,
   });
 
+  // CDP returns EXTENSION-RESPONSES header signalling whether the
+  // bazaar extension we injected was accepted/rejected/processing.
+  // Capture so we can correlate with /discovery/merchant outcomes.
+  const extensionResponses = res.headers.get("extension-responses");
+
   if (!res.ok) {
     let bodyText = "";
     try {
@@ -377,10 +431,12 @@ export async function verifyPaymentWithFacilitator(
     return {
       isValid: false,
       invalidReason: `facilitator returned HTTP ${res.status}${bodyText ? ": " + bodyText.slice(0, 200) : ""}`,
+      extensionResponses,
     };
   }
 
-  return (await res.json()) as FacilitatorVerifyResponse;
+  const data = (await res.json()) as FacilitatorVerifyResponse;
+  return { ...data, extensionResponses };
 }
 
 // Settle a verified payment — finalises the EIP-3009 transfer on-chain
@@ -391,10 +447,11 @@ export async function settlePaymentWithFacilitator(
   paymentPayloadB64: string,
   paymentRequirements: PaymentAccept,
   abortSignal?: AbortSignal,
-  auth?: FacilitatorAuth
-): Promise<{ success: boolean; error?: string; txHash?: string }> {
+  auth?: FacilitatorAuth,
+  bazaarContext?: { resourceUrl: string; bazaarExt: unknown }
+): Promise<{ success: boolean; error?: string; txHash?: string; extensionResponses?: string | null }> {
   const ep = facilitatorEndpoint(facilitatorUrl, "settle");
-  let payload: unknown;
+  let payload: any;
   try {
     const decoded = Buffer.from(paymentPayloadB64, "base64").toString("utf8");
     payload = JSON.parse(decoded);
@@ -403,6 +460,17 @@ export async function settlePaymentWithFacilitator(
       success: false,
       error: `Invalid payment payload: ${(err as Error).message}`,
     };
+  }
+  // Inject bazaar metadata before settle — this is the call CDP's indexer
+  // actually reads from. Per docs: "settle request must contain
+  // paymentPayload.resource" and extensions.bazaar.
+  if (bazaarContext) {
+    payload = enrichPayloadForBazaar(
+      payload,
+      paymentRequirements,
+      bazaarContext.resourceUrl,
+      bazaarContext.bazaarExt
+    );
   }
   let authHeaders: Record<string, string> = {};
   try {
@@ -427,6 +495,7 @@ export async function settlePaymentWithFacilitator(
     }),
     signal: abortSignal,
   });
+  const extensionResponses = res.headers.get("extension-responses");
   if (!res.ok) {
     let bodyText = "";
     try {
@@ -437,6 +506,7 @@ export async function settlePaymentWithFacilitator(
     return {
       success: false,
       error: `facilitator settle returned HTTP ${res.status}${bodyText ? ": " + bodyText.slice(0, 200) : ""}`,
+      extensionResponses,
     };
   }
   const data = (await res.json()) as { success?: boolean; transaction?: string; error?: string };
@@ -444,6 +514,7 @@ export async function settlePaymentWithFacilitator(
     success: data.success ?? false,
     txHash: data.transaction,
     error: data.error,
+    extensionResponses,
   };
 }
 
@@ -548,7 +619,19 @@ export function createX402PreHandler(config: X402Config) {
           }
         : undefined;
 
-    let verifyResult: FacilitatorVerifyResponse;
+    // Inject bazaar discovery metadata into verify+settle requests so
+    // CDP's indexer can pull the service into /discovery/merchant.
+    // Without this, agentcash-signed payloads (and most other wallets')
+    // arrive without extensions.bazaar and settlements remain invisible
+    // to the bazaar even though they complete on-chain.
+    const bazaarExt =
+      (paymentRequirementsBody.extensions as { bazaar?: unknown } | undefined)
+        ?.bazaar ?? undefined;
+    const bazaarContext = bazaarExt
+      ? { resourceUrl, bazaarExt }
+      : undefined;
+
+    let verifyResult: Awaited<ReturnType<typeof verifyPaymentWithFacilitator>>;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
     try {
@@ -557,7 +640,8 @@ export function createX402PreHandler(config: X402Config) {
         paymentHeader,
         requirement,
         controller.signal,
-        facilitatorAuth
+        facilitatorAuth,
+        bazaarContext
       );
     } catch (err) {
       reply.code(402).send({
@@ -567,6 +651,16 @@ export function createX402PreHandler(config: X402Config) {
       return;
     } finally {
       clearTimeout(timeout);
+    }
+
+    if (verifyResult.extensionResponses) {
+      // eslint-disable-next-line no-console
+      console.log(
+        JSON.stringify({
+          event: "x402.bazaar.verify_response",
+          extensionResponses: verifyResult.extensionResponses,
+        })
+      );
     }
 
     if (!verifyResult.isValid) {
@@ -583,14 +677,15 @@ export function createX402PreHandler(config: X402Config) {
     // CDP charges $0 for verify/settle; the only cost is the user's gas.
     const settleController = new AbortController();
     const settleTimeout = setTimeout(() => settleController.abort(), 30_000);
-    let settleResult;
+    let settleResult: Awaited<ReturnType<typeof settlePaymentWithFacilitator>>;
     try {
       settleResult = await settlePaymentWithFacilitator(
         config.facilitatorUrl,
         paymentHeader,
         requirement,
         settleController.signal,
-        facilitatorAuth
+        facilitatorAuth,
+        bazaarContext
       );
     } catch (err) {
       reply.code(402).send({
@@ -600,6 +695,16 @@ export function createX402PreHandler(config: X402Config) {
       return;
     } finally {
       clearTimeout(settleTimeout);
+    }
+
+    if (settleResult.extensionResponses) {
+      // eslint-disable-next-line no-console
+      console.log(
+        JSON.stringify({
+          event: "x402.bazaar.settle_response",
+          extensionResponses: settleResult.extensionResponses,
+        })
+      );
     }
 
     if (!settleResult.success) {
