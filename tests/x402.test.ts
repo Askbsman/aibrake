@@ -44,7 +44,7 @@ describe("x402 buildPaymentRequirements", () => {
     expect(body.accepts[0]!.payTo).toBe(TEST_PAYEE);
     expect(body.accepts[0]!.amount).toBe("1000"); // 0.001 * 1e6
     expect(body.resource.url).toBe("https://api.example.com/x402/v1/check");
-    expect(body.accepts[0]!.extra.name).toBe("USDC");
+    expect(body.accepts[0]!.extra.name).toBe("USD Coin");
   });
 
   it("uses base mainnet USDC contract for network=base", () => {

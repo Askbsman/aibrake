@@ -126,7 +126,14 @@ export function buildPaymentRequirements(
     payTo: config.payTo,
     maxTimeoutSeconds: 60,
     extra: {
-      name: "USDC",
+      // EIP-712 domain separator for Base USDC. The on-chain contract's
+      // `name()` returns "USD Coin" (the official ERC-20 token name) and
+      // `version()` returns "2". x402 clients sign EIP-3009
+      // transferWithAuthorization against this domain — mismatched values
+      // produce invalid signatures and the client silently refuses to
+      // submit the payment. Matches what callbsman.com ships and the
+      // canonical Coinbase USDC deployment on Base.
+      name: "USD Coin",
       version: "2",
       aibrake: {
         name: bazaarDiscoveryMetadata.name,
