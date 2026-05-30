@@ -168,40 +168,36 @@ export function buildPaymentRequirements(
         schema: checkResponseDiscoverySchema,
       },
     },
+    // CDP Bazaar canonical shape — only TWO fields: `info` and `schema`.
+    // Per docs.cdp.coinbase.com/x402/bazaar:
+    //   "For a route to be discoverable, the Bazaar extension input
+    //    must pass strict JSON Schema validation against
+    //    schema.properties.input in your declared extension."
+    // Earlier shapes (with discoverable/name/description/tags/icon/etc.)
+    // returned EXTENSION-RESPONSES rejected: "invalid discovery
+    // configuration" because anything beyond {info, schema} fails the
+    // CDP indexer's schema match.
     bazaar: {
-      // discoverable: true — per CDP Bazaar docs, the flag the indexer
-      // checks before pulling metadata. Missing flag → service stays
-      // invisible to /discovery/merchant even after successful settle.
-      discoverable: true,
-      name: bazaarDiscoveryMetadata.name,
-      serviceName: bazaarDiscoveryMetadata.name,
-      description: bazaarDiscoveryMetadata.description,
-      provider: bazaarDiscoveryMetadata.provider,
-      category: bazaarDiscoveryMetadata.category,
-      tags: [...bazaarTags],
-      iconUrl: "https://aibrake.dev/favicon.ico",
-      docsUrl: bazaarDiscoveryMetadata.docsUrl,
-      openApiUrl: bazaarDiscoveryMetadata.openApiUrl,
-      githubUrl: bazaarDiscoveryMetadata.githubUrl,
-      // Top-level input/inputSchema/output — the indexer reads these
-      // directly off extensions.bazaar (not from extensions.bazaar.info).
-      input: method === "GET" ? undefined : checkRequestExample,
-      inputSchema: method === "GET" ? undefined : checkRequestDiscoverySchema,
-      output: {
-        example: checkResponseExample,
-        schema: checkResponseDiscoverySchema,
-      },
       info: {
         input: {
           type: "http",
-          bodyType: "json",
           method,
+          bodyType: "json",
           body: method === "GET" ? undefined : checkRequestExample,
         },
         output: {
           type: "json",
           example: checkResponseExample,
         },
+      },
+      schema: {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        type: "object",
+        properties: {
+          input: checkRequestDiscoverySchema,
+          output: checkResponseDiscoverySchema,
+        },
+        required: ["input"],
       },
     },
   };
@@ -625,28 +621,17 @@ export function createX402PreHandler(config: X402Config) {
           }
         : undefined;
 
-    // 2026-05-30 bazaar indexing dead-end:
-    // 1) Wallet-signed paymentPayload (from agentcash et al.) cannot be
-    //    mutated to add extensions.bazaar — CDP rejects with
-    //    "must match one of [x402V2PaymentPayload, x402V1PaymentPayload]"
-    //    because top-level field additions break the EIP-712 schema match.
-    // 2) Adding extensions on the OUTER verify/settle envelope (sibling
-    //    to paymentPayload) is accepted by CDP — it returns
-    //    EXTENSION-RESPONSES header — but every shape we tried, both
-    //    the full challenge body block and a minimal {discoverable,
-    //    name, description, category} block, comes back
-    //    `{bazaar:{status:"rejected", rejectedReason:"invalid discovery
-    //    configuration"}}`.
-    // 3) CDP's @coinbase/cdp-sdk publishes no `X402BazaarExtension` TS
-    //    interface — only the rejection enum `invalid_bazaar_extension`.
-    //    The schema is undocumented, so we'd be guessing.
-    //
-    // Decision: stop sending extensions on the envelope (keeps payments
-    // working) until a public schema lands or a CDP support contact
-    // ships an example payload. Payments still settle through CDP; the
-    // service just stays invisible to /discovery/merchant until then.
-    const bazaarContext: { resourceUrl: string; bazaarExt: unknown } | undefined =
-      undefined;
+    // Retry bazaar injection with the canonical {info, schema} shape
+    // per docs.cdp.coinbase.com/x402/bazaar. Earlier rejections used
+    // bloated shapes (name/description/tags/discoverable/etc.) — CDP
+    // only accepts the two-field shape with schema.properties.input
+    // matching info.input.body.
+    const bazaarExt =
+      (paymentRequirementsBody.extensions as { bazaar?: unknown } | undefined)
+        ?.bazaar ?? undefined;
+    const bazaarContext = bazaarExt
+      ? { resourceUrl, bazaarExt }
+      : undefined;
 
     let verifyResult: Awaited<ReturnType<typeof verifyPaymentWithFacilitator>>;
     const controller = new AbortController();
