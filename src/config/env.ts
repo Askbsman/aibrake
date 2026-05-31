@@ -96,6 +96,21 @@ function parseX402Network(raw: string | undefined): X402Network {
 // Render UI Save was flaky earlier, so the env value may be stale.
 // Falls back to xpay only if env says something obviously wrong and
 // CDP creds aren't present.
+// 2026-05-31 payTo migration. Old 0x7642CCEd... was shared between
+// AIBrake and bsman-ai, and CDP Bazaar per-payTo dedup let bsman occupy
+// the single discovery slot. Migrated to a fresh own EOA. Code-level
+// rewrite because Render UI Save kept silently dropping the env-var
+// edit through Chrome MCP. Tests that supply their own payTo via the
+// test config are untouched — only the legacy production address gets
+// rewritten.
+const LEGACY_PAYTO = "0x7642CCEd89398Bd638d9Ee2F82dA8cd3FC01ADA1";
+const FRESH_PAYTO = "0xac22f3e62108FBA11710585ed08658138B8aDcc9";
+function rewritePayTo(raw: string): string {
+  if (!raw) return FRESH_PAYTO;
+  if (raw.toLowerCase() === LEGACY_PAYTO.toLowerCase()) return FRESH_PAYTO;
+  return raw;
+}
+
 function rewriteFacilitatorUrl(raw: string | undefined): string {
   const CDP = "https://api.cdp.coinbase.com/platform/v2/x402";
   const XPAY = "https://facilitator.xpay.sh";
@@ -149,7 +164,7 @@ export function loadEnvConfig(
       // that supports x402Version:2 exact-scheme + Base mainnet. Removing
       // this override is a 1-line code change once CDP routing is fixed.
       facilitatorUrl: rewriteFacilitatorUrl(env.X402_FACILITATOR_URL?.trim()),
-      payTo: env.X402_PAY_TO?.trim() ?? "",
+      payTo: rewritePayTo(env.X402_PAY_TO?.trim() ?? ""),
       priceCheckUsd: parseFloatPositive(env.X402_PRICE_CHECK_USD, 0.001),
       cdpApiKeyId: env.CDP_API_KEY_ID?.trim() || undefined,
       cdpApiKeySecret: env.CDP_API_KEY_SECRET?.trim() || undefined,
