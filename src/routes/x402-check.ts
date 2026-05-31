@@ -80,7 +80,7 @@ export async function registerX402CheckRoute(
       payment: {
         protocol: "x402",
         network: "Base mainnet",
-        price: `$${config.x402.priceCheckUsd.toFixed(3)} per check decision`,
+        price: `$${deps.x402.priceCheckUsd.toFixed(3)} per check decision`,
       },
       primary_mode: "stale_context_retry_storm",
       supported_modes: [
