@@ -181,13 +181,13 @@ export const checkResponseDiscoverySchema = {
 } as const;
 
 export const bazaarDiscoveryMetadata = {
-  name: "AIBrake check",
+  name: "AIBrake — Agent safety for paid AI agents",
   provider: "AIBrake",
   category: "Agent Infrastructure",
   shortDescription:
-    "Loop detection and model stop-loss for paid AI agents.",
+    "Agent safety: loop detection and model stop-loss for paid AI agents.",
   description:
-    "AIBrake check returns a decision (allow / warn / require_confirmation / block) for a proposed paid agent action — paid LLM call, deployment assertion, model escalation. Catches retry storms, unverified deploys, premium-model burn, objective drift, and budget breaches before the next expensive step. 98.0% LCR on published synthetic corpus, p50 0.004 ms.",
+    "Agent safety for paid AI agents — loop detection, model stop-loss, retry-storm catch, unverified-deploy block, premium-model-burn guard. AIBrake returns a decision (allow / warn / require_confirmation / block) for a proposed paid agent action — paid LLM call, deployment assertion, model escalation. Catches retry storms, unverified deploys, premium-model burn, objective drift, and budget breaches before the next expensive step. 98.0% LCR on published synthetic corpus, p50 0.004 ms.",
   endpoint: checkUrl,
   resourceUrl: checkUrl,
   fallbackUrl: fallbackCheckUrl,
@@ -208,7 +208,7 @@ export const bazaarDiscoveryMetadata = {
   payment: {
     protocol: "x402",
     network: "Base mainnet",
-    priceUsd: "0.001",
+    priceUsd: "0.005",
     unit: "per check decision",
   },
   cdpIndexingLimitation: bazaarIndexingLimitationNote as string,
@@ -223,14 +223,14 @@ export const bazaarDiscoveryMetadata = {
 } as const;
 
 export const checkCapabilityResponse = {
-  service: "AIBrake check",
+  service: "AIBrake — Agent safety for paid AI agents",
   endpoint: "POST https://api.aibrake.dev/x402/v1/check",
   description:
-    "Loop detection and model stop-loss for paid AI agents — one decision per check.",
+    "Agent safety for paid AI agents — loop detection and model stop-loss. One decision per check.",
   payment: {
     protocol: "x402",
     network: "Base mainnet",
-    price: "$0.001 per check decision",
+    price: "$0.005 per check decision",
   },
   primary_mode: "stale_context_retry_storm",
   supported_modes: bazaarDiscoveryMetadata.supportedModes,

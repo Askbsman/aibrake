@@ -73,14 +73,14 @@ export async function registerX402CheckRoute(
     "/x402/v1/check",
     { preHandler: [x402PreHandler] },
     async () => ({
-      service: "AIBrake check",
+      service: "AIBrake — Agent safety for paid AI agents",
       endpoint: "POST https://api.aibrake.dev/x402/v1/check",
       description:
-        "Loop detection and model stop-loss for paid AI agents. POST with a SpendingGuardCheckInput payload to get one decision per request.",
+        "Agent safety for paid AI agents — loop detection and model stop-loss. POST with a SpendingGuardCheckInput payload to get one decision per request.",
       payment: {
         protocol: "x402",
         network: "Base mainnet",
-        price: "$0.001 per check decision",
+        price: `$${config.x402.priceCheckUsd.toFixed(3)} per check decision`,
       },
       primary_mode: "stale_context_retry_storm",
       supported_modes: [

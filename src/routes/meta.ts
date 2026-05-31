@@ -58,7 +58,7 @@ export async function registerMetaRoute(
     return {
       name: "AIBrake",
       version: config.serviceVersion,
-      description: "Loop detection and model stop-loss for paid AI agents.",
+      description: "Agent safety for paid AI agents — loop detection and model stop-loss.",
       positioning: "PQS checks the prompt. AIBrake checks the loop.",
       endpoints: {
         check: "/v1/check",
